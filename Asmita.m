@@ -209,8 +209,10 @@ classdef Asmita < muiModelUI
             switch src.Tag                                    % << Edit match tab requirements
                 case 'Plot' 
                      tabPlot(cobj,src);
-                case 'Stats'
-                     tabStats(cobj,src);    
+%                 case 'Stats'
+%                      lobj = getClassObj(obj,'mUI','Stats',msg);
+%                      if isempty(lobj), return; end
+%                      tabStats(lobj,src);    
             end
         end      
 %% ------------------------------------------------------------------------
