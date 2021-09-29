@@ -10,7 +10,7 @@ function deq = morris_eqdepth(sm,cn,qm,dslr)
 % INPUTS
 %   sm - Saltmarsh instance or struct of Saltmarsh properties, with:
 %        NumSpecies - number of species
-%        MinSpDepth - minimumdepth for each species
+%        MinSpDepth - minimum depth for each species (m)
 %        MaxSpDepth - maximum depth for each species (m)
 %        MaxBiomass - maximum biomass for each species (kg/m2)
 %        SpeciesProduct - species productivity (m2/kg/yr)
@@ -28,10 +28,10 @@ function deq = morris_eqdepth(sm,cn,qm,dslr)
 % CoastalSEA (c)Apr 2021
 %--------------------------------------------------------------------------
 %
-    kbm = sm.SpeciesProduct;  
+    kbm = sm.SpeciesProduct';  
     kbm = kbm/cn.y2s;           %rate of biomass production (m^2/kg/s)
     %kbm = kbm/acb;             %correct for bed density
-    Bc = morris_biocoeffs(sm);   %biomass coefficients
+    Bc = morris_biocoeffs(sm);  %biomass coefficients
     %
     KBM = repmat(kbm,1,3);      %replicate kbm for each coefficient
     kbc = Bc.*KBM;              %multiply each coefficient by kbm

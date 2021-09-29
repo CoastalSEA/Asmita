@@ -1,4 +1,4 @@
-function [header,data] = readinputdata()
+function [data,header] = readinputdata()
 %
 %-------function help------------------------------------------------------
 % NAME
@@ -10,10 +10,10 @@ function [header,data] = readinputdata()
 % USAGE
 %   [header,data] = readinputdata()h
 % OUTPUT
-%   header - file header text 
 %   data - cell array for each column of data
+%   header - file header text 
 % SEE ALSO
-%   used in Advection, Element 
+%   used in Advection, Element, Drift, River, Intervention classes
 %
 % Author: Ian Townend
 % CoastalSEA (c)Apr 2021
@@ -25,6 +25,7 @@ function [header,data] = readinputdata()
         header = ''; data = [];
         return; 
     end   
+    
     fid = fopen([path,fname], 'r');
     if fid<0
         errordlg('Could not open file for reading','File write error','modal')

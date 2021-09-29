@@ -16,7 +16,7 @@ classdef Asmita < muiModelUI
     properties  (Access = protected)
         %implement properties defined as Abstract in muiModelUI
         vNumber = '3.0'
-        vDate   = 'May 2021'
+        vDate   = 'Oct 2021'
         modelName = 'Asmita'   
         %Properties defined in muiModelUI that need to be defined in setGui
         % ModelInputs  %classes required by model: used in isValidModel check 
@@ -54,7 +54,8 @@ classdef Asmita < muiModelUI
             obj.DataUItabs.Stats = {'General','Timeseries','Taylor','Intervals'};  
             
             modelLogo = 'Asmita_logo.jpg';  %default splash figure - edit to alternative
-            initialiseUI(obj,modelLogo); %initialise menus and tabs                  
+            initialiseUI(obj,modelLogo); %initialise menus and tabs  
+            asmitaInputStruct(obj);
         end    
         
 %% ------------------------------------------------------------------------
@@ -135,9 +136,9 @@ classdef Asmita < muiModelUI
             menu.Setup(6).Callback = repmat({@obj.driftProps},[1,4]);
                                 
             % submenu for Interventions data
-            menu.Setup(7).List = {'Add','Load'};
-            menu.Setup(7).Callback = {@obj.interProps,@obj.interProps};
-            
+            menu.Setup(7).List = {'Add or Edit','Clear','Load file','Change sign'};
+            menu.Setup(7).Callback = repmat({@obj.intervenProps},[1,4]);
+            menu.Setup(7).Separator = {'off','off','off','on'};
             % submenu for Run Properties data
             menu.Setup(8).List = {'Time step','Conditions',...
                 'Equilibrium Coefficients','Edit Eq. Coefficients list'};
@@ -171,7 +172,7 @@ classdef Asmita < muiModelUI
             tabs.Cases  = {'  Cases  ',@obj.refresh};        % << Edit tabs to suit model 
             tabs.System = {' System ',@obj.InputTabSummary};
             tabs.Elements   = {' Elements ',@obj.InputTabSummary};
-            tabs.Interven = {' Interven ',@(src,evdat)Interventions.IntSummary(obj,src,evdat)};
+            tabs.Interven = {' Interven ',@(src,evt)Interventions.IntTabPlot(obj,src,evt)};
             tabs.RunProps   = {' Run Props ',@obj.InputTabSummary};
             tabs.Network   = {' Network ',@(src,evt)Estuary.Network(obj,src,evt)};
             tabs.Flows   = {'  Flows  ','gcbo;'};
@@ -181,7 +182,8 @@ classdef Asmita < muiModelUI
             subtabs.Flows(4,:) = {'Input Summary',@(src,evt)Advection.inputSummary(obj,src,evt)};
             subtabs.Flows(5,:) = {'River Input',@(src,evt)River.TSplot(obj,src,evt)};
             subtabs.Flows(6,:) = {'Drift Input',@(src,evt)Drift.TSplot(obj,src,evt)};
-            tabs.Response = {' Response ',@(src,evdat)Estuary.Response(obj,src,evdat)};            
+            
+            tabs.Response = {' Response ',@(src,evt)Estuary.Response(obj,src,evt)};            
         end
        
 %%
@@ -195,8 +197,8 @@ classdef Asmita < muiModelUI
             %         bottom left [0.45, 0.48]; bottom rigth [0.45,0.97]                                                    
             props = {...                                     
                 'Estuary','System',[0.95,0.50],{200,60},'Estuary properties:';...
-                'WaterLevels','System',[0.95,0.98],{180,60},'Hydraulic properties:';...
-                'Saltmarsh','System',[0.55,0.55],{170,100},'Saltmarsh properties:';...
+                'WaterLevels','System',[0.95,0.98],{160,80},'Hydraulic properties:';...
+                'Saltmarsh','System',[0.55,0.52],{170,100},'Saltmarsh properties:';...
                 'Element','Elements',[0.95,0.95],{180,60},'Element properties:';...
                 'RunProps','RunProps',[0.95,0.48],{180,60},'Run time properties:';...
                 'RunConditions','RunProps',[0.55,0.48],{180,60},'Run conditions (true or false):';...
@@ -274,7 +276,7 @@ classdef Asmita < muiModelUI
                 case 'Equilibrium marsh depth'
                     Saltmarsh.EqDepthBiomass(obj);
                 case 'Biomass distribution'
-                    Saltmarsh.BiomassDistribution(obj);
+                    Saltmarsh.BiomassDistributionPlot(obj);
                 case 'Marsh-flat animation'
                     Saltmarsh.MarshFlatAnimation(obj);
             end
@@ -311,10 +313,15 @@ classdef Asmita < muiModelUI
         function intervenProps(obj,src,~)
             %callback functions to setup interventions
             switch src.Text
-                case 'Add'
+                case 'Add or Edit'
                     Interventions.setInterventions(obj);
-                case 'Load'
+                case 'Clear'
+                    Interventions.clearEleInt(obj);
+                case 'Load file'
                     Interventions.loadInterventions(obj);
+                case 'Change sign'
+                    Interventions.setIntChSign(obj)
+                    %what about add and delete?????
             end
         end
 %%
@@ -327,8 +334,7 @@ classdef Asmita < muiModelUI
                 case 'Conditions'
                     RunConditions.setInput(obj);   
                 case 'Equilibrium Coefficients'
-                    cobj = setInputClassObj(mobj,'EqCoeffProps');
-                    setInput(cobj);
+                    EqCoeffProps.setInput(obj);
                 case 'Edit Eq. Coefficients list'                    
                     EqCoeffProps.editList(obj);
                     tabname = [];
@@ -359,7 +365,7 @@ classdef Asmita < muiModelUI
 
         %% Help menu ------------------------------------------------------
         function Help(~,~,~)
-            doc UseUI_template                               % << Edit to documentation name if available
+            doc asmita                              
         end    
     end
 %%
@@ -370,6 +376,13 @@ classdef Asmita < muiModelUI
                 tabsrc = findobj(obj.mUI.Tabs,'Tag',tabname);
                 InputTabSummary(obj,tabsrc);
             end 
+        end
+%%
+        function asmitaInputStruct(obj)
+            %define struct to be used as handles for input data classes
+            obj.Inputs = struct('WaterLevels',[],'RunProps',[],'Estuary',[],'Element',[],...
+            'Reach',[],'River',[],'Interventions',[],'Drift',[],'Saltmarsh',[], ...
+            'Advection',[],'Hydraulics',[]);
         end
     end
 end    

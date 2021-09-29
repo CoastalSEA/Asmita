@@ -11,7 +11,7 @@ function wsm = bioenhancedsettling(sm,depth,aws)
 % INPUTS
 %   sm - Saltmarsh instance or struct of Saltmarsh properties
 %        NumSpecies - number of species
-%        MinSpDepth - minimumdepth for each species
+%        MinSpDepth - minimum depth for each species (m)
 %        MaxSpDepth - maximum depth for each species (m)
 %        MaxBiomass - maximum biomass for each species (kg/m2)
 %        SettlingAlpha - coefficient for biomass dependent enhanced settling rate (m/s)

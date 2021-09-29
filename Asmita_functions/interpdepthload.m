@@ -10,7 +10,7 @@ function [depth,sedload] = interpdepthload(sm,cn,aws,qm0,dslr)
 % INPUTS
 %   sm - Saltmarsh instance or struct of Saltmarsh properties, with:
 %        NumSpecies - number of species
-%        MinSpDepth - minimumdepth for each species
+%        MinSpDepth - minimum depth for each species (m)
 %        MaxSpDepth - maximum depth for each species (m)
 %        MaxBiomass - maximum biomass for each species (kg/m2)
 %        SpeciesProduct - species productivity (m2/kg/yr)

@@ -64,21 +64,26 @@ classdef Saltmarsh < muiPropertyUI
 %%  
     methods (Static)  
         function obj = setInput(mobj,editflag)
-            %gui for user to set Parameter Input values            
-            obj = Saltmarsh.setClassObj(mobj);
+            %gui for user to set Parameter Input values 
+            classname = 'Saltmarsh'; 
+            obj = getClassObj(mobj,'Inputs',classname);
+            if isempty(obj)
+                obj = Saltmarsh(mobj);             
+            end
+            
             %use muiPropertyUI function to generate UI
             if nargin<2 || editflag
                 %add nrec to limit length of props UI (default=12)
                 obj = editProperties(obj);  
                 %add any additional manipulation of the input here
             end
-            mobj.Inputs.Saltmarsh = obj;
+            setClassObj(mobj,'Inputs',classname,obj);
         end     
 %%
         function EqDepthBiomass(mobj)
             %examine influence of biomass production rates on equilibirum depth
             %produces three graphs and displays the resultant eq.depth
-            %get input parameters 
+            %get input parameters             
             [obj,wl,cn] = Saltmarsh.getInputData(mobj);
             if isempty(obj) || isempty(wl), return; end
 
@@ -114,11 +119,11 @@ aws = [0.003,0.0115];  %MARSH FLAT VERTICAL EXCHANGE RATE DIFFERENCE RESULTS IN 
             kbm0 = obj.SpeciesProduct;     %species productivity (m2/kg/yr)
             prompt = {'Enter biomass production rate (m^2kg^-1yr^-1)'};
             dlg_title = 'Input for biomass production rate';
-            def = {num2str(kbm0')};
+            def = {num2str(kbm0)};
             dlg_ans = inputdlg(prompt,dlg_title,1,def);
             if isempty(dlg_ans), return; end
-            kbm = str2num(dlg_ans{1})/cn.y2s;   %#ok<ST2NM> %values in seconds
-            obj.SpeciesProduct = kbm'*cn.y2s;
+            obj.SpeciesProduct = str2num(dlg_ans{1}); %#ok<ST2NM>
+            kbm = obj.SpeciesProduct'/cn.y2s;         %values in seconds
             %
             Qm0 = 0.00018;       %estimate of sediment load used by Morris,2006
             if mean(kbm)< 1.0e-10
@@ -161,12 +166,12 @@ aws = [0.003,0.0115];  %MARSH FLAT VERTICAL EXCHANGE RATE DIFFERENCE RESULTS IN 
             Qm1 = qm1*cn.y2s;            %units of yr^-1            
             ptxt = struct('kbm',kbm*cn.y2s,'dp0',dp0,'dp1',dp1,'Qm0',Qm0,'Qm1',Qm1,...
                'Dslr',Dslr,'bm1',bm1,'minslr',minslr,'maxslr',minslr*nint);
-            bioPlot(obj,cn,slr,deq,biom,ptxt);
+            bioInfluencePlot(obj,cn,slr,deq,biom,ptxt);
             % Advise state of marsh if elements defined
             marshElementCheck(obj,mobj)
         end
 %%
-        function BiomassDistribution(mobj)
+        function BiomassDistributionPlot(mobj)
             %plot the distribution of each species on the bare flat profile
             [obj,wl,~] = Saltmarsh.getInputData(mobj);
             if isempty(obj) || isempty(wl), return; end
@@ -219,7 +224,7 @@ aws  = settling_velocity(d50,cn.g,cn.rhow,cn.rhos,cn.visc,rhoc);
             [y,z0] = getFlatProfile(obj,a,width,100); %nint=100
             ymx = interp1(z0,y,(a-dmx));
             Bc = morris_biocoeffs(obj);
-            kbm = obj.SpeciesProduct/cn.y2s;
+            kbm = obj.SpeciesProduct'/cn.y2s;
             
             mtime = 0:1:nyears; 
             nint = length(mtime);
@@ -239,7 +244,7 @@ aws  = settling_velocity(d50,cn.g,cn.rhow,cn.rhos,cn.visc,rhoc);
                 for j=idep+1:length(z)                    
                     depth = zHW(i)-z(i-1,:);
                     bm = Bc*[depth(j);depth(j)^2;1];
-                    sumKB = sum(kbm.*(bm.*(bm>0)));
+                    sumKB = sum(kbm.*(bm.*(bm>0)));  
                     wsb = bioenhancedsettling(obj,depth(j),[aws,aws]);
                     cz = interp1(ct.Depth,ct.Concentration,depth(j));
                     if isdecay
@@ -259,7 +264,7 @@ aws  = settling_velocity(d50,cn.g,cn.rhow,cn.rhos,cn.visc,rhoc);
     end
 %%
     methods (Access=private)
-        function bioPlot(obj,cn,slr,deq,biom,tx)
+        function bioInfluencePlot(obj,cn,slr,deq,biom,tx)
             %plot marsh concentrations, submergence, response to SLR
             dpm = obj.MarshDepthConc.Depth;
             cem = obj.MarshDepthConc.Concentration;
@@ -340,13 +345,15 @@ aws  = settling_velocity(d50,cn.g,cn.rhow,cn.rhos,cn.visc,rhoc);
         end
 %%
         function marshElementCheck(obj,mobj)
-            %if elements have been define check whether marsh is
+            %if elements have been defined, check whether marsh is
             %biologically productive or not and display message
-            if isfield(mobj.Inputs,'Element') && ~isempty(mobj.Inputs.Element)
-                vm = Element.getEleProp(mobj,'MovingVolume');
-                sm = Element.getEleProp(mobj,'MovingSurfaceArea');
-                eletype = Element.getEleProp(mobj,'EleType');
-                elename = Element.getEleProp(mobj,'EleName');                
+            msgtxt = 'Elements have not been defined';
+            eleobj = getClassObj(mobj,'Inputs','Element',msgtxt);
+            if ~isempty(eleobj)
+                vm = getEleProp(eleobj,'MovingVolume');
+                sm = getEleProp(eleobj,'MovingSurfaceArea');
+                eletype = getEleProp(eleobj,'EleType');
+                elename = getEleProp(eleobj,'EleName');                
                 ism = find(strcmp(eletype,'Saltmarsh')); 
                 nsm = length(ism);
                 dm = vm./sm;
@@ -421,7 +428,8 @@ aws  = settling_velocity(d50,cn.g,cn.rhow,cn.rhos,cn.visc,rhoc);
             hp(2).YDataSource = 'zi';
             hp(3).YDataSource = 'zHWi'; 
             hp(1).YDataSource = 'zmxdepi'; 
-            ax1.YLimMode = 'manual';                           
+            ax1.YLimMode = 'manual';   
+            ax1.YLim(2) = max([max(z,[],'all'),max(zHW)])+0.1;
             title(sprintf('Saltmarsh growth \nTime = %s years',string(time(1))))
             nint = length(time);
             Mframes(nint,1) = getframe(gcf);
@@ -473,33 +481,13 @@ aws  = settling_velocity(d50,cn.g,cn.rhow,cn.rhos,cn.visc,rhoc);
         end
     end
  %%
-    methods (Static, Access=private)
-        function obj = setClassObj(mobj)
-            %check if class exists and if not call constructor                
-            if isfield(mobj.Inputs,'Saltmarsh') && ...
-                            isa(mobj.Inputs.Saltmarsh,'Saltmarsh')
-                obj = mobj.Inputs.Saltmarsh;  
-            else
-                obj = Saltmarsh(mobj);    
-            end
-        end
-%%
+    methods (Static,Access=private)
         function [obj,wl,cn] = getInputData(mobj)
             %initialise saltmarsh, water levels and constants
-            obj = Saltmarsh.setClassObj(mobj);
-            if isempty(obj.NumSpecies)
-                warndlg('Saltmarsh species not defined');
-                obj = [];
-            end
-
-            %initial water levels
-            if isfield(mobj.Inputs,'WaterLevels') && ...
-                            isa(mobj.Inputs.WaterLevels,'WaterLevels')
-                wl = mobj.Inputs.WaterLevels;  
-            else
-                warndlg('Water level data not defined')
-                wl = [];
-            end
+            msgtxt = 'Saltmarsh parameters not yet defined';
+            obj = getClassObj(mobj,'Inputs','Saltmarsh',msgtxt);
+            msgtxt = 'Water level data not defined';
+            wl = getClassObj(mobj,'Inputs','WaterLevels',msgtxt);
             cn = getConstantStruct(mobj.Constants);
         end
     end       
