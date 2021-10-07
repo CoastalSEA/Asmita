@@ -10,7 +10,7 @@ function [acem,asmt] = marsh_conc(c0,zm,wsm,wl,options)
 %   [acem,asmt] = marsh_conc(c0,zm,wsm,wl,options)
 % INPUTS
 %   c0 - concentration in adjacent element
-%   zm - elevation of marsh(assumes symmetric tide)
+%   zm - elevation of marsh (assumes symmetric tide)
 %   wsm - settling rate over marsh 
 %   wl - struct used in simple_tide (set unwanted constituents to zero)
 %        MSL0                      mean tidel level to ordnance datum (mOD)

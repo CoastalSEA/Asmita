@@ -52,13 +52,6 @@ classdef Saltmarsh < muiPropertyUI
             %values defined in UI function setTabProperties used to assign
             %the tabname and position on tab for the data to be displayed
             obj = setTabProps(obj,mobj);  %muiPropertyUI function
-            
-            %to use non-numeric entries then one can either pre-assign 
-            %the values in the class properties defintion, above, or 
-            %specify the PropertyType as a cell array here in the class 
-            %constructor, e.g.:
-            % obj.PropertyType = [{'datetime','string','logical'},...
-            %                                       repmat({'double'},1,8)];
         end 
     end
 %%  
@@ -84,61 +77,15 @@ classdef Saltmarsh < muiPropertyUI
             %examine influence of biomass production rates on equilibirum depth
             %produces three graphs and displays the resultant eq.depth
             %get input parameters             
-            [obj,wl,cn] = Saltmarsh.getInputData(mobj);
-            if isempty(obj) || isempty(wl), return; end
-
-            newWaterLevels(wl,0,0);                
-            dslr= wl.SLRrate/cn.y2s;  %rate of sea level change (m/s)
-%--------------------------------------------------------------------------         
-%TEMP ASSIGNMENT TO TEST CODE           
-d50 = 0.0002;                      %median grain size (m)
-c0 = 1.2e-4;                          %background concentration adjacent to marsh (-)
-rhoc = c0*cn.rhos;
-aws  = settling_velocity(d50,cn.g,cn.rhow,cn.rhos,cn.visc,rhoc);             
-%             awm = mean(ws(ism));
-%             awf = mean(ws(ifl));
-
-aws = [0.003,0.0115];  %MARSH FLAT VERTICAL EXCHANGE RATE DIFFERENCE RESULTS IN DISCONTINUITY IN CONCENTRATION AT THE MARSH EDGE
-                       %MAY BE BETTER TO USE SETTLING VELOCITY????
-%--------------------------------------------------------------------------                        
-            
-            %intitialise transient properties
-%             obj.h_ele = Element.initialiseElements(obj);
-%             obj.h_ele = Element.setEqConcentration(obj);
-%             vm = Element.getEleProp(mobj,'MovingVolume');
-%             sm = Element.getEleProp(mobj,'MovingSurfaceArea');
-
-            %marsh concentration options
-            mco.tsn = 14.77;          %duration of spring-neap cycle (days) 
-            mco.delt = 10;            %time step (secs)  *may be sensitive
-            mco.dmin = 0.05;          %minimum depth used in calculation           
-            obj.MarshDepthConc = concovermarsh(obj,wl,c0,aws,mco);            
+            [obj,wlvobj,cn] = Saltmarsh.getInputData(mobj);
+            if isempty(obj) || isempty(wlvobj), return; end
             %--------------------------------------------------------------
-            % Get user defined value of kbm
-            %--------------------------------------------------------------
+            % Store original values of kbm so that they can be restored
             kbm0 = obj.SpeciesProduct;     %species productivity (m2/kg/yr)
-            prompt = {'Enter biomass production rate (m^2kg^-1yr^-1)'};
-            dlg_title = 'Input for biomass production rate';
-            def = {num2str(kbm0)};
-            dlg_ans = inputdlg(prompt,dlg_title,1,def);
-            if isempty(dlg_ans), return; end
-            obj.SpeciesProduct = str2num(dlg_ans{1}); %#ok<ST2NM>
-            kbm = obj.SpeciesProduct'/cn.y2s;         %values in seconds
-            %
-            Qm0 = 0.00018;       %estimate of sediment load used by Morris,2006
-            if mean(kbm)< 1.0e-10
-                Qm0 = 0.0018;    %adjustment needed if kbm very low, Morris, 2007
-            end
-            qm0 = Qm0/cn.y2s;       %initial value of qm (s^-1)
-            dp0 = morris_eqdepth(obj,cn,qm0,dslr);
-            %--------------------------------------------------------------
-            % Calculate depth, dp1 and sediment loading qm
-            %--------------------------------------------------------------
-            [dp1,qm1] = interpdepthload(obj,cn,aws,qm0,dslr);
-            Bc = morris_biocoeffs(obj);
-            dd1 = [dp1 dp1.^2 1];
-            bm0 = (Bc*dd1');
-            bm1 = sum(bm0.*(bm0>0)); %total biomass at equilibrium depth (kg.m^-2)
+            %-------------------------------------------------------------- 
+            [sm,ct] = initialiseSaltmarshModel(obj,wlvobj,cn,mobj);
+            if isempty(ct), return; end
+
             %--------------------------------------------------------------
             % Calculate variation with slr
             %--------------------------------------------------------------
@@ -147,25 +94,26 @@ aws = [0.003,0.0115];  %MARSH FLAT VERTICAL EXCHANGE RATE DIFFERENCE RESULTS IN 
             deq = zeros(nint,1); slr = deq; biom = deq;
             for jd = 1:nint %x axis
                 slr(jd) = minslr*jd; %rate of slr in m/yr
-                [dep,~] = interpdepthload(obj,cn,aws,qm1,slr(jd)/cn.y2s);%uses (sm,cn,aws,qm0,dslr)
+                [dep,~] = interpdepthload(obj,cn,sm.aws,sm.qm1,slr(jd)/cn.y2s);%uses (sm,cn,aws,qm0,dslr)
                 deq(jd) = dep;
                 if dep>0                
                     dd  = [dep dep.^2 1];
-                    bm = Bc*dd';
+                    bm = sm.Bc*dd';
                     biom(jd) = sum(bm.*(bm>0));
                 else
                     biom(jd)=0;
                 end
             end
             %--------------------------------------------------------------
-            % Restore original vallues of kbm
+            % Restore original values of kbm
             obj.SpeciesProduct = kbm0;
             %--------------------------------------------------------------            
             % Plot results
-            Dslr = dslr*cn.y2s*1000;     %units of mm/year
-            Qm1 = qm1*cn.y2s;            %units of yr^-1            
-            ptxt = struct('kbm',kbm*cn.y2s,'dp0',dp0,'dp1',dp1,'Qm0',Qm0,'Qm1',Qm1,...
-               'Dslr',Dslr,'bm1',bm1,'minslr',minslr,'maxslr',minslr*nint);
+            Dslr = sm.dslr*cn.y2s*1000;     %units of mm/year
+            Qm1 = sm.qm1*cn.y2s;            %units of yr^-1            
+            ptxt = struct('kbm',sm.kbm*cn.y2s,'dp0',sm.dp0,'dp1',sm.dp1,...
+                        'Qm0',sm.Qm0,'Qm1',Qm1,'Dslr',Dslr,'bm1',sm.bm1,...
+                        'minslr',minslr,'maxslr',minslr*nint);
             bioInfluencePlot(obj,cn,slr,deq,biom,ptxt);
             % Advise state of marsh if elements defined
             marshElementCheck(obj,mobj)
@@ -190,80 +138,193 @@ aws = [0.003,0.0115];  %MARSH FLAT VERTICAL EXCHANGE RATE DIFFERENCE RESULTS IN 
                     bm = Bc*[depth(i);depth(i)^2;1];
                     biomass(:,i) = bm.*(bm>0);
             end
-            bioDistributionPlot(obj,y,z,biomass,depth,a);
+            bioDistributionPlot(obj,y,z,biomass,depth,a,[]);
         end
 %%
         function MarshFlatAnimation(mobj)
             %animation of the development of marsh from initial bare flat
-            [obj,wl,cn] = Saltmarsh.getInputData(mobj);
-            if isempty(obj) || isempty(wl), return; end
-
-%--------------------------------------------------------------------------         
-%TEMP ASSIGNMENT TO TEST CODE            
-d50 = 0.0002;              %median grain size (m)
-c0 = 1.2e-4;               %background concentration adjacent to marsh (-)
-rhoc = c0*cn.rhos;
-aws  = settling_velocity(d50,cn.g,cn.rhow,cn.rhos,cn.visc,rhoc);  
-%--------------------------------------------------------------------------                     
-            %marsh concentration options
-            mco.tsn = 14.77;          %duration of spring-neap cycle (days) 
-            mco.delt = 10;            %time step (secs)  *may be sensitive
-            mco.dmin = 0.05;          %minimum depth used in calculation           
-            ct = concovermarsh(obj,wl,c0,aws,mco);  
+            [obj,wlvobj,cn] = Saltmarsh.getInputData(mobj);
+            if isempty(obj) || isempty(wlvobj), return; end
+            %--------------------------------------------------------------
+            % Store original values of kbm so that they can be restored
+            kbm0 = obj.SpeciesProduct;     %species productivity (m2/kg/yr)
+            %-------------------------------------------------------------- 
+            [sm,ct] = initialiseSaltmarshModel(obj,wlvobj,cn,mobj);
+            if isempty(ct), return; end
             
-            dmx = max(obj.MaxSpDepth);                
-            answer = inputdlg({'MTL to HW width:','No of years simulation',...
-                                 'Start year','Include decay'},...
-                                 'Saltmarsh width',1,{'500','100','0','0'});
+            %prompt for run parameters
+            answer = inputdlg({'MTL to HWL width:','No of years simulation',...
+                                 'Start year','Include decay, 1=true'},...
+                                 'Saltmarsh width',1,{'500','100','1900','0'});
             if isempty(answer), return; end
             width = str2double(answer{1});    
             nyears = str2double(answer{2});
             styear = str2double(answer{3})*cn.y2s;
             isdecay = logical(str2double(answer{4}));
-            a = wl.TidalAmp;
-            [y,z0] = getFlatProfile(obj,a,width,100); %nint=100
-            ymx = interp1(z0,y,(a-dmx));
-            Bc = morris_biocoeffs(obj);
-            kbm = obj.SpeciesProduct'/cn.y2s;
             
+            %get initial mud flat profile
+            a = wlvobj.TidalAmp;
+            [y,z0] = getFlatProfile(obj,a,width,100); %nint=100
+            ymx = interp1(z0,y,(a-sm.dmx));
+            
+            %initialise run time parameters and water levels
             mtime = 0:1:nyears; 
             nint = length(mtime);
-%             if rem(nint,2)~=0
-%                 nint=nint+1;
-%                 mtime(nint) = nyears+1;
-%             end
             mtime = mtime*cn.y2s;
             dt = 1*cn.y2s;
-
-            zHW = newWaterLevels(wl,mtime,styear); 
+            [zHW,msl] = newWaterLevels(wlvobj,mtime,styear); 
+            
+            %compute saltmarsh elevations
             z = repmat(z0,nint,1);            
             hw = waitbar(0,'Running model');
             for i=2:nint  
-                idep = find(z(i-1,:)<(zHW(i)-dmx),1,'last');
-                z(i,1:idep) = z(i-1,1:idep)+(zHW(i)-zHW(i-1));
+                idep = find(z(i-1,:)<(zHW(i)-sm.dmx),1,'last');
+                depth = zHW(i)-z(i-1,:);
+                cz = interp1(ct.Depth,ct.Concentration,depth);
+                %assume lower flat keeps pace with change in msl
+                z(i,1:idep) = z(i-1,1:idep)+(msl(i)-msl(i-1)); %change tidalflat
                 for j=idep+1:length(z)                    
-                    depth = zHW(i)-z(i-1,:);
-                    bm = Bc*[depth(j);depth(j)^2;1];
-                    sumKB = sum(kbm.*(bm.*(bm>0)));  
-                    wsb = bioenhancedsettling(obj,depth(j),[aws,aws]);
-                    cz = interp1(ct.Depth,ct.Concentration,depth(j));
+                    bm = sm.Bc*[depth(j);depth(j)^2;1];
+                    sumKB = sum(sm.kbm.*(bm.*(bm>0)));  
+                    wsb = bioenhancedsettling(obj,depth(j),sm.aws);
                     if isdecay
+                        %apply a linear decay in concentration across 
+                        %the upperflat width (MTL to HWL)
                         yi = y(i)-ymx;
-                        cz = cz*((width-yi)/(width-ymx));
+                        cz(j) = cz(j)*((width-yi)/(width-ymx));
                     end
-                    dz = (wsb*cz+sumKB)*depth(j)*dt;
+                    %see eqn (4) and (9) inTownend et al, COE 2016 paper
+                    % ie qm*D = wsb*1/T*integral(c*dt) == wsb*cz
+                    dz = (wsb*cz(j)+sumKB*depth(j))*dt; %Krone's change in depth
                     dz(isnan(dz)) = 0;
-                    z(i,j) = z(i-1,j)+dz;
+                    z(i,j) = z(i-1,j)+dz;               %change to marsh                      
                 end
                 waitbar(i/nint)
             end
             close(hw)
+            %--------------------------------------------------------------
+            % Restore original values of kbm
+            obj.SpeciesProduct = kbm0;
+            %--------------------------------------------------------------
             time = (styear+mtime)/cn.y2s;            
-            marshAnimationFigure(obj,y,z0,z,time,zHW,dmx)
+            marshAnimationFigure(obj,y,z0,z,time,zHW,sm.dmx)
+        end
+    end
+%%
+    methods
+        function tabPlot(obj,src,mobj)
+            %add plot to Saltmarsh tab
+            hp = findobj(src,'Type','uipanel');
+            if isempty(hp)
+                hp = uipanel(src,'Title','Biomass distribution','FontSize',8,...
+                                'BackgroundColor',[0.96,0.96,0.96],...
+                                'Position',[0.55 0 0.44 0.99]);
+            end
+            ht = findobj(hp,'Type','axes');
+            delete(ht);
+            
+            wlvobj = getClassObj(mobj,'Inputs','WaterLevels');
+            if isempty(wlvobj)
+                a = 1;
+            else
+                a = wlvobj.TidalAmp;
+            end
+
+            [y,z] = getFlatProfile(obj,a,500,100); %nint=100
+            Bc = morris_biocoeffs(obj);
+            
+            dmx = max(obj.MaxSpDepth);
+            depth = 0:0.01:dmx;
+            biomass = zeros(obj.NumSpecies,length(depth));
+            for i=1:length(depth)
+                    bm = Bc*[depth(i);depth(i)^2;1];
+                    biomass(:,i) = bm.*(bm>0);
+            end
+            if isempty(biomass)
+                warndlg('Some Saltmarsh properties have not been defined')
+                return;
+            end
+            bioDistributionPlot(obj,y,z,biomass,depth,a,hp);
         end
     end
 %%
     methods (Access=private)
+        function [sm,ct] = initialiseSaltmarshModel(obj,wlvobj,cn,mobj)
+            %Set up inputs needed by MarshFlatAnimation and EqDepthBiomass             
+            newWaterLevels(wlvobj,0,0);                
+            sm.dslr = wlvobj.SLRrate/cn.y2s;  %rate of sea level change (m/s)
+            
+            %intitialise transient properties            
+            Element.initialiseElements(mobj);
+            Element.setEqConcentration(mobj);
+            [sm.aws,c0] = getVerticalExchange(obj,mobj);    
+            
+            %marsh concentration options
+            mco.tsn = 14.77;          %duration of spring-neap cycle (days) 
+            mco.delt = 10;            %time step (secs)  *may be sensitive
+            mco.dmin = 0.05;          %minimum depth used in calculation           
+            ct = concovermarsh(obj,wlvobj,c0,sm.aws,mco);         
+            if all(ct.Concentration==0)
+                ct = [];
+                warndlg('Zero concentrations. Check Saltmarsh and Tidal Constituents are defined')
+                return;
+            end
+            obj.MarshDepthConc = ct;
+             %--------------------------------------------------------------
+            % Get user defined value of kbm
+            %--------------------------------------------------------------
+            kbm0 = obj.SpeciesProduct;     %species productivity (m2/kg/yr)
+            prompt = {'Enter biomass production rate (m^2kg^-1yr^-1)'};
+            dlg_title = 'Input for biomass production rate';
+            def = {num2str(kbm0)};
+            dlg_ans = inputdlg(prompt,dlg_title,1,def);
+            if isempty(dlg_ans), ct = []; return; end  
+            obj.SpeciesProduct = str2num(dlg_ans{1}); %#ok<ST2NM>
+            sm.kbm = obj.SpeciesProduct'/cn.y2s;         %values in seconds
+            %
+            sm.Qm0 = 0.00018;       %estimate of sediment load used by Morris,2006
+            if mean(sm.kbm)< 1.0e-10
+                sm.Qm0 = 0.0018;    %adjustment needed if kbm very low, Morris, 2007
+            end
+            qm0 = sm.Qm0/cn.y2s;       %initial value of qm (s^-1)
+            sm.dp0 = morris_eqdepth(obj,cn,qm0,sm.dslr);
+            %--------------------------------------------------------------
+            % Calculate depth, dp1, sediment loading qm, biomass
+            % coefficients Bc, total biomass at equilibrium depth and the
+            % adjusted settling rate.
+            %--------------------------------------------------------------
+            [sm.dp1,sm.qm1] = interpdepthload(obj,cn,sm.aws,qm0,sm.dslr);
+            sm.Bc = morris_biocoeffs(obj);
+            dd1 = [sm.dp1 sm.dp1.^2 1];
+            bm0 = (sm.Bc*dd1');
+            sm.bm1 = sum(bm0.*(bm0>0)); %total biomass at equilibrium depth (kg.m^-2)
+            sm.dmx = max(obj.MaxSpDepth); 
+        end
+%%
+        function [aws,c0] = getVerticalExchange(~,mobj)
+            %get the vertical exchange of the bare saltmarsh and tidal flat
+            %and the concenctration over the marsh
+            eleobj  = getClassObj(mobj,'Inputs','Element');
+            eletype = getEleProp(eleobj,'EleType');
+            ws = getEleProp(eleobj,'VerticalExchange');
+            ism = strcmp(eletype,'Saltmarsh');
+            ifl = strcmp(eletype,'Tidalflat');
+            if any(ism) 
+                awm = mean(ws(ism));
+            else       %no saltmarsh elements defined
+                awm = mean(ws(ifl));
+            end
+            awf = mean(ws(ifl)); 
+            aws = [awm,awf];
+            %concentration over marsh
+            cnc  = getEleProp(eleobj,'EqConcentration');
+            if any(ism) 
+                c0 = mean(cnc(ism));
+            else       %no saltmarsh elements defined
+                c0 = mean(cnc(ifl));
+            end
+        end     
+%%
         function bioInfluencePlot(obj,cn,slr,deq,biom,tx)
             %plot marsh concentrations, submergence, response to SLR
             dpm = obj.MarshDepthConc.Depth;
@@ -385,20 +446,27 @@ aws  = settling_velocity(d50,cn.g,cn.rhow,cn.rhos,cn.visc,rhoc);
 %             z = z1+z2;
         end
 %%
-        function bioDistributionPlot(obj,y,z,biomass,depth,a)
+        function bioDistributionPlot(obj,y,z,biomass,depth,a,hfig)
             %plot of profile and biomass distribution for each species
-            ax1 = profilePlot(obj,y,z,a); %plot tidal flat profile and HW            
+            if isempty(hfig)
+                hfig = figure('Name','Biomass Plot','Tag','PlotFig');
+            end
+            
+            ax1_pos = [0.165,0.11,0.67,0.79]; % position of first axes
+            ax1 = axes(hfig,'Position',ax1_pos,...
+                      'XAxisLocation','bottom','YAxisLocation','left');
+            
+            profilePlot(obj,y,z,a,ax1); %plot tidal flat profile and HW            
             
             style = {'-','-.','--',':'};
             green = mcolor('green');
-            
-            ax1_pos = ax1.Position; % position of first axes
-            ax2 = axes('Position',ax1_pos,'XAxisLocation','top',...
+            ax2 = axes(hfig,'Position',ax1_pos,'XAxisLocation','top',...
                 'YAxisLocation','right','Color','none');
             ax2.XDir = 'reverse';
             ax2.YLim = ax1.YLim;
             ax2.YTickLabel = string(a-ax1.YTick);
             zd = a-depth;
+            
             line(biomass(1,:),zd,'Parent',ax2,'Color',green,...
                               'LineStyle','-','DisplayName','Species 1')
             hold on            
@@ -416,20 +484,25 @@ aws  = settling_velocity(d50,cn.g,cn.rhow,cn.rhos,cn.visc,rhoc);
 %%
         function marshAnimationFigure(obj,y,z0,z,time,zHW,dmx)
             %animation of marsh surface
+            hfig = figure('Name','Marsh animation','Tag','PlotFig');
+            ax = axes(hfig,'Tag','PlotFigAxes');
+            ax.Position = [0.16,0.16,0.65,0.75]; %make space for slider bar
+            setSlideControl(obj,hfig,time,z,zHW,zHW-dmx);
+            
             zmxdep = zHW-dmx;
             zi = z(1,:);   zHWi = zHW(1);   zmxdepi = zmxdep(1);
-            ax1 = profilePlot(obj,y,z0,zHWi); %plot tidal flat profile and HW  
-            hold(ax1,'on')
-            plot(ax1,y,zi,'Color',mcolor('scarlet'),...
+            profilePlot(obj,y,z0,zHWi,ax); %plot tidal flat profile and HW  
+            hold(ax,'on')
+            plot(ax,y,zi,'Color',mcolor('scarlet'),...
                              'LineStyle','-','DisplayName','Marsh profile')
-            plot(ax1,ax1.XLim,zmxdepi*[1 1],'Color',mcolor('green'),...
+            plot(ax,ax.XLim,zmxdepi*[1 1],'Color',mcolor('green'),...
                                          'DisplayName','Max species depth') 
-            hp = ax1.Children;                        
+            hp = ax.Children;                        
             hp(2).YDataSource = 'zi';
             hp(3).YDataSource = 'zHWi'; 
             hp(1).YDataSource = 'zmxdepi'; 
-            ax1.YLimMode = 'manual';   
-            ax1.YLim(2) = max([max(z,[],'all'),max(zHW)])+0.1;
+            ax.YLimMode = 'manual';   
+            ax.YLim(2) = max([max(z,[],'all'),max(zHW)])+0.1;
             title(sprintf('Saltmarsh growth \nTime = %s years',string(time(1))))
             nint = length(time);
             Mframes(nint,1) = getframe(gcf);
@@ -441,13 +514,51 @@ aws  = settling_velocity(d50,cn.g,cn.rhow,cn.rhos,cn.visc,rhoc);
                 drawnow;                 
                 Mframes(i,1) = getframe(gcf); %NB print function allows more control of resolution 
             end
-            hold(ax1,'off')
-
+            hold(ax,'off')
+            
+            obj.ModelMovie = Mframes; 
             answer = questdlg('Save animation','Saltmarsh animation','Yes','No','No');
-            if strcmp(answer,'Yes')
-                obj.ModelMovie = Mframes;  
+            if strcmp(answer,'Yes')                 
                 saveAnimation(obj)
             end
+        end
+%%
+%%
+        function hm = setSlideControl(obj,hfig,time,z,zHW,zmxdep)
+            %intialise slider to set different t values          
+            hm(1) = uicontrol('Parent',hfig,...
+                    'Style','slider','Value',time(1),... 
+                    'Min',time(1),'Max',time(end),'sliderstep',[1 1]/time(end),...
+                    'Callback', @(src,evt)updateSMplot(obj,src,evt),...
+                    'HorizontalAlignment', 'center',...
+                    'Units','normalized', 'Position', [0.2,0.01,0.6,0.04],...
+                    'UserData',struct('time',time,'z',z,'zHW',zHW,'zmxdep',zmxdep),...
+                    'Tag','stepMovie');                
+            hm(2) = uicontrol('Parent',hfig,...
+                    'Style','text','String',num2str(time(1)),'Units','normalized',... 
+                    'Position',[0.84,0.01,0.1,0.03],'Tag','SManimation');
+            uicontrol('Parent',hfig,...
+                    'Style','text','String','T = ','Units','normalized',... 
+                    'Position',[0.81,0.01,0.05,0.03],'Tag','Ttxt');    
+        end  
+%%
+        function updateSMplot(~,src,~)
+            %adjust the plot to the time selected by user
+            stxt = findobj(src.Parent,'Tag','SManimation');
+            T = round(src.Value);
+            stxt.String = num2str(T);     %update slider text
+            sldui = findobj(src.Parent,'Tag','stepMovie');
+            sld = sldui.UserData;
+            idx = find(sld.time<=T,1,'last');
+            %figure axes and update plot
+            figax = findobj(src.Parent.Children,'Type','Axes'); 
+            hp = figax.Children;
+            zi = sld.z(idx,:);               %#ok<NASGU>
+            zHWi = sld.zHW(idx)*[1 1];       %#ok<NASGU>
+            zmxdepi = sld.zmxdep(idx)*[1 1]; %#ok<NASGU>
+            refreshdata(hp,'caller')
+            title(sprintf('Saltmarsh growth \nTime = %s years',string(sld.time(idx))))
+            drawnow;
         end
 %%        
         function saveAnimation(obj)
@@ -466,11 +577,8 @@ aws  = settling_velocity(d50,cn.g,cn.rhow,cn.rhos,cn.visc,rhoc);
             close(v);
         end         
 %%
-        function ax = profilePlot(~,y,z,a)
+        function profilePlot(~,y,z,a,ax)
             %plot base tidal flat profile
-            hfig = figure('Name','Biomass Plot','Tag','PlotFig');
-            ax = axes(hfig,'XAxisLocation','bottom','YAxisLocation','left');
-
             plot(ax,y,z,'Color','k','DisplayName','Tidal flat')
             hold on
             plot(ax,ax.XLim, a*[1 1],'Color','b','DisplayName','High water')

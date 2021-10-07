@@ -1,0 +1,621 @@
+classdef Reach < handle
+    %Reaches are used to hold various gross properties that are used in the
+    %model and results output. A reach is defined as a single channel 
+    %element and all other types of element that are linked to it. 
+    %
+    %----------------------------------------------------------------------
+    % AUTHOR
+    % Ian Townend
+    %
+    % COPYRIGHT
+    % CoastalSEA, (c) 2016
+    %----------------------------------------------------------------------
+    %  
+    properties (Access=private, Transient)
+        ReachGraphID        %Elements within a reach as defined in ReachGraph
+    end
+    properties (Transient)
+        ReachChannelID      %Channel elements that define each reach
+        ReachEleID          %Elements within a reach using Element ID
+        HWvolume            %total volume of reach to high water
+        LWvolume            %total volume to low water (usually just channel)
+        HWarea              %total plan area of reach at high water
+        LWarea              %total plan area of reach at low water
+        HWlevel             %elevation of HW in reach
+        LWlevel             %elevation of LW in reach
+        MWlevel             %elevation of MWL in reach
+        ReachPrism          %volume between high and low water in reach
+        UpstreamPrism       %volume between high and low water of current 
+                            %reach and all reaches upstream of current reach
+        ReachLength         %length of reach (m)
+        CumulativeLength    %distance to upstream end of element from mouth (excl.delta)
+        ReachCSA            %cross-sectional area of reach (m2)
+        UpstreamCSA         %cross-sectional area of upstream end of reach at mtl
+        RiverFlow           %Velocity at upstream end of reach based on river discharge and CSA
+    end
+    
+    methods (Access=private)
+        function obj = Reach
+        end
+    end
+%%    
+%      methods (Static)
+%         function obj = getReach
+%             obj = Reach;
+%         end
+%     end   
+    
+%%    
+    methods (Static)
+        function setReach(mobj)
+            %initialise reach and set up ReachGraph and RiverGraph based on
+            %initial conditions
+            classname = 'Reach';
+            obj = getClassObj(mobj,'Inputs',classname);
+            eleobj = getClassObj(mobj,'Inputs','Element');
+            if ~isa(obj,'Reach')
+                obj = Reach;
+            end
+            setClassObj(mobj,'Inputs','Reach',obj);
+            Reach.setReachProps(mobj); %also called directly in AsmitaModel.InitTimeStep
+            
+            %assign initial reach id to elements for use in plotting            
+            for i=1:length(obj)
+                eleobj(obj(i).ReachChannelID).ReachID = i;
+                for j=1:length(obj(i).ReachEleID)
+                    eleobj(obj(i).ReachEleID(j)).ReachID = i;
+                end
+            end
+            setClassObj(mobj,'Inputs','Element',eleobj);
+        end
+%%
+        function setReachProps(mobj)
+            %assign volume and area properties to each reach
+            %assumes that reach links can change so reassigns each time
+            %the function is called using values in ReachGraph and RiverGraph 
+            obj = getClassObj(mobj,'Inputs','Reach');
+            if isempty(obj)
+                obj = Reach.setReach(mobj);
+            end
+            %additonal class instances needed
+            eleobj = getClassObj(mobj,'Inputs','Element');
+            estobj = getClassObj(mobj,'Inputs','Estuary');
+            advobj = getClassObj(mobj,'Inputs','Advection');
+            wlvobj = getClassObj(mobj,'Inputs','WaterLevels');
+            rncobj = getClassObj(mobj,'Inputs','RunConditions');
+            cstobj = getClassObj(mobj,'Inputs','CSThydraulics');
+
+            %element and water level properties
+            V = getEleProp(eleobj,'MovingVolume');
+            S = getEleProp(eleobj,'MovingSurfaceArea');
+            n = getEleProp(eleobj,'TransportCoeff');
+            eLe = getEleProp(eleobj,'Length');
+            eleID = getEleProp(eleobj,'EleID');
+            damp = getEleProp(eleobj,'TidalDamping');
+            if isempty(V)
+                warndlg('No Element Volumes defined');
+                return
+            end
+            
+            h_reach = estobj.ReachGraph;
+            eletype = h_reach.Nodes.Type;
+            reachEleID = h_reach.Nodes.EleID;
+            h_landward = Reach.LandwardPath(mobj);            
+            reachChannelID = h_landward.Nodes.EleID;
+
+            for i=1:length(reachChannelID) %uses graph ids and element ids
+                %set channel based properties of reach
+                idx = eleID==reachChannelID(i);
+                obj(i,1).LWvolume = V(idx);
+                obj(i,1).LWarea = S(idx);                
+                obj(i,1).ReachLength = eLe(idx);
+            end
+            
+            %set reach length of each element and cumulative length from mouth
+            setReachLength(obj,reachChannelID,h_landward)
+%             for i=1:length(reachChannelID)    
+%                 downstreamids = predecessors(h_landward,i);
+%                 cumlength = obj(i).ReachLength;
+%                 if ~isempty(downstreamids)
+%                     for k=1:length(downstreamids)
+%                         cumlength = cumlength+obj(downstreamids(k)).CumulativeLength;
+%                     end
+%                 end
+%                 obj(i,1).CumulativeLength = cumlength;
+%             end
+
+            %set high and low water levels using output of CSTmodel if used
+            [HWL,LWL,TR] = setHighLowWater(obj,reachChannelID,rncobj,...
+                                                cstobj,advobj,wlvobj,damp);
+%             if rncobj.IncDynHydraulics && isempty(cstobj)
+%                 warndlg('Cannot include hydraulics because not defined')
+%                 return
+%             elseif rncobj.IncDynHydraulics
+%                 h_flowpath = advobj.RiverGraph;           
+%                 damp = assignCSTproperties(cstobj,obj,h_flowpath);
+%             end
+%             HWL =wlvobj.HWaterLevel*damp(reachChannelID);%reach specific HW
+%             LWL = wlvobj.LWaterLevel*damp(reachChannelID);%reach specific LW         
+%             TR = (HWL-LWL);         %reach specific tidal range
+         
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            %
+            %set channel based properties of each reach
+            setReachChannelProperties(obj,reachChannelID,reachEleID,...    
+                                                    eletype,h_reach);
+            
+            %set collective properties for each reach
+            setCollectiveReachProperties(obj,reachChannelID,eleID,eletype,...
+                                                      V,S,n,HWL,LWL,TR);
+            
+%             for i=1:length(reachChannelID) %uses graph ids and element ids
+%                 idx = find(eleID==reachChannelID(i));
+%                 %set channel based properties of reach
+%                 obj(i,1).LWvolume = V(idx);
+%                 obj(i,1).LWarea = S(idx);
+%                 obj(i,1).ReachLength = eLe(idx);
+%                 %recursively get all elements linked to a reach channel
+%                 idE = find(reachEleID==reachChannelID(i));
+%                 nextElements = successors(h_reach,idE);
+%                 nextElements = nextElements(~strcmp(eletype(nextElements),'Channel'));
+%                 reachElements = nextElements;
+%                 while ~isempty(nextElements)
+%                     nr = length(nextElements);
+%                     aele = [];
+%                     for jr=1:nr
+%                         sucs = successors(h_reach,nextElements(jr));
+%                         if ~isempty(sucs)
+%                             aele = [aele,sucs];  %#ok<AGROW>
+%                         end
+%                     end
+%                     nextElements = aele;
+%                     reachElements = [reachElements;nextElements];  %#ok<AGROW>
+%                 end
+%                 %linked elements for each reach based on ReachGraph ids
+%                 obj(i,1).ReachGraphID = reachElements; 
+%                 %linked elements for each reach based on Element ID, EleID
+%                 idxReachEle = reachEleID(reachElements);
+%                 obj(i,1).ReachEleID = idxReachEle;  
+%                 obj(i,1).ReachChannelID = reachChannelID(i);
+%                 
+%                 %set collective properties for each reach
+%                 if all(n(idxReachEle)>0)  %volumes are water volumes
+%                     obj(i,1).HWvolume = V(idx)+sum(V(idxReachEle))+S(idx)*TR(i);
+%                 else                      %volumes are sediment volumes
+%                     idgt = n(idxReachEle)>0;
+%                     idlt = 1-idgt;
+%                     wetHWvols = sum(V(idxReachEle).*idgt);
+%                     %tidal flat elements which are sediment volumes
+%                     idfl = contains(eletype(reachElements),'flat',...
+%                                                  'IgnoreCase',true).*idlt;
+%                     sedHWflats = sum((S(idxReachEle)*TR(i)-V(idxReachEle)).*idfl);
+%                     %flood deltat elements which are sediment volumes
+%                     %this assumes that flood delta prism=S.tr/2
+%                     idfd = contains(eletype(reachElements),'Flood').*idlt;
+%                     sedHWfldelta = sum((S(idxReachEle)*TR(i)/2).*idfd);
+%                     sedHWvols = sedHWflats+sedHWfldelta;
+%                     hwvol = V(idx)+wetHWvols+sedHWvols;          
+%                     obj(i,1).HWvolume = hwvol+S(idx)*TR(i); %add prism volume over channel
+%                 end                
+%                 obj(i,1).HWarea = S(idx)+sum(S(idxReachEle));
+%                 obj(i,1).ReachPrism = obj(i).HWvolume-obj(i).LWvolume;
+%                 obj(i,1).ReachCSA = (obj(i).ReachPrism/2+ ...
+%                                      obj(i).LWvolume)./obj(i).ReachLength;   
+%                 obj(i,1).HWlevel = HWL(i);
+%                 obj(i,1).LWlevel = LWL(i);                
+%             end
+            
+            %set path dependent upstream CSA (uses graph ids)
+            setUpstreamCSA(obj,reachChannelID,h_landward);
+            
+
+            %set path dependent parameters (uses graph ids)
+            %upstream CSA and cumulative length
+%             for i=1:length(reachChannelID)
+%                 upstreamids = successors(h_landward,i);
+%                 upCSA = 0;
+%                 if ~isempty(upstreamids)                    
+%                     for k=1:length(upstreamids)
+%                         upCSA = upCSA+obj(upstreamids(k)).ReachCSA;
+%                     end   
+%                 end
+%                 obj(i,1).UpstreamCSA = (obj(i).ReachCSA+upCSA)/2;
+%                 %
+% %                 downstreamids = predecessors(h_landward,i);
+% %                 cumlength = obj(i).ReachLength;
+% %                 if ~isempty(downstreamids)
+% %                     for k=1:length(downstreamids)
+% %                         cumlength = cumlength+obj(downstreamids(k)).CumulativeLength;
+% %                     end
+% %                 end
+% %                 obj(i,1).CumulativeLength = cumlength;
+%             end
+            
+            %river flow velocity at upstream end of element
+            setRiverFlow(obj,reachChannelID,advobj);
+            
+%             riverDischarge = zeros(length(reachChannelID),1);
+%             if ~isempty(mobj.h_adv) && ~isempty(mobj.h_adv.RiverFlows) && any(mobj.h_adv.RiverIn(:)~=0)
+%                 h_flowpath = advobj.RiverGraph;           
+%                 flowpathID = h_flowpath.Nodes.EleID;
+%                 eletype = h_flowpath.Nodes.Type;
+%                 ich = strcmp(eletype,'Channel');
+%                 
+%                 for i=1:length(flowpathID)
+%                     upstreamids = predecessors(h_flowpath,i);
+%                     if ~isempty(upstreamids)
+%                         idf = findedge(h_flowpath,upstreamids,i);
+%                         riverDischarge(i) = sum(h_flowpath.Edges.Weight(idf));
+%                     else
+%                         riverDischarge(i) = 9999; %river source (removed line 194)
+%                     end
+%                 end
+%                 riverDischarge = riverDischarge(ich);
+%             end   
+%             %now assign to reaches
+%             for idx=1:length(reachChannelID)
+%                 obj(idx,1).RiverFlow = riverDischarge(idx)./obj(idx).UpstreamCSA;
+%             end            
+            
+            %cumulative upstream tidal prism (including reach prism of element)
+            setCumTidalPrism(obj,reachChannelID,h_landward)
+%             II = ones(length(reachChannelID),1);
+%             mouthids = find(logical(II-indegree(h_landward)));
+%             for j = 1:length(mouthids)
+%                 reachOrder = dfsearch(h_landward,mouthids(j));            
+%                 nreach = length(reachOrder);
+%                 for i=1:nreach
+%                     idx = reachOrder(nreach+1-i);                
+%                     upstreamids = successors(h_landward,idx);
+%                     cumprism = obj(idx).ReachPrism;
+%                     if ~isempty(upstreamids)
+%                         for k=1:length(upstreamids)
+%                             cumprism=cumprism+obj(upstreamids(k)).UpstreamPrism;
+%                         end
+%                     end
+%                     obj(idx,1).UpstreamPrism = cumprism;
+%                 end  
+%             end
+
+            setClassObj(mobj,'Inputs','Reach',obj);
+        end
+
+%%        
+        function prop = getReachProp(mobj,varname)
+            %property varname returned as a reach array
+            obj = getClassObj(mobj,'Inputs','Reach');
+            if isempty(obj) || isempty(obj(1).(varname))
+                %handle case of a channel only reach when ReachEleID is
+                %empty but still need to return channel values
+                if ~strcmp(varname,'ReachEleID') 
+                    msg = sprintf('Reach property %s not available',varname);
+                    warndlg(msg);
+                    prop = []; return;
+                end
+            end
+            %get channel ids from ReachGraph based on channel connections
+            h_landward = Reach.LandwardPath(mobj);            
+            reachChannelID = h_landward.Nodes.EleID;            
+            nrpt = length(reachChannelID);
+            %ReachGraphID and ReachELeID are variable length arrays so
+            %return them as cells and everything else as an array
+            if strcmp(varname,'ReachGraphID') || strcmp(varname,'ReachEleID')
+                prop = cell(nrpt,1);
+                for i=1:nrpt
+                    prop{i,1} = obj(i).(varname);
+                end
+            else
+                prop = zeros(nrpt,1);
+                for i=1:nrpt
+                    prop(i,1) = obj(i).(varname);
+                end
+            end
+        end
+        
+%%        
+        function prop = getReachEleProp(mobj,varname)
+            %property varname returned as an element array
+            %get reach properties for each reach
+            reachprop = Reach.getReachProp(mobj,varname);
+            if isempty(reachprop), return; end
+            %get ids of elements linked to channel in each reach
+            reachids = Reach.getReachProp(mobj,'ReachEleID');
+            %get channel ids from ReachGraph based on channel connections
+            h_landward = Reach.LandwardPath(mobj);            
+            reachChannelID = h_landward.Nodes.EleID;
+            %now assign reach property to each element
+            nreach = length(reachChannelID);
+            eleobj  = getClassObj(mobj,'Inputs','Element');
+            prop = zeros(length(eleobj),1);
+            for i=1:nreach
+                prop(reachChannelID(i),1) = reachprop(i);
+                if ~isempty(reachids)                    
+                    idx = reachids{i};     %cell of ids for each reach
+                    prop(idx,1) = reachprop(i);                    
+                end
+            end
+            %deltas are outside and so not in a reach
+            %assign them the properties of the linked channel element            
+            eletype = getEleProp(eleobj,'EleType');
+            idl = find(contains(eletype,'Delta'));
+            if ~isempty(idl)
+                eleid = getEleProp(eleobj,'EleID');
+                eleid = eleid(idl);
+                estobj  = getClassObj(mobj,'Inputs','Estuary');
+                h_reach = estobj.ReachGraph;
+                reachEleID = h_reach.Nodes.EleID;                
+                for k=1:length(idl)
+                    deltaidx= find(reachEleID==eleid(k)); %*idx ref h_reach ids
+                    channelidx = successors(h_reach,deltaidx);
+                    channelpidx = predecessors(h_reach,deltaidx);
+                    if isempty(channelidx)
+                        channelidx = channelpidx;
+                    end
+                    channelID = reachEleID(channelidx);   %*ID ref element id
+                    idr = reachChannelID==channelID;      %idr ref h_landward ids
+                    prop(idl(k),1) = reachprop(idr);
+                end
+            end
+        end
+        
+%%
+        function h_landward = LandwardPath(mobj)
+            %the landward order of reaches is given by the channel subgraph
+            %of ReachGraph 
+            estobj  = getClassObj(mobj,'Inputs','Estuary');
+            h_rch = estobj.ReachGraph;                       
+            eletype = h_rch.Nodes.Type;
+            ich = find(strcmp(eletype,'Channel'));
+            h_landward = subgraph(h_rch,ich);            
+        end
+        
+%%        
+        function h_seaward = SeawardPath(mobj)
+            %seaward order of reaches is given by the inverse of the
+            %adjacency matrix for the landward order             
+            h_landward = Reach.LandwardPath(mobj);            
+            nn = numnodes(h_landward);
+            [s,t] = findedge(h_landward);
+            pthAdj = sparse(s,t,h_landward.Edges.Weight,nn,nn);
+            h_seaward = digraph(pthAdj');
+            h_seaward.Nodes.EleID = h_landward.Nodes.EleID;
+            h_seaward.Nodes.Type  = h_landward.Nodes.Type;
+            h_seaward.Nodes.Name  = h_landward.Nodes.Name;
+        end
+        
+%%
+        function h_landward = LandwardFlow(h_flowpath)
+            %landward order of flow is given by the inverse of the
+            %adjacency matrix for the flowpath order  
+%                 h_flowpath = mobj.h_adv.RiverGraph;
+            nn = numnodes(h_flowpath);
+            [s,t] = findedge(h_flowpath);
+            pthAdj = sparse(s,t,h_flowpath.Edges.Weight,nn,nn);
+            h_landward = digraph(pthAdj');
+            h_landward.Nodes.EleID = h_flowpath.Nodes.EleID;
+            h_landward.Nodes.Type  = h_flowpath.Nodes.Type;
+            h_landward.Nodes.Name  = h_flowpath.Nodes.Name;
+        end
+        
+%%
+        function Var = getReachEleVar(h_landward,EleVar)
+            %assign elements variables to reaches
+            rchID = h_landward.Nodes.EleID;
+            eletype = h_landward.Nodes.Type;
+            reachChannelID = rchID(strcmp(eletype,'Channel'));
+            Var = EleVar(reachChannelID,:);       
+        end
+    
+%%
+        function AvVar = getAvUpstreamReachVar(h_flowgraph,ReachVar,Eflag)
+            %set path dependent parameters (uses graph ids)
+            %average of reach and all adjacent upstream reach values
+            h_landward = Reach.LandwardFlow(h_flowgraph);            
+            eletype = h_landward.Nodes.Type;
+            ich = find(strcmp(eletype,'Channel'));
+            h_landward = subgraph(h_landward,ich);             
+            reachChannelID = h_landward.Nodes.EleID;
+            nreach = length(reachChannelID);
+            if Eflag    %input variable elements, so change to reaches
+                ReachVar = Reach.getReachEleVar(h_landward,ReachVar);
+            end
+            AvVar = zeros(nreach,1);
+            for i=1:nreach
+                upstreamids = successors(h_landward,i);
+                upVar = 0;
+                if ~isempty(upstreamids)
+                    for k=1:length(upstreamids)
+                        upVar = upVar+ReachVar(upstreamids(k));
+                    end
+                end
+                AvVar(i,1) = (ReachVar(i)+upVar)/2;
+            end
+            AvVar = AvVar(reachChannelID>0);
+        end
+        
+%%
+        function CumVar = getCumUpstreamReachVar(h_flowgraph,ReachVar,Eflag)
+            %set path dependent parameters (uses graph ids)
+            %cumulative value of variable in upstream direction
+            h_landward = Reach.LandwardFlow(h_flowgraph);            
+            eletype = h_landward.Nodes.Type;
+            ich = find(strcmp(eletype,'Channel'));
+            h_landward = subgraph(h_landward,ich);             
+            reachChannelID = h_landward.Nodes.EleID;
+            nreach = length(reachChannelID);
+            if Eflag    %input variable elements, so change to reaches
+                ReachVar = Reach.getReachEleVar(h_landward,ReachVar);
+            end
+            CumVar = zeros(nreach,1);
+            for i=1:nreach
+                downstreamids = predecessors(h_landward,i);
+                downVar = ReachVar(i);
+                if ~isempty(downstreamids)
+                    for k=1:length(downstreamids)
+                        downVar = downVar+...
+                            CumVar(downstreamids(k));
+                    end
+                end
+                CumVar(i,1) = downVar;
+            end
+        end
+    end
+%%
+    methods (Access=private)
+        function setReachLength(obj,reachChannelID,h_landward)
+            %set the reach length of each element and cumulative length from mouth
+            for i=1:length(reachChannelID)
+                downstreamids = predecessors(h_landward,i);
+                cumlength = obj(i).ReachLength;
+                if ~isempty(downstreamids)
+                    for k=1:length(downstreamids)
+                        cumlength = cumlength+obj(downstreamids(k)).CumulativeLength;
+                    end
+                end
+                obj(i,1).CumulativeLength = cumlength;
+            end
+        end
+%%
+        function [hw,lw,tr] = setHighLowWater(obj,reachChannelID,rncobj,...
+                                                cstobj,advobj,wlvobj,damp)
+            %set the high and low water levels using out put of CSTmodel if used
+            if rncobj.IncDynHydraulics && isempty(cstobj)
+                warndlg('Cannot include hydraulics because not defined')
+                return
+            elseif rncobj.IncDynHydraulics
+                h_flowpath = advobj.RiverGraph;           
+                damp = assignCSTproperties(cstobj,obj,h_flowpath);
+            end
+            hw =wlvobj.HWaterLevel*damp(reachChannelID);%reach specific HW
+            lw = wlvobj.LWaterLevel*damp(reachChannelID);%reach specific LW         
+            tr = (hw-lw);         %reach specific tidal range
+        end
+%%
+        function setReachChannelProperties(obj,reachChannelID,reachEleID,...
+                                                          eletype,h_reach)
+            %set channel based properties of reach
+            for i=1:length(reachChannelID) %uses graph ids and element ids
+                %recursively get all elements linked to a reach channel
+                idE = find(reachEleID==reachChannelID(i));
+                nextElements = successors(h_reach,idE);
+                nextElements = nextElements(~strcmp(eletype(nextElements),'Channel'));
+                reachElements = nextElements;
+                while ~isempty(nextElements)
+                    nr = length(nextElements);
+                    aele = [];
+                    for jr=1:nr
+                        sucs = successors(h_reach,nextElements(jr));
+                        if ~isempty(sucs)
+                            aele = [aele,sucs];  %#ok<AGROW>
+                        end
+                    end
+                    nextElements = aele;
+                    reachElements = [reachElements;nextElements];  %#ok<AGROW>
+                end
+                %linked elements for each reach based on ReachGraph ids
+                obj(i,1).ReachGraphID = reachElements; 
+                %linked elements for each reach based on Element ID, EleID
+                idxReachEle = reachEleID(reachElements);
+                obj(i,1).ReachEleID = idxReachEle;  
+                obj(i,1).ReachChannelID = reachChannelID(i);
+            end
+        end
+    %%
+        function setCollectiveReachProperties(obj,reachChannelID,eleID,...
+                                                 eletype,V,S,n,HWL,LWL,TR)
+            %%set collective properties for each reach. The properties set
+            %include: HWvolume,HWarea,ReachPrism,ReachCSA,HWlevel,LWlevel
+            for i=1:length(reachChannelID) %uses graph ids and element ids
+                idxReachEle = obj(i,1).ReachEleID;
+                reachElements = obj(i,1).ReachGraphID;
+                idx = find(eleID==reachChannelID(i));
+                if all(n(idxReachEle)>0)  %volumes are water volumes
+                    obj(i,1).HWvolume = V(idx)+sum(V(idxReachEle))+S(idx)*TR(i);
+                else                      %volumes are sediment volumes
+                    idgt = n(idxReachEle)>0;
+                    idlt = 1-idgt;
+                    wetHWvols = sum(V(idxReachEle).*idgt);
+                    %tidal flat elements which are sediment volumes
+                    idfl = contains(eletype(reachElements),'flat',...
+                                                 'IgnoreCase',true).*idlt;
+                    sedHWflats = sum((S(idxReachEle)*TR(i)-V(idxReachEle)).*idfl);
+                    %flood deltat elements which are sediment volumes
+                    %this assumes that flood delta prism=S.tr/2
+                    idfd = contains(eletype(reachElements),'Flood').*idlt;
+                    sedHWfldelta = sum((S(idxReachEle)*TR(i)/2).*idfd);
+                    sedHWvols = sedHWflats+sedHWfldelta;
+                    hwvol = V(idx)+wetHWvols+sedHWvols;          
+                    obj(i,1).HWvolume = hwvol+S(idx)*TR(i); %add prism volume over channel
+                end                
+                obj(i,1).HWarea = S(idx)+sum(S(idxReachEle));
+                obj(i,1).ReachPrism = obj(i).HWvolume-obj(i).LWvolume;
+                obj(i,1).ReachCSA = (obj(i).ReachPrism/2+ ...
+                                     obj(i).LWvolume)./obj(i).ReachLength;   
+                obj(i,1).HWlevel = HWL(i);
+                obj(i,1).LWlevel = LWL(i); 
+            end
+        end
+%%
+        function setUpstreamCSA(obj,reachChannelID,h_landward)
+            %set path dependent upstream CSA (uses graph ids)
+            for i=1:length(reachChannelID)
+                upstreamids = successors(h_landward,i);
+                upCSA = 0;
+                if ~isempty(upstreamids)                    
+                    for k=1:length(upstreamids)
+                        upCSA = upCSA+obj(upstreamids(k)).ReachCSA;
+                    end   
+                end
+                obj(i,1).UpstreamCSA = (obj(i).ReachCSA+upCSA)/2;
+            end
+        end
+%%
+        function setRiverFlow(obj,reachChannelID,advobj)
+            %set river flow velocity at upstream end of each element
+            riverDischarge = zeros(length(reachChannelID),1);
+            if ~isempty(advobj) && ~isempty(advobj.RiverFlows) && any(advobj.RiverIn(:)~=0)
+                h_flowpath = advobj.RiverGraph;           
+                flowpathID = h_flowpath.Nodes.EleID;
+                eletype = h_flowpath.Nodes.Type;
+                ich = strcmp(eletype,'Channel');
+                
+                for i=1:length(flowpathID)
+                    upstreamids = predecessors(h_flowpath,i);
+                    if ~isempty(upstreamids)
+                        idf = findedge(h_flowpath,upstreamids,i);
+                        riverDischarge(i) = sum(h_flowpath.Edges.Weight(idf));
+                    else
+                        riverDischarge(i) = 9999; %river source (removed line 194)
+                    end
+                end
+                riverDischarge = riverDischarge(ich);
+            end   
+            %now assign to reaches
+            for idx=1:length(reachChannelID)
+                obj(idx,1).RiverFlow = riverDischarge(idx)./obj(idx).UpstreamCSA;
+            end 
+        end
+%%
+        function setCumTidalPrism(obj,reachChannelID,h_landward)
+            %cumulative upstream tidal prism (including reach prism of element)
+            %if channels have been added out of order need to find upstream order 
+            II = ones(length(reachChannelID),1);
+            mouthids = find(logical(II-indegree(h_landward)));
+            for j = 1:length(mouthids)
+                reachOrder = dfsearch(h_landward,mouthids(j));            
+                nreach = length(reachOrder);
+                for i=1:nreach
+                    idx = reachOrder(nreach+1-i);                
+                    upstreamids = successors(h_landward,idx);
+                    cumprism = obj(idx).ReachPrism;
+                    if ~isempty(upstreamids)
+                        for k=1:length(upstreamids)
+                            cumprism=cumprism+obj(upstreamids(k)).UpstreamPrism;
+                        end
+                    end
+                    obj(idx,1).UpstreamPrism = cumprism;
+                end  
+            end
+        end        
+    end
+end

@@ -65,7 +65,7 @@ function conctable = concovermarsh(sm,wl,c0,aws,mco)
         else
             dm = mco.dmin + max(dmx) + din2*(jd-1-(nint*(nno==3))); %depths over flat
         end
-        zm   = wl.TidalAmp-dm; %elevation of marsh(assumes z0=mtl and symmetric tide)
+        zm   = wl.TidalAmp-dm; %elevation of marsh (assumes z0=mtl and symmetric tide)
         %
         wsm = bioenhancedsettling(sm,dm,aws);
         %

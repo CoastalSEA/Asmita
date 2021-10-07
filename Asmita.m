@@ -28,6 +28,7 @@ classdef Asmita < muiModelUI
         GeoType = {'Delta','Channel','Tidalflat','Saltmarsh','Storage',...
                    'EbbDelta','FloodDelta','DeltaFlat',...
                    'Beachface','Shoreface','Spit'};
+        SupressPrompts = false %flag for unit testing to supress user promts       
     end
     
     methods (Static)
@@ -45,7 +46,9 @@ classdef Asmita < muiModelUI
             %classes required to run model             
             %format:                                         % << Edit to model and input parameters classnames 
             %obj.ModelInputs.<model classname> = {'Param_class1',Param_class2',etc}
-            obj.ModelInputs.Model_template = {'ParamInput_template'};
+            obj.ModelInputs.CSThydraulics = {'Estuary','WaterLevels'};
+            obj.ModelInputs.AsmitaModel = {'Element','Estuary','WaterLevels',...
+                              'RunProperties','RunConditions','EqCoeffProps'};
             %tabs to include in DataUIs for plotting and statistical analysis
             %select which of the options are needed and delete the rest
             %Plot options: '2D','3D','4D','2DT','3DT','4DT'
@@ -107,13 +110,13 @@ classdef Asmita < muiModelUI
             
             %% Setup menu -------------------------------------------------                     
             menu.Setup(1).List = {'Estuary','Elements','Saltmarsh',...
-                'Rivers','Drift','Interventions','Run Parameters'};                                  
-            menu.Setup(1).Callback = repmat({'gcbo;'},[1,7]);
-            menu.Setup(1).Separator = {'off','off','on','off','off','off','on'};%separator preceeds item
+                'Rivers','Drift','Interventions','Hydraulics','Run Parameters'};                                  
+            menu.Setup(1).Callback = repmat({'gcbo;'},[1,8]);
+            menu.Setup(1).Separator = {'off','off','on','off','off','off','off','on'};%separator preceeds item
             % submenu for Estuary data
             menu.Setup(2).List = {'System Properties','Water Levels', ...
-                         'Dispersion','Hydraulic model','Model Constants'};
-            menu.Setup(2).Callback = repmat({@obj.estuaryProps},[1,5]);
+                         'Dispersion','Model Constants'};
+            menu.Setup(2).Callback = repmat({@obj.estuaryProps},[1,4]);
 
             % submenu for Element data
             menu.Setup(3).List = {'Define Elements','Element Properties',...
@@ -139,10 +142,15 @@ classdef Asmita < muiModelUI
             menu.Setup(7).List = {'Add or Edit','Clear','Load file','Change sign'};
             menu.Setup(7).Callback = repmat({@obj.intervenProps},[1,4]);
             menu.Setup(7).Separator = {'off','off','off','on'};
+            
+            % submenu for Hydraulic data
+            menu.Setup(8).List = {'Additional Parameters','Create Look-up','Summary Plot'};
+            menu.Setup(8).Callback = repmat({@obj.hydraulicProps},[1,3]);
+
             % submenu for Run Properties data
-            menu.Setup(8).List = {'Time step','Conditions',...
+            menu.Setup(9).List = {'Time step','Conditions',...
                 'Equilibrium Coefficients','Edit Eq. Coefficients list'};
-            menu.Setup(8).Callback = repmat({@obj.runProps},[1,4]);
+            menu.Setup(9).Callback = repmat({@obj.runProps},[1,4]);
             
             %% Run menu ---------------------------------------------------
             menu.Run(1).List = {'Run Model','Derive Output'};
@@ -169,13 +177,16 @@ classdef Asmita < muiModelUI
             %format for subtabs: 
             %    subtabs.<tagname>(i,:) = {<subtab label>,<callback function>};
             %where <tagname> is the struct fieldname for the top level tab.
-            tabs.Cases  = {'  Cases  ',@obj.refresh};        % << Edit tabs to suit model 
-            tabs.System = {' System ',@obj.InputTabSummary};
-            tabs.Elements   = {' Elements ',@obj.InputTabSummary};
-            tabs.Interven = {' Interven ',@(src,evt)Interventions.IntTabPlot(obj,src,evt)};
-            tabs.RunProps   = {' Run Props ',@obj.InputTabSummary};
+            tabs.Cases  = {'  Cases  ',@obj.refresh};  
+            tabs.Settings = {'  Settings  ',''};
+            subtabs.Settings(1,:) = {' System ',@obj.InputTabSummary};
+            subtabs.Settings(2,:)   = {' Elements ',@obj.InputTabSummary};
+            subtabs.Settings(3,:) = {' Saltmarsh ',@obj.setSaltmarshTab};
+            subtabs.Settings(4,:) = {' Interventions ',@(src,evt)Interventions.IntTabPlot(obj,src,evt)};
+            subtabs.Settings(5,:)   = {' Run Properties ',@obj.InputTabSummary};
+            
             tabs.Network   = {' Network ',@(src,evt)Estuary.Network(obj,src,evt)};
-            tabs.Flows   = {'  Flows  ','gcbo;'};
+            tabs.Flows   = {'  Flows  ',''};
             subtabs.Flows(1,:) = {' Rivers ',@(src,evt)Estuary.Network(obj,src,evt)};
             subtabs.Flows(2,:) = {' Drift ',@(src,evt)Estuary.Network(obj,src,evt)};
             subtabs.Flows(3,:) = {'Tidal Pumping',@(src,evt)Estuary.Network(obj,src,evt)};
@@ -183,7 +194,9 @@ classdef Asmita < muiModelUI
             subtabs.Flows(5,:) = {'River Input',@(src,evt)River.TSplot(obj,src,evt)};
             subtabs.Flows(6,:) = {'Drift Input',@(src,evt)Drift.TSplot(obj,src,evt)};
             
-            tabs.Response = {' Response ',@(src,evt)Estuary.Response(obj,src,evt)};            
+            tabs.Response = {' Response ',@(src,evt)Estuary.Response(obj,src,evt)};
+            tabs.Plot   = {'  Q-Plot  ',@obj.getTabData};
+            tabs.Stats = {'   Stats   ',@obj.getTabData};
         end
        
 %%
@@ -198,25 +211,36 @@ classdef Asmita < muiModelUI
             props = {...                                     
                 'Estuary','System',[0.95,0.50],{200,60},'Estuary properties:';...
                 'WaterLevels','System',[0.95,0.98],{160,80},'Hydraulic properties:';...
-                'Saltmarsh','System',[0.55,0.52],{170,100},'Saltmarsh properties:';...
+                'CSThydraulics','System',[0.55,0.52],{170,100},'Additional properties:';...
                 'Element','Elements',[0.95,0.95],{180,60},'Element properties:';...
-                'RunProps','RunProps',[0.95,0.48],{180,60},'Run time properties:';...
-                'RunConditions','RunProps',[0.55,0.48],{180,60},'Run conditions (true or false):';...
-                'EqCoeffProps','RunProps',[0.95,0.95],{180,60},'Equilibrium coefficients:'};
+                'Saltmarsh','Saltmarsh',[0.95,0.54],{165,120},'Saltmarsh properties:';...
+                'RunProperties','Run Properties',[0.90,0.48],{180,60},'Run time properties:';...
+                'RunConditions','Run Properties',[0.55,0.48],{180,60},'Run conditions (true or false):';...
+                'EqCoeffProps','Run Properties',[0.98,0.95],{180,60},'Equilibrium coefficients:'};
         end    
  %%
-        function setTabAction(~,src,cobj)
+        function setTabAction(obj,src,cobj)
             %function required by muiModelUI and sets action for selected
             %tab (src)
-            switch src.Tag                                    % << Edit match tab requirements
+            msg = 'No results to display';
+            switch src.Tag                                    
                 case 'Plot' 
-                     tabPlot(cobj,src);
-%                 case 'Stats'
-%                      lobj = getClassObj(obj,'mUI','Stats',msg);
-%                      if isempty(lobj), return; end
-%                      tabStats(lobj,src);    
-            end
-        end      
+                     tabPlot(cobj,src,obj);
+                case 'Stats'
+                    lobj = getClassObj(obj,'mUI','Stats',msg);
+                    if isempty(lobj), return; end
+                    tabStats(lobj,src);    
+            end          
+        end
+%%
+        function setSaltmarshTab(obj,src,evt)
+            %update the Saltmarsh tabe with table and plot
+            InputTabSummary(obj,src,evt)
+            msgtxt = 'Saltmarsh properties have not beed defined';
+            cobj = getClassObj(obj,'Inputs','Saltmarsh',msgtxt);
+            if isempty(cobj), return; end
+            tabPlot(cobj,src,obj);
+        end     
 %% ------------------------------------------------------------------------
 % Callback functions used by menus and tabs
 %-------------------------------------------------------------------------- 
@@ -243,7 +267,6 @@ classdef Asmita < muiModelUI
                 case 'Dispersion'
                     Estuary.setDispersion(obj);
                     tabname = 'Network';
-                case 'Hydraulic model'
                 case 'Model Constants'
                     obj.Constants = editProperties(obj.Constants);
             end
@@ -325,12 +348,31 @@ classdef Asmita < muiModelUI
             end
         end
 %%
+        function hydraulicProps(obj,src,~)
+            %callback functions to setup hydraulics
+            msgtxt = ('Hydraulic properties have not been defined');
+            switch src.Text
+                case 'Additional Parameters'
+                    CSThydraulics.setInput(obj);
+                    tabname = 'System';
+                    tabUpdate(obj,tabname);
+                case 'Create Look-up'                    
+                    cobj = getClassObj(obj,'Inputs','CSThydraulics',msgtxt);
+                    if isempty(cobj), return; end
+                    runModel(cobj,obj);
+                case 'Summary Plot'
+                    cobj = getClassObj(obj,'Inputs','CSThydraulics',msgtxt);
+                    if isempty(cobj), return; end
+                    summaryPlot(cobj,obj);
+            end
+        end
+%%
         function runProps(obj,src,~)
             %set-up various types of run property
-            tabname = 'RunProps';
+            tabname = 'Run Properties';
             switch src.Text
                 case 'Time step'
-                    RunProps.setInput(obj);                    
+                    RunProperties.setInput(obj);                    
                 case 'Conditions'
                     RunConditions.setInput(obj);   
                 case 'Equilibrium Coefficients'
@@ -346,8 +388,8 @@ classdef Asmita < muiModelUI
         function runMenuOptions(obj,src,~)
             %callback functions to run model
             switch src.Text                   
-                case 'Run Model'                             % << Edit to call Model class
-                    Model_template.runModel(obj); 
+                case 'Run Model'                        
+                    AsmitaModel.runModel(obj); 
                 case 'Derive Output'
                     obj.mUI.Manip = muiManipUI.getManipUI(obj);
             end            
@@ -380,9 +422,10 @@ classdef Asmita < muiModelUI
 %%
         function asmitaInputStruct(obj)
             %define struct to be used as handles for input data classes
-            obj.Inputs = struct('WaterLevels',[],'RunProps',[],'Estuary',[],'Element',[],...
-            'Reach',[],'River',[],'Interventions',[],'Drift',[],'Saltmarsh',[], ...
-            'Advection',[],'Hydraulics',[]);
+            obj.Inputs = struct('WaterLevels',[],'Estuary',[],'Element',[],...
+             'RunProperties',[],'RunConditions',[],'EqCoeffProps',[],...
+             'River',[],'Drift',[],'Saltmarsh',[],'Interventions',[],...
+             'Reach',[],'Advection',[],'CSThydraulics',[]);
         end
     end
 end    
