@@ -38,8 +38,7 @@ classdef Drift < handle
                 obj = Drift;
                 idx = 1;
             else
-                elenames = getEleProp(eleobj,'EleName');
-                [obj,idx] = getDriftSource(obj,elenames,'Add');
+                [obj,idx] = getDriftSource(obj,eleobj,'Add');
                 if idx==0, return; end
             end
 
@@ -62,10 +61,11 @@ classdef Drift < handle
                 %check that drift is assigned to a channel that exists
                 eletype = getEleProp(eleobj,'EleType');
                 ok = contains(eletype{usenum(1)},'Delta');
-                ok = ok+strcmp(eletype{usenum(1)},'Beach');
-                ok = ok+strcmp(eletype{usenum(1)},'Shoreface');
+                ok = ok+contains(eletype{usenum(1)},'Beach');
+                ok = ok+contains(eletype{usenum(1)},'Shore');
+                ok = ok+contains(eletype{usenum(1)},'Spit');
                 if ok==0
-                    warndlg('Can only connect to delta, beach or shoreface, which must exit');
+                    warndlg('Can only connect to delta, beach, shore, or spit which must exit');
                 end
             end            
             obj(idx).DriftEleID = usenum(1);
@@ -75,16 +75,19 @@ classdef Drift < handle
             %update Estuary Advection sources
             advobj = getClassObj(mobj,'Inputs','Advection');
             if isempty(advobj)          
-                advobj = Advection.getAdvection;
+                advobj = Advection;
             end
             %if empty initialise array for number of elements
             if isempty(advobj.DriftFlows)
                 nele = length(eletype);
                 advobj.DriftIn = zeros(nele,1);
             end
-            rele = usenum(1);
+            rele = [eleobj(:).EleID]==usenum(1);
             advobj.DriftIn(rele) = usenum(2);
-            setClassObj(mobj,'Inputs','Advection',obj); 
+            
+            setClassObj(mobj,'Inputs','Advection',advobj); 
+            warndlg({'Drift ADDED';
+                     'Do not forget to update Drift Advection'});
         end
 %%
         function addDrift(mobj,id,flow)
@@ -96,50 +99,59 @@ classdef Drift < handle
                 obj = Drift;
                 idx = 1;                
             else
-                obj = inp.Drift;
                 idx = length(obj)+1;
                 obj(idx,1) = Drift;
             end
             obj(idx).DriftEleID = id;
             obj(idx).DriftRate = flow;
+            
             setClassObj(mobj,'Inputs','Drift',obj);
+            warndlg({'Drift ADDED';
+                     'Do not forget to update Drift Advection'});
         end
 %%
         function delDrift(mobj)
             %delete a drift input source
             msgtxt = 'No Drift inputs to delete';
             obj  = getClassObj(mobj,'Inputs','Drift',msgtxt);           
-            if ~isempty(obj)
-                eleobj  = getClassObj(mobj,'Inputs','Element');
-                elenames = getEleProp(eleobj,'EleName');
-                [obj,idx] = getDriftSource(obj,elenames,'List');
-                if idx==0, return; end
-                obj(idx) = [];
-                 setClassObj(mobj,'Inputs','Drift',obj);
-                %update advection if set
-                advobj  = getClassObj(mobj,'Inputs','Advection');
-                if ~isempty(advobj)
-                    rele = obj(idx).ChannelID;                
-                    advobj.DriftIn(rele) = 0;
-                    setClassObj(mobj,'Inputs','Advection',obj);
-                end
+            if isempty(obj), return; end
+            
+            eleobj  = getClassObj(mobj,'Inputs','Element');
+            [obj,idx] = getDriftSource(obj,eleobj,'List');
+            if idx==0, return; end
+            id_driftinput = obj(idx).DriftEleID;
+            obj(idx) = [];
+            setClassObj(mobj,'Inputs','Drift',obj);
+
+            %update advection if set
+            advobj  = getClassObj(mobj,'Inputs','Advection');
+            if ~isempty(advobj)
+                idele = [eleobj(:).EleID]==id_driftinput;
+                advobj.DriftIn(idele) = 0;                    
+                setClassObj(mobj,'Inputs','Advection',advobj);
             end
+            
+            warndlg({'Drift DELETED';
+                     'Do not forget to update Drift Advection'});
         end        
 %%
        function prop = getDriftProp(mobj,varname)
            %function to access drift properties from other functions
-           obj  = getClassObj(mobj,'Inputs','River');
+           obj  = getClassObj(mobj,'Inputs','Drift');
+           prop = zeros(length(mobj.h_ele),1);
+           if isempty(mobj.h_dft) || isempty(mobj.h_dft(1).(varname))
+               %no drift of no variable defined
+               return;
+           end
+           
            eleobj  = getClassObj(mobj,'Inputs','Element');
            prop = zeros(length(eleobj),1);
-           if isempty(obj) || isempty(obj(1).(varname))
-                %no drift or no variable defined                
-                return;
+           ndft = length(obj);
+           for i=1:ndft
+               %assign value to the element the drift source flows into
+               idele = [eleobj(:).EleID]==obj(i).DriftEleID;
+               prop(idele,1) = obj(i).(varname);
            end
-            
-            ndft = length(inp.Drift); %?????????WHY NOT ASSIGNED BY ELEMENT
-            for i=1:ndft
-                prop(i,1) = inp.Drift(i).(varname);
-            end
        end
 %%   
         function [rele,okEle,msg,flow] = getSourceProps(mobj)
@@ -153,10 +165,11 @@ classdef Drift < handle
             msg{1} = 'Can only connect to delta/beach/shoreface elements, which must exit\nRemove input to element %d';
             msg{2} = 'Drift input added to element %d\nProperties need to be defined in Setup>Drift';
             msg{3} = 'Drift inputs have been added';            
-            rele = []; flow = 0;
-            if ~isempty(obj)
-                rele = [obj.DriftEleID]';
-                flow = [obj.DriftRate]';
+            ndft = length(obj);
+            rele(ndft,1) = 0; flow(ndft,1) = 0;
+            for i=1:ndft
+                rele(i) = find([eleobj(:).EleID]==obj(i).DriftEleID);
+                flow(i) = obj(i).DriftRate;
             end
         end  
 %%
@@ -171,7 +184,7 @@ classdef Drift < handle
                 return;
             end
             %select which drift object the file is to be attached to
-            %idx is the index of the river object (not the element)
+            %idx is the index of the drift object (not the element)
             eleobj  = getClassObj(mobj,'Inputs','Element');
             elenames = getEleProp(eleobj,'EleName');
             if length(obj)>1                
@@ -218,11 +231,12 @@ classdef Drift < handle
 
                 obj(idx).DriftTSC = addts(obj(idx).DriftTSC,tsv);
             end
+            
            setClassObj(mobj,'Inputs','Drift',obj);
         end
 %%
         function [prop,EleID] = getDriftTSprop(mobj,idft,tsyear)
-            %function to access time dependent river property from other functions
+            %function to access time dependent drift property from other functions
             % idft is the index of the drift object
             % tsyear is the model time for which a drift is required
             obj  = getClassObj(mobj,'Inputs','Drift',msgtxt);  
@@ -256,6 +270,7 @@ classdef Drift < handle
             end
             %update transient variables that are used in Model
             obj(idft).tsDriftRate = prop;
+            
             setClassObj(mobj,'Inputs','Drift',obj);
             %--------------------------------------------------------------
             function EleID = unpackVarIDs(varnames)
@@ -271,7 +286,7 @@ classdef Drift < handle
         
 %%
         function TSplot(mobj,src,~)
-            %plot the available river input timeseries data on a tab  
+            %plot the available drift input timeseries data on a tab  
             ht = findobj(src,'Type','Axes');
             delete(ht);
             
@@ -363,13 +378,15 @@ classdef Drift < handle
 
 %%
     methods (Access=private)
-        function [obj,idx] = getDriftSource(obj,elenames,flag)
+        function [obj,idx] = getDriftSource(obj,eleobj,flag)
             %edit the properties of a drift instance
             numDrifts = length(obj);
             driftList = cell(numDrifts,1);
+            elenames = getEleProp(eleobj,'EleName');
             for i=1:numDrifts
                 drifteleid = num2str(obj(i).DriftEleID);
-                driftList{i} = sprintf('%s: %s',drifteleid,elenames{obj(i).DriftEleID});
+                idele = [eleobj(:).EleID]==obj(i).DriftEleID;
+                driftList{i} = sprintf('%s: %s',drifteleid,elenames{idele});
             end
             if strcmp(flag,'Add')
                 driftList{numDrifts+1} = 'Add a Drift';
@@ -394,7 +411,7 @@ classdef Drift < handle
 %%        
         function [rownames,colnames,userdata] = driftProperties(obj,mobj)
             %define drift Properties 
-            inp = mobj.Inputs;
+            advobj = getClassObj(mobj,'Inputs','Advection');
             rownames = {'Element ID for drift input',...
                         'Drift rate (m^3/year)'};
             colnames = {'Property','Value'};  
@@ -408,8 +425,7 @@ classdef Drift < handle
                 k = j+1;
                 userdata{1,k} = num2str(obj(j).DriftEleID);
                 userdata{2,k} = num2str(obj(j).DriftRate);
-                if isfield(inp.Advection,'RiverIn') && ...
-                                    ~isempty(inp.Advection.RiverIn)
+                if isfield(advobj,'DriftIn') && ~isempty(advobj.DriftIn)                                    
                     userdata{2,k} = num2str(inp.Advection.DriftIn(obj(j).DriftEleID));
                 end   
             end

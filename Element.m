@@ -210,22 +210,24 @@ classdef Element < muiPropertyUI
              
             %if already created update advection and dispersion
             estobj = getClassObj(mobj,'Inputs','Estuary');
+            advobj = getClassObj(mobj,'Inputs','Advection');
             if ~isempty(estobj)
-                if ~isempty(inp.Estuary.Dispersion)                    
-                    Estuary.addEleDispersion(mobj);
+                if ~isempty(estobj.Dispersion)                    
+                    addEleDispersion(estobj,mobj);
                 end
-                if isa(inp.Advection,'Advection')
-                    Advection.addEleAdvection(mobj);
+                if isa(advobj,'Advection')
+                    addEleAdvection(advobj,mobj);
                 end
             end
+            
             %if already created update interventions matrix to match
             intobj = getClassObj(mobj,'Inputs','Interventions');
             if ~isempty(intobj)
-                Interventions.addIntEle(mobj,obj);
+                addIntEle(intobj,mobj,obj);
             end
             
             warndlg({'Element ADDED';
-              'Do not forget to update Dispersion and Advection tables'});            
+              'Do not forget to update Dispersion and Advection'});            
         end
                
 %%
@@ -249,22 +251,24 @@ classdef Element < muiPropertyUI
             
             %if already created update advection and dispersion
             estobj = getClassObj(mobj,'Inputs','Estuary');
+            advobj = getClassObj(mobj,'Inputs','Advection');
             if ~isempty(estobj)
-                if ~isempty(inp.Estuary.Dispersion)                    
-                    Estuary.delEleDispersion(mobj);
+                if ~isempty(estobj.Dispersion)                    
+                    delEleDispersion(estobj,mobj,idx);
                 end
-                if isa(inp.Advection,'Advection')
-                    Advection.delEleAdvection(mobj);
+                if isa(advobj,'Advection')
+                    delEleAdvection(advobj,mobj,idx);
                 end
             end
             %if already created update interventions matrix to match
             intobj = getClassObj(mobj,'Inputs','Interventions');
             if ~isempty(intobj)
-                Interventions.delIntEle(mobj);
+                delIntEle(intobj,mobj,idx);
             end
             warndlg({'Element DELETED';'Properties also removed from:';...
-              '- Dispersion and Advection tables';...
-              '- Interventions'});            
+              ' - Dispersion';
+              ' - Advection';...
+              ' - Interventions'});            
         end
 
 %% 
@@ -308,11 +312,12 @@ classdef Element < muiPropertyUI
             %scaling to initial values
             asmobj = getClassObj(mobj,'Inputs','ASM_model');
             eqScaling = asmobj.eqScaling;
+            %update unadjusted equilibrium volumes to account for changes
+            %in tidal prism
+            ASM_model.asmitaEqFunctions(mobj);  %updates Element.EqVolume
             %correction for advection
             obj = getClassObj(mobj,'Inputs','Element');
-            eqAdvCor = getEleProp(obj,'eqAdvOffSet');
-            %unadjusted equilibirum volumes
-            ASM_model.asmitaEqFunctions(mobj);
+            eqAdvCor = getEleProp(obj,'eqAdvOffSet');            
             %set adjusted values of equilibrium volume
             for i=1:length(obj)
                obj(i).EqVolume = eqScaling(i)*eqAdvCor(i)*obj(i).EqVolume;
@@ -381,26 +386,29 @@ classdef Element < muiPropertyUI
             %assign element advection offfset due to river flow or drift
             obj = getClassObj(mobj,'Inputs','Element');
             asmobj = getClassObj(mobj,'Inputs','ASM_model');            
-            tempDQ = asmobj.DQ;
-            tempdqIn = asmobj.dqIn;
             nele = length(obj);
             n = getEleProp(obj,'TransportCoeff');           
             %find whether an offset is to be included
+            RunConditions.setAdvectionOffset(mobj);
             rncobj = getClassObj(mobj,'Inputs','RunConditions');
-            if rncobj.RiverOffset && rncobj.DriftOffset
-                offset = 'flow+drift';
-            elseif rncobj.RiverOffset
-                offset = 'flow';
-            elseif rncobj.DriftOffset
-                offset = 'drift';
-            else
-                offset = 'none';
-            end
-            %calculate the offset if required       
-            if strcmp(offset,'none')
+%             if rncobj.IncRiver || rncobj.IncDrift
+%                 if rncobj.RiverOffset && rncobj.DriftOffset
+%                     offset = 'flow+drift';
+%                 elseif rncobj.RiverOffset
+%                     offset = 'flow';
+%                 elseif rncobj.DriftOffset
+%                     offset = 'drift';
+%                 else
+%                     offset = 'none';
+%                 end
+%             else
+%                 offset = 'none';
+%             end
+            %calculate the offset if required    
+            ASM_model.setDQmatrix(mobj,rncobj.Adv2Offset);
+            if strcmp(rncobj.Adv2Offset,'none')
                 eqCorV =  ones(nele,1);
             else
-                ASM_model.setDQmatrix(mobj,offset);
                 [B,dd] = ASM_model.BddMatrices(mobj);
                 eqCorV = (B\dd).^(1./n);
             end
@@ -411,9 +419,7 @@ classdef Element < muiPropertyUI
             setClassObj(mobj,'Inputs','Element',obj);
             
             %reset DQ matrix to full value with all advections
-            asmobj.DQ = tempDQ;
-            asmobj.dqIn = tempdqIn;            
-            setClassObj(mobj,'Inputs','ASM_model',asmobj);
+            ASM_model.setDQmatrix(mobj,rncobj.Adv2Inc);
         end            
     end
 %%        
@@ -454,6 +460,8 @@ classdef Element < muiPropertyUI
             if ok<1, return; end
             elename = eleList{eleid};
         end
+%%
+
 %%
         function displayProperties(obj,src)
             %table for summary of element properties.

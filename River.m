@@ -12,14 +12,18 @@ classdef River < handle
     properties
         ChannelID = []        %EleID of channel river flows into 
         RiverFlow = 0         %flow rate from river at t=0 (m3/s) 
-        RiverConc = 0         %concentration imported by advection (-)
+        RiverRho = 0          %concentration density imported by advection (kg/m3)
         RiverTSC              %river timeseries of discharge (m3/s) and 
                               %sediment load (kg/m3)
     end
     
-    properties (Transient)  %properties that are time varying
+    properties (Transient)    %properties that are time varying
         tsRiverFlow           %flow rate from river at time,t (m3/s) 
         tsRiverConc           %concentration of imported sediment at time,t (-)
+    end
+    
+    properties (Dependent)
+        RiverConc             %concentration imported by advection (-)
     end
     
     methods (Access=private)
@@ -41,12 +45,10 @@ classdef River < handle
                 obj = River;
                 idx = 1;
             else
-                elenames = getEleProp(eleobj,'EleName');
-                [obj,idx] = editRiver(obj,elenames,'Add');
+                [obj,idx] = editRiver(obj,eleobj,'Add');
                 if idx==0, return; end
             end
-            ros = mobj.Constants.SedimentDensity;
-            
+             
             [prompt,~,defaultvalues] = riverProperties(obj,mobj);
             defaultvalues = defaultvalues(:,idx+1);
             title = 'River Input Parameters';
@@ -74,25 +76,28 @@ classdef River < handle
             
             obj(idx).ChannelID = usenum(1);
             obj(idx).RiverFlow = usenum(2);
-            obj(idx).RiverConc = usenum(3)/ros;
+            obj(idx).RiverRho = usenum(3);
             setClassObj(mobj,'Inputs','River',obj);
             
             %update Estuary Advection sources
             advobj = getClassObj(mobj,'Inputs','Advection');
             if isempty(advobj)          
-                advobj = Advection.getAdvection;
+                advobj = Advection;
             end
             %if empty initialise array for number of elements
             if isempty(advobj.RiverFlows)
                 nele = length(eletype);
                 advobj.RiverIn = zeros(nele,1);
             end
-            rele = usenum(1);
+            rele = [eleobj(:).EleID]==usenum(1);
             advobj.RiverIn(rele) = usenum(2);
-            setClassObj(mobj,'Inputs','Advection',obj);
+            
+            setClassObj(mobj,'Inputs','Advection',advobj);
+            warndlg({'River ADDED';
+                     'Do not forget to update River Advection'});
         end
 %%
-        function obj = addRiver(mobj,id,flow)
+        function addRiver(mobj,id,flow)
             %function to add a river when editing advection matrix
             %id is the channel id into which the river flows
             %flow is the flow rate of the river
@@ -101,51 +106,59 @@ classdef River < handle
                 obj = River;
                 idx = 1;
             else                
-                obj = inp.River;
                 idx = length(obj)+1;
                 obj(idx,1) = River;
             end
             obj(idx).ChannelID = id;
             obj(idx).RiverFlow = flow;
             obj(idx).RiverConc = 0;
+            
             setClassObj(mobj,'Inputs','River',obj);
+            warndlg({'River ADDED';
+                     'Do not forget to update River Advection'});
         end 
 %%
-        function obj = delRiver(mobj)
+        function delRiver(mobj)
             %delete a river input source
             msgtxt = 'No River inputs to delete';
             obj  = getClassObj(mobj,'Inputs','River',msgtxt);           
-            if ~isempty(obj)
-                eleobj  = getClassObj(mobj,'Inputs','Element');
-                elenames = getEleProp(eleobj,'EleName');
-                [obj,idx] = editRiver(obj,elenames,'List');
-                if idx==0, return; end
-                obj(idx) = [];
-                setClassObj(mobj,'Inputs','River',obj);
-                %update advection if set
-                advobj  = getClassObj(mobj,'Inputs','Advection');
-                if ~isempty(advobj)
-                    rele = obj(idx).ChannelID;                
-                    advobj.RiverIn(rele) = 0;
-                    setClassObj(mobj,'Inputs','Advection',obj);
-                end
+            if isempty(obj), return; end
+            
+            eleobj  = getClassObj(mobj,'Inputs','Element');                               
+            [obj,idx] = editRiver(obj,eleobj,'List');
+            if idx==0, return; end
+            id_riverinput = obj(idx).ChannelID;
+            obj(idx) = [];
+            setClassObj(mobj,'Inputs','River',obj);
+
+            %update advection if set
+            advobj  = getClassObj(mobj,'Inputs','Advection');
+            if ~isempty(advobj)
+                idele = [eleobj(:).EleID]==id_riverinput;
+                advobj.RiverIn(idele) = 0;
+                setClassObj(mobj,'Inputs','Advection',advobj);
             end
+
+            warndlg({'River DELETED';
+                     'Do not forget to update River Advection'});
         end        
 %%
        function prop = getRiverProp(mobj,varname)
            %function to access river properties from other functions
-           obj  = getClassObj(mobj,'Inputs','River');
+           obj  = getClassObj(mobj,'Inputs','River');           
+           if isempty(obj) || isempty(obj(1).(varname))
+               %no river or no variable defined
+               return;
+           end
+           
            eleobj  = getClassObj(mobj,'Inputs','Element');
            prop = zeros(length(eleobj),1);
-           if isempty(obj) || isempty(obj(1).(varname))
-                %no river or no variable defined
-                return;
-            end
-            
-            nriv = length(obj); %???????WHY NOT ASSIGNED BY ELEMENT            
-            for i=1:nriv
-                prop(i,1) = obj(i).(varname);
-            end            
+           nriv = length(obj);
+           for i=1:nriv
+               %assign value to the element the river source flows into
+               idele = [eleobj(:).EleID]==obj(i).ChannelID;
+               prop(idele,1) = obj(i).(varname);
+           end
        end
 %%   
         function [rele,okEle,msg,flow] = getSourceProps(mobj)
@@ -157,10 +170,11 @@ classdef River < handle
             msg{1} = 'Can only connect to a channel, which must exit\nRemove input to element %d';
             msg{2} = 'River input added to element %d\nProperties need to be defined in Setup>Rivers';
             msg{3} = 'River inputs have been added and need to be defined in Setup>Rivers';
-            rele = []; flow = 0;
-            if ~isempty(obj)
-                rele = [obj.ChannelID]';
-                flow = [obj.RiverFlow]';
+            nriv = length(obj);
+            rele(nriv,1) = 0; flow(nriv,1) = 0;
+            for i=1:nriv
+                rele(i) = find([eleobj(:).EleID]==obj(i).ChannelID);
+                flow(i) = obj(i).RiverFlow;
             end
         end     
 %%
@@ -206,15 +220,16 @@ classdef River < handle
                 tsv.QualityInfo.Description = {'good' 'bad'};
 
                 obj(idx).RiverTSC = addts(obj(idx).RiverTSC,tsv);
-            end     
+            end
+            
             setClassObj(mobj,'Inputs','River',obj);
         end
         
 %%
         function [flow,EleID] = getRiverTSprop(mobj,iriv,tsyear)
             %function to access time dependent river property from other functions
-            % idrv is the index of the drift object
-            % tsyear is the model time for which a drift is required
+            % idrv is the index of the river object
+            % tsyear is the model time for which a river is required
             obj  = getClassObj(mobj,'Inputs','River',msgtxt);  
             if isempty(obj) %no river defined
                 flow = 0; EleID = 0;
@@ -247,6 +262,7 @@ classdef River < handle
             %update transient variables that are used in Model
             obj(iriv).tsRiverFlow = flow;
             obj(iriv).tsRiverConc = conc;
+            
             setClassObj(mobj,'Inputs','River',obj);
         end
         
@@ -322,6 +338,12 @@ classdef River < handle
     end    
 %%    
     methods
+        function eqConc = get.RiverConc(obj)
+            %dependent property derived from RiverRho
+            cn = muiConstants.Evoke;
+            eqConc = obj.RiverRho/cn.SedimentDensity;
+        end  
+%%
         function initialiseFlow(obj)
             %set the transient values at the start of a model run
             for i=1:length(obj)
@@ -358,17 +380,59 @@ classdef River < handle
             Table.Position(3:4)=Table.Extent(3:4);
             Table.Position(2)=0.85-Table.Extent(4); 
         end
+%%
+        function tabPlot(obj,src,mobj)
+            %plot tidal pumping advection tab
+            msgtxt = 'Advection properties have not been set';
+            advobj = getClassObj(mobj,'Inputs','Advection',msgtxt);
+            if isempty(advobj), return; end
+            msgtxt = 'Water Level properties have not been set';
+            wlvobj  = getClassObj(mobj,'Inputs','WaterLevels',msgtxt);
+            if isempty(wlvobj), return; end
+
+            %set up the initial plot of tidal pumping discharge  
+            sfact = 2;   %set slider range as factor of max river flow
+            Qin = max([obj(:).RiverFlow]);
+            Qr = [Qin/sfact,Qin*sfact];
+            [qtp,qtp0] = getTidalPumpingFlows(obj,mobj,1);
+            if isempty(qtp), return; end
+            
+            %get distances from mouth
+            rchobj = getClassObj(mobj,'Inputs','Reach');
+            xi = [0,rchobj(:).CumulativeLength];
+            
+            %remove any existing plot and generate new plot on tab
+            ht = findobj(src,'Type','axes');            
+            delete(ht);
+            ax = axes('Parent',src,'Tag','PlotFigAxes');
+            ax.Position = [0.16,0.18,0.65,0.75]; %make space for slider bar
+            setSlideControl(obj,src,Qr(1),Qr(end),Qin);
+            legtxt = sprintf('TP for Q = %.1f m^3/s',Qin);
+            
+            %create base plot
+            plot(ax,xi,qtp0,'DisplayName','Current settings')
+            hold on
+            plot(ax,xi,qtp,'DisplayName',legtxt)
+            hold off
+            xlabel('Distance from mouth (m)')
+            ylabel('Discharge (m^3/s)')
+            title('Tidal pumping based on current settings')
+            legend
+            ax.UserData = mobj;
+        end
     end
     
 %%
     methods (Access=private)
-        function [obj,idx] = editRiver(obj,elenames,flag)
+        function [obj,idx] = editRiver(obj,eleobj,flag)
             %edit the properties of a river instance            
             numRivers = length(obj);
             riversList = cell(numRivers,1);
+            elenames = getEleProp(eleobj,'EleName');
             for i=1:numRivers
                 channelid = num2str(obj(i).ChannelID);
-                riversList{i} = sprintf('%s: %s',channelid,elenames{obj(i).ChannelID});
+                idele = [eleobj(:).EleID]==obj(i).ChannelID;
+                riversList{i} = sprintf('%s: %s',channelid,elenames{idele});
             end
             if strcmp(flag,'Add')
                 riversList{numRivers+1} = 'Add a River';
@@ -389,11 +453,103 @@ classdef River < handle
                 obj(idx,1) = River;
             end
         end
-        
+%%
+        function [qtp,qtp0] = getTidalPumpingFlows(obj,mobj,qfact)
+            %allow the user to test the influence of varying river discharge
+            %on tidal pumping
+%             Qstore = [obj(:).RiverFlow];
+
+%             AsmitaModel.intialiseModelParameters(mobj)  
+            h_channels = Reach.LandwardPath(mobj);  %uses channels in current version of ReachGraph            
+            reachChannelIDs = h_channels.Nodes.EleID;
+
+
+            advobj = getClassObj(mobj,'Inputs','Advection');
+            advobj.RiverGraph = Advection.initialiseRiverGraph(mobj);
+            Reach.setReach(mobj);
+%             Advection.setTidalPumping(mobj);
+            FlowIn = advobj.RiverIn;
+            FlowOut = advobj.RiverOut;
+            IntFlows = advobj.RiverFlows;
+            
+            
+            
+            %get reach based tidal pumping discharge for current river inputs
+            [tp0,tpM0] = Advection.getTidalPumpingDischarge(mobj,reachChannelIDs); 
+            qtp0 = [tpM0,tp0];
+            %get reach based tidal pumping discharge for user Qin
+            advobj.RiverFlows = IntFlows*qfact;    
+            advobj.RiverIn = FlowIn*qfact;      
+            advobj.RiverOut =FlowOut*qfact;
+%             setAdvectionProps(advobj,AdvType);
+            
+%             Qin = Qstore*qfact;
+%             [obj(:).RiverFlow] = Qin;   
+%             advobj.RiverGraph = Advection.initialiseRiverGraph(mobj);
+%             Reach.setReach(mobj); 
+%             Advection.setTidalPumping(mobj);
+% %             AsmitaModel.intialiseModelParameters(mobj);  
+%            
+            advobj.RiverGraph = Advection.initialiseRiverGraph(mobj);
+            Reach.setReach(mobj);
+%             Advection.setTidalPumping(mobj);
+            [tp,tpM] = Advection.getTidalPumpingDischarge(mobj,reachChannelIDs);  
+            qtp = [tpM,tp];
+            
+%             [obj(:).RiverFlow] = Qstore;   %restore original settings  
+            advobj.RiverFlows = IntFlows;    
+            advobj.RiverIn = FlowIn;      
+            advobj.RiverOut =FlowOut;
+        end
+%%
+        function updateTPplot(obj,src,~)
+            %use the updated slider value to adjust the CST plot
+            stxt = findobj(src.Parent,'Tag','Discharge');
+            Q = round(src.Value);
+            stxt.String = num2str(Q);     %update slider text
+            qfact = Q/stxt.UserData;
+            
+            %figure axes and update plot
+            ax = findobj(src.Parent,'Type','axes');
+            [qtp,~] = getTidalPumpingFlows(obj,ax.UserData,qfact);             
+            hline = findobj(ax,'-regexp','DisplayName','TP for Q');
+            xi = hline.XData;
+            delete(hline)
+            legtxt = sprintf('TP for Q = %d m^3/s',Q);
+            hold on
+            plot(ax,xi,qtp,'DisplayName',legtxt)
+            hold off
+            legend
+        end
+%%
+        function hm = setSlideControl(obj,hfig,qmin,qmax,qin)
+            %intialise slider to set different Q values     
+            hm1 = findobj(hfig,'Tag','stepMovie');
+            hm2 = findobj(hfig,'Tag','Discharge');
+            hm3 = findobj(hfig,'Tag','Qtxt');
+            delete([hm1,hm2,hm3])
+            
+            hm(1) = uicontrol('Parent',hfig,...
+                    'Style','slider','Value',qin,... 
+                    'Min',qmin,'Max',qmax,'sliderstep',[1 1]/(qmax-qmin),...
+                    'Callback', @(src,evt)updateTPplot(obj,src,evt),...
+                    'Units','normalized', 'Position', [0.15,0.005,0.5,0.04],...
+                    'Tag','stepMovie');
+            hm(2) = uicontrol('Parent',hfig,...
+                    'Style','text','String',num2str(qin),'FontSize',10,...
+                    'Units','normalized','Position',[0.86,0.003,0.12,0.045],... 
+                    'UserData',qin,...
+                    'HorizontalAlignment','left','Tag','Discharge');
+            uicontrol('Parent',hfig,...
+                    'Style','text','String','River discharge = ','FontSize',10,...
+                    'Units','normalized','Position',[0.66,0.003,0.2,0.045],... 
+                    'HorizontalAlignment','left','Tag','Qtxt');    
+        end   
+
 %%        
         function [rownames,colnames,userdata] = riverProperties(obj,mobj)
             %define river Properties  
-            ros = mobj.Constants.SedimentDensity;
+            advobj = getClassObj(mobj,'Inputs','Advection');
             rownames = {'Channel ID for river input',...
                         'Flow rate (m^3/s)',...
                         'Sediment conc. density in river (kg/m3)'};
@@ -403,16 +559,15 @@ classdef River < handle
             for i=1:length(rownames)
                 userdata{i,1} = rownames{i};
             end   
+            
             for j = 1:numrivers
                 k = j+1;
                 userdata{1,k} = num2str(obj(j).ChannelID);
                 userdata{2,k} = num2str(obj(j).RiverFlow);
-                if isfield(mobj.Inputs.Advection,'RiverIn') && ...
-                            ~isempty(mobj.Inputs.Advection.RiverIn)
-                    userdata{2,k} = num2str(inp.Advection.RiverIn(obj(j).ChannelID));
-                end
-                rivConc = obj(j).RiverConc*ros;
-                userdata{3,k} = num2str(rivConc);   
+                if isfield(advobj,'RiverIn') && ~isempty(advobj.RiverIn)                            
+                    userdata{2,k} = num2str(advobj.RiverIn(obj(j).ChannelID));
+                end  
+                userdata{3,k} = num2str(obj(j).RiverRho); 
             end
         end
         

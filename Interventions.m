@@ -101,28 +101,6 @@ classdef Interventions < handle
             obj(eleid).SurfaceAreaChange = data(3);
             setClassObj(mobj,'Inputs','Interventions',obj);
         end         
-%% 
-        function addIntEle(mobj,elobj)
-            %add an intervention to the array of intervention objects when
-            %an element is added - called from Element.addElement
-            obj  = getClassObj(mobj,'Inputs','Interventions',msgtxt);
-            nint = length(obj)+1;
-            if nint~=length(elobj)
-                warndlg('Error in Interventions.addIntEle')
-                return
-            end
-            obj(nint) = Interventions;
-            obj(nint).ElementID = elobj(nint).EleID;
-            setClassObj(mobj,'Inputs','Interventions',obj);
-        end        
-%%
-        function delIntEle(mobj,eleid)
-            %delete an intervention from an element
-            % used in Element.delElement
-            obj  = getClassObj(mobj,'Inputs','Interventions',msgtxt);
-            obj(eleid) = [];
-            setClassObj(mobj,'Inputs','Interventions',obj);
-        end
 %%
         function setAnnualChange(mobj,robj)
             %called at each time step to determine whether there any
@@ -234,6 +212,28 @@ classdef Interventions < handle
             obj(idx).VolumeChange = {-1*obj(idx).VolumeChange{1}};
             obj(idx).SurfaceAreaChange = {-1*obj(idx).SurfaceAreaChange{1}};
         end
+    end
+%%
+    methods
+        function addIntEle(obj,mobj,elobj)
+            %add an intervention to the array of intervention objects when
+            %an element is added - called from Element.addElement
+            nint = length(obj)+1;
+            if nint~=length(elobj)
+                warndlg('Error in Interventions.addIntEle')
+                return
+            end
+            obj(nint) = Interventions;
+            obj(nint).ElementID = elobj(nint).EleID;
+            setClassObj(mobj,'Inputs','Interventions',obj);
+        end        
+%%
+        function delIntEle(obj,mobj,eleid)
+            %delete an intervention from an element
+            % used in Element.delElement
+            obj(eleid) = [];
+            setClassObj(mobj,'Inputs','Interventions',obj);
+        end        
     end
 %%
     methods (Access=private)

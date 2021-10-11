@@ -181,11 +181,16 @@ classdef Asmita < muiModelUI
             tabs.Settings = {'  Settings  ',''};
             subtabs.Settings(1,:) = {' System ',@obj.InputTabSummary};
             subtabs.Settings(2,:)   = {' Elements ',@obj.InputTabSummary};
-            subtabs.Settings(3,:) = {' Saltmarsh ',@obj.setSaltmarshTab};
+            subtabs.Settings(3,:) = {' Saltmarsh ',@obj.setAsmitaTabs};
             subtabs.Settings(4,:) = {' Interventions ',@(src,evt)Interventions.IntTabPlot(obj,src,evt)};
             subtabs.Settings(5,:)   = {' Run Properties ',@obj.InputTabSummary};
             
-            tabs.Network   = {' Network ',@(src,evt)Estuary.Network(obj,src,evt)};
+            tabs.Tides   = {'  Tides  ',''};
+            subtabs.Tides(1,:)   = {' Network ',@(src,evt)Estuary.Network(obj,src,evt)};
+            subtabs.Tides(2,:)   = {' Water Levels ',@obj.setAsmitaTabs};
+            subtabs.Tides(3,:)   = {' Hydraulics ',@obj.setAsmitaTabs};
+            subtabs.Tides(4,:)   = {' Tidal Pumping ',@obj.setAsmitaTabs};
+            
             tabs.Flows   = {'  Flows  ',''};
             subtabs.Flows(1,:) = {' Rivers ',@(src,evt)Estuary.Network(obj,src,evt)};
             subtabs.Flows(2,:) = {' Drift ',@(src,evt)Estuary.Network(obj,src,evt)};
@@ -233,11 +238,24 @@ classdef Asmita < muiModelUI
             end          
         end
 %%
-        function setSaltmarshTab(obj,src,evt)
+        function setAsmitaTabs(obj,src,evt)
             %update the Saltmarsh tabe with table and plot
-            InputTabSummary(obj,src,evt)
-            msgtxt = 'Saltmarsh properties have not beed defined';
-            cobj = getClassObj(obj,'Inputs','Saltmarsh',msgtxt);
+            switch src.Tag
+                case 'Saltmarsh'
+                    InputTabSummary(obj,src,evt)
+                    msgtxt = 'Saltmarsh properties have not been defined';
+                    cobj = getClassObj(obj,'Inputs','Saltmarsh',msgtxt);                    
+                case 'Water Levels'
+                    msgtxt = 'Water level properties have not been defined';
+                    cobj = getClassObj(obj,'Inputs','WaterLevels',msgtxt);
+                case 'Hydraulics'
+                    msgtxt = 'Additional hydraulic properties have not been defined';
+                    cobj = getClassObj(obj,'Inputs','CSThydraulics',msgtxt);
+                case 'Tidal Pumping'
+                    msgtxt = 'River properties have not been defined';
+                    cobj = getClassObj(obj,'Inputs','River',msgtxt);
+            end
+            %
             if isempty(cobj), return; end
             tabPlot(cobj,src,obj);
         end     
@@ -363,7 +381,7 @@ classdef Asmita < muiModelUI
                 case 'Summary Plot'
                     cobj = getClassObj(obj,'Inputs','CSThydraulics',msgtxt);
                     if isempty(cobj), return; end
-                    summaryPlot(cobj,obj);
+                    tabPlot(cobj);
             end
         end
 %%

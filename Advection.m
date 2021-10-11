@@ -34,7 +34,7 @@ classdef Advection < handle
         ExternalAdvOut = 0       %matrix of external flows out of estuary        
     end
     
-    methods (Access=private)
+    methods  (Access={?River,?Drift})
         function obj = Advection
         end
     end
@@ -43,16 +43,16 @@ classdef Advection < handle
 %--------------------------------------------------------------------------
 %       SETUP
 %--------------------------------------------------------------------------
-        function obj = getAdvection
+%         function obj = getAdvection
             %test whether Model exists. Only allow single instance
             %the following code forces a singleton class
-            persistent localObj
-            if isempty(localObj) || ~isvalid(localObj)
-                localObj = Advection;
-                %constructor code for advection class
-            end
-            obj = localObj;
-        end
+%             persistent localObj
+%             if isempty(localObj) || ~isvalid(localObj)
+%                 localObj = Advection;
+%                 %constructor code for advection class
+%             end
+%             obj = localObj;
+%         end
                       
 %%        
         function setAdvection(mobj,AdvType)            
@@ -71,10 +71,14 @@ classdef Advection < handle
             end
             nele = length(eleobj);
             nelp = nele+2;
-         
+            
+            obj = getClassObj(mobj,'Inputs','Advection');
+            if isempty(obj)
+                obj = Advection;
+            end
             %create or get data and build matrix of exchanges
             userdata = zeros(nelp,nelp);
-            obj = Advection.setAdvectionType(mobj,AdvType);
+            obj = setAdvectionType(obj,AdvType);
             if ~isempty(obj.InternalAdv)                
                 userdata(end,2:end-1) = obj.ExternalAdvIn;
                 userdata(2:end-1,1) = obj.ExternalAdvOut;
@@ -134,7 +138,7 @@ classdef Advection < handle
                             end
                         else
                             %add a new source
-                            Advection.addSource(mobj,AdvType,idnewinput(i));
+                            addSource(obj,mobj,AdvType,idnewinput(i));
                             msgtxt = sprintf(msg{2},idnewinput(i));
                             warndlg(msgtxt);
                         end
@@ -148,7 +152,7 @@ classdef Advection < handle
                  if ~isempty(idinputs)
                      warndlg('Inputs have been added and need to be defined in Setup');
                      for i=1:length(idinputs)
-                         Advection.addSource(mobj,AdvType,idinputs(i));
+                         addSource(obj,mobj,AdvType,idinputs(i));
                      end
                  end
             end
@@ -157,77 +161,8 @@ classdef Advection < handle
             obj = setAdvectionGraph(obj,mobj,AdvType);    
             setClassObj(mobj,'Inputs','Advection',obj);
         end
-
-%%
-        function addSource(mobj,AdvType,idinput)
-            %add a new advection source based on AdvType
-            obj  = getClassObj(mobj,'Inputs','Advection');
-            switch AdvType
-                case 'River'
-                    River.addRiver(mobj,idinput,...
-                             obj.ExternalAdvIn(idinput));
-                case 'Drift'
-                    Drift.addDrift(mobj,idinput,...
-                             obj.ExternalAdvIn(idinput));
-            end
-        end
         
 %%       
-        function addEleAdvection(mobj)
-            %amend advection matrix to add an extra element
-            obj  = getClassObj(mobj,'Inputs','Advection');
-            if ~isempty(obj.RiverFlows)
-                obj = Advection.setAdvectionType(mobj,'River');
-                obj = updateAdvectionArrays(obj);
-                obj = setAdvectionProps(obj,'River');
-            end
-            %
-            if ~isempty(obj.DriftFlows)
-                obj = Advection.setAdvectionType(mobj,'Drift');
-                obj = updateAdvectionArrays(obj);
-                obj = setAdvectionProps(obj,'Drift');
-            end
-            %
-            setClassObj(mobj,'Inputs','Advection',obj);        
-            %--------------------------------------------------------------
-            function obj = updateAdvectionArrays(obj)
-                nele = length(obj.ExternalAdvIn);
-                obj.ExternalAdvIn(nele+1,1) = 0;
-                obj.ExternalAdvOut(nele+1,1) = 0;
-                pad = zeros(nele,1);
-                obj.InternalAdv(nele+1,:) = pad;
-                obj.InternalAdv(:,nele+1) = [pad;0]';
-            end
-        end
-        
-%%        
-        function delEleAdvection(mobj,idx)
-            %delete advection properties for element(idx)
-            obj  = getClassObj(mobj,'Inputs','Advection');
-            if ~isempty(obj.RiverFlows)
-                obj = Advection.setAdvectionType(mobj,'River');
-                obj = deleteAnAdvection(obj,idx);
-                obj = setAdvectionProps(obj,'River');
-            end
-            %
-            if ~isempty(obj.DriftFlows)
-                obj = Advection.setAdvectionType(mobj,'Drift');
-                obj = deleteAnAdvection(obj,idx);
-                obj = setAdvectionProps(obj,'Drift');
-            end
-            %
-            %assign updated flow field to the specified flow type
-            setClassObj(mobj,'Inputs','Advection',obj);
-            %--------------------------------------------------------------
-            function obj = deleteAnAdvection(obj,idx)
-                obj.ExternalAdvIn(idx) = [];
-                obj.ExternalAdvOut(idx) = [];
-                obj.InternalAdv(idx,:) = [];
-                obj.InternalAdv(:,idx) = [];
-            end
-        end
-        
-%%
 %--------------------------------------------------------------------------
 %       INITIALISE
 %--------------------------------------------------------------------------
@@ -265,7 +200,7 @@ classdef Advection < handle
                 nlabel = strcat(num2str(flowGraph.Nodes.EleID),...
                     '-',flowGraph.Nodes.Name);
                 %check mass balance of advective flows
-                ok = Advection.checkMassBalance(mobj,'River');
+                ok = checkMassBalance(obj,'River');
                 if ok<1
                     warndlg('Mass balance fails for defined Advection');
                 end                
@@ -320,7 +255,7 @@ classdef Advection < handle
             rncobj = getClassObj(mobj,'Inputs','RunConditions');
             if isempty(rncobj)
                 nlabel = {'Need to define Run Parameters>Conditions'};
-            elseif ~rncobj.IncTidalPumping                
+            elseif ~rncobj.IncTidalPumping         
                 nlabel = {'Include Tidal Pumping condition not set'};
             elseif isempty(obj.RiverFlows)
                 nlabel = {'No river flows defined so there is no tidal pumping'};                
@@ -370,7 +305,7 @@ classdef Advection < handle
                 qOut = varmatrix(2:end-1,1);
                 q = varmatrix(2:end-1,2:end-1);
             else 
-                obj = Advection.setAdvectionType(mobj,AdvType);
+                obj = setAdvectionType(obj,AdvType);
                 qIn = obj.ExternalAdvIn;
                 qOut = obj.ExternalAdvOut;
                 q = obj.InternalAdv;
@@ -423,24 +358,25 @@ classdef Advection < handle
 %% 
         function updateAdvectionGraphs(mobj,tsyear)
             %initialise and update dynamic graphs based on modified conditions (if any)            
-            obj  = getClassObj(mobj,'Inputs','Advection');
+            obj = getClassObj(mobj,'Inputs','Advection');
             if isempty(obj)
                 return;
             end
             rivobj  = getClassObj(mobj,'Inputs','River');
+            rncobj = getClassObj(mobj,'Inputs','RunConditions');
             %only check need to update if river is included
-            if ~isempty(obj.RiverGraph) && ~isempty(rivobj)
-                obj.RiverGraph = getflowpath(rivobj.River);                
+            if rncobj.IncRiver && ~isempty(obj.RiverGraph) && ~isempty(rivobj)
+                obj.RiverGraph = getflowpath(rivobj);                
             end
             dftobj  = getClassObj(mobj,'Inputs','Drift');
             %only check need to update if drift is included
-            if ~isempty(obj.DriftGraph) && ~isempty(dftobj)
-                obj.DriftGraph = getflowpath(dftobj.Drift);
+            if rncobj.IncDrift && ~isempty(obj.DriftGraph) && ~isempty(dftobj)
+                obj.DriftGraph = getflowpath(dftobj);
             end
 
              setClassObj(mobj,'Inputs','Advection',obj);
             %--------------------------------------------------------------
-            function h_flowpath = getflowpath(gobj)
+            function h_flowpath = getflowpath(gobj) %also uses obj,mobj and tsyear
                 %internal function to get relevant flowgraph
                 if isa(gobj,'River')
                     GraphName = 'RiverGraph';
@@ -570,7 +506,6 @@ classdef Advection < handle
                 end
                 h_flowpath.Edges.Weight = newEdgeWeight;
             end
-            %
         end
 
 %%
@@ -728,34 +663,6 @@ classdef Advection < handle
             varmatrix = full(varmatrix);
         end
         
-%%                
-        function obj = setAdvectionType(mobj,AdvType)
-            %define or update advection properties
-            obj  = getClassObj(mobj,'Inputs','Advection');
-            if isempty(obj)
-                obj = Advection.getAdvection;
-            end
-            %assign the specified advection field to the internal
-            %advection properties
-            switch AdvType
-                case 'River'
-                    FlowIn = obj.RiverIn;
-                    FlowOut = obj.RiverOut;
-                    IntFlows = obj.RiverFlows;
-                case 'Drift'
-                    FlowIn = obj.DriftIn;
-                    FlowOut = obj.DriftOut;
-                    IntFlows = obj.DriftFlows;
-                case 'Qtp'
-                    FlowIn = obj.TidalPumpingIn;
-                    FlowOut = obj.TidalPumpingOut;
-                    IntFlows = obj.TidalPumpingFlows;
-            end
-            obj.ExternalAdvIn = FlowIn;
-            obj.ExternalAdvOut = FlowOut;
-            obj.InternalAdv = IntFlows; 
-        end
-  
 %%
         function [qtp,qtp0] = getTidalPumpingDischarge(mobj,rchChIDs)
             %compute tidal pumping for each reach with a river flow based on tide and river properties
@@ -766,14 +673,14 @@ classdef Advection < handle
             zLW0 = wlvobj.LWaterLevel; %Low Water Level at mouth at time t
             Tp   = wlvobj.TidalPeriod; %tidal period (hrs)            
 
-            eleobj = getClassObj(mobj,'Inputs','Advection');
+            eleobj = getClassObj(mobj,'Inputs','Element');
             eletype = getEleProp(eleobj,'transEleType');
             ich   = strcmp(eletype,'Channel');
             eLe = getEleProp(eleobj,'Length');
             ws = getEleProp(eleobj,'transVertExch');
             cero = getEleProp(eleobj,'SedMobility');
             
-            estobj = getClassObj(mobj,'Inputs',Estuary');
+            estobj = getClassObj(mobj,'Inputs','Estuary');
             eLw  = estobj.WidthELength;%estuary width e-folding length (m)
             
             Hhw = Reach.getReachProp(mobj,'HWvolume')./... %depth at high water (m)
@@ -820,37 +727,6 @@ classdef Advection < handle
             qtp0 = floor((term1.*(0-term3+term4)-term5).*Am0); 
         end
 
-%%
-        function clearAdvection(mobj,AdvType)
-            %clear advection properties based on AdvType
-            obj  = getClassObj(mobj,'Inputs','Advection');
-            if isempty(obj), return; end
-            switch AdvType
-                case 'River'
-                    obj.RiverIn = 0;
-                    obj.RiverOut = 0;
-                    obj.RiverFlows = [];
-                    obj.RiverGraph = [];
-                case 'Drift'
-                    obj.DriftIn = 0;
-                    obj.DriftOut = 0;
-                    obj.DriftFlows = [];
-                    obj.DrifGraph = [];
-                case 'Qtp'
-                    obj.TidalPumpingIn = 0;
-                    obj.TidalPumpingOut = 0;
-                    obj.TidalPumpingFlows = [];
-                    obj.QtpGraph = [];
-            end
-             setClassObj(mobj,'Inputs','Advection',obj);
-        end
-%%
-        function ok = checkMassBalance(mobj,AdvType)
-            %check mass balance of advective flows
-            obj = Advection.setAdvectionType(mobj,AdvType);
-            ok = checkAdvMassBalance(obj);
-        end
-        
 %%       
         function inputSummary(mobj,src,~)
             %setup table of flow inputs for Flows>Input Summary tab
@@ -880,7 +756,69 @@ classdef Advection < handle
             end
         end       
     end
-
+    
+%%
+    methods
+        function addEleAdvection(obj,mobj)
+            %amend advection matrix to add an extra element
+            if ~isempty(obj.RiverFlows)
+                obj = setAdvectionType(obj,'River');
+                obj = updateAdvectionArrays(obj);
+                obj = setAdvectionProps(obj,'River');
+            end
+            %
+            if ~isempty(obj.DriftFlows)
+                obj = setAdvectionType(obj,'Drift');
+                obj = updateAdvectionArrays(obj);
+                obj = setAdvectionProps(obj,'Drift');
+            end
+            %
+            setClassObj(mobj,'Inputs','Advection',obj);        
+            %--------------------------------------------------------------
+            function obj = updateAdvectionArrays(obj)
+                nele = length(obj.ExternalAdvIn);
+                obj.ExternalAdvIn(nele+1,1) = 0;
+                obj.ExternalAdvOut(nele+1,1) = 0;
+                pad = zeros(nele,1);
+                obj.InternalAdv(nele+1,:) = pad;
+                obj.InternalAdv(:,nele+1) = [pad;0]';
+            end
+        end
+        
+%%        
+        function delEleAdvection(obj,mobj,idx)
+            %delete advection properties for element(idx)
+            if ~isempty(obj.RiverFlows)
+                obj = setAdvectionType(obj,'River');
+                obj = deleteAnAdvection(obj,idx);
+                obj = setAdvectionProps(obj,'River');
+            end
+            %
+            if ~isempty(obj.DriftFlows)
+                obj = setAdvectionType(obj,'Drift');
+                obj = deleteAnAdvection(obj,idx);
+                obj = setAdvectionProps(obj,'Drift');
+            end
+            %
+            %assign updated flow field to the specified flow type
+            setClassObj(mobj,'Inputs','Advection',obj);
+            %--------------------------------------------------------------
+            function obj = deleteAnAdvection(obj,idx)
+                obj.ExternalAdvIn(idx) = [];
+                obj.ExternalAdvOut(idx) = [];
+                obj.InternalAdv(idx,:) = [];
+                obj.InternalAdv(:,idx) = [];
+            end
+        end
+        
+%%
+        function ok = checkMassBalance(obj,AdvType)
+            %check mass balance of advective flows
+            obj = setAdvectionType(obj,AdvType);
+            ok = checkAdvMassBalance(obj);
+        end    
+    end
+%%
 %--------------------------------------------------------------------------
 %       PRIVATE UTILITIES
 %--------------------------------------------------------------------------      
@@ -926,6 +864,19 @@ classdef Advection < handle
                     obj.TidalPumpingFlows = obj.InternalAdv;
             end
         end
+
+%%
+        function addSource(obj,mobj,AdvType,idinput)
+            %add a new advection source based on AdvType
+            switch AdvType
+                case 'River'
+                    River.addRiver(mobj,idinput,...
+                             obj.ExternalAdvIn(idinput));
+                case 'Drift'
+                    Drift.addDrift(mobj,idinput,...
+                             obj.ExternalAdvIn(idinput));
+            end
+        end
         
 %%
         function obj = setAdvectionGraph(obj,mobj,AdvType)
@@ -951,7 +902,53 @@ classdef Advection < handle
                                                                 nodetxt);
             obj.(AdvGraph) = flowGraph;
         end
-%%        
+%%                
+        function obj = setAdvectionType(obj,AdvType)
+            %assign the specified advection field to the internal
+            %advection properties
+            switch AdvType
+                case 'River'
+                    FlowIn = obj.RiverIn;
+                    FlowOut = obj.RiverOut;
+                    IntFlows = obj.RiverFlows;
+                case 'Drift'
+                    FlowIn = obj.DriftIn;
+                    FlowOut = obj.DriftOut;
+                    IntFlows = obj.DriftFlows;
+                case 'Qtp'
+                    FlowIn = obj.TidalPumpingIn;
+                    FlowOut = obj.TidalPumpingOut;
+                    IntFlows = obj.TidalPumpingFlows;
+            end
+            obj.ExternalAdvIn = FlowIn;
+            obj.ExternalAdvOut = FlowOut;
+            obj.InternalAdv = IntFlows; 
+        end
+        
+%%
+        function clearAdvection(obj,AdvType)
+            %clear advection properties based on AdvType
+            switch AdvType
+                case 'River'
+                    obj.RiverIn = 0;
+                    obj.RiverOut = 0;
+                    obj.RiverFlows = [];
+                    obj.RiverGraph = [];
+                case 'Drift'
+                    obj.DriftIn = 0;
+                    obj.DriftOut = 0;
+                    obj.DriftFlows = [];
+                    obj.DrifGraph = [];
+                case 'Qtp'
+                    obj.TidalPumpingIn = 0;
+                    obj.TidalPumpingOut = 0;
+                    obj.TidalPumpingFlows = [];
+                    obj.QtpGraph = [];
+            end
+             setClassObj(mobj,'Inputs','Advection',obj);
+        end
+
+%%
         function ok = checkAdvMassBalance(obj)
             %checks mass balance of properties loaded into internal
             %advection properties that depend on Advection Type

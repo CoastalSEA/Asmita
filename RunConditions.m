@@ -43,6 +43,11 @@ classdef RunConditions < muiPropertyUI
         IncDynHydraulics = false%flag to include hydraulics data from CSTmodel
 %         IncDynamicElements = false %flag to enable elements to change type and connectivity        
     end   
+    
+    properties (Transient)
+        Adv2Inc                 %advections to include in model run
+        Adv2Offset              %advections to offset in initial equilibrium              
+    end
 %%   
     methods (Access=protected)
         function obj = RunConditions(mobj)   
@@ -69,7 +74,42 @@ classdef RunConditions < muiPropertyUI
                 %add any additional manipulation of the input here
             end
             setClassObj(mobj,'Inputs',classname,obj);
-        end     
+        end  
+%%
+        function setAdvectionOffset(mobj)
+            %find whether an offset is to be included
+            obj = getClassObj(mobj,'Inputs','RunConditions');
+            if obj.IncRiver && obj.IncDrift %both included
+                obj.Adv2Inc = 'flow+drift';           %include both;
+                if obj.RiverOffset && obj.DriftOffset
+                    obj.Adv2Offset = 'flow+drift';        %include both offsets
+                elseif obj.RiverOffset
+                    obj.Adv2Offset = 'flow';              %include river offset
+                elseif obj.DriftOffset
+                    obj.Adv2Offset = 'drift';             %include drift offset
+                else
+                    obj.Adv2Offset = 'none';
+                end         
+            elseif obj.IncRiver                %only river included
+                obj.Adv2Inc = 'flow';                 %include river
+                if obj.RiverOffset
+                    obj.Adv2Offset = 'flow';              %include river offset
+                else
+                    obj.Adv2Offset = 'none';
+                end
+            elseif obj.IncDrift                %only drift included
+                obj.Adv2Inc = 'drift';                %include drift
+                if obj.DriftOffset
+                    obj.Adv2Offset = 'drift';             %include drift offset
+                else
+                    obj.Adv2Offset = 'none';    
+                end
+            else
+                obj.Adv2Inc = 'none';
+                obj.Adv2Offset = 'none';
+            end
+            setClassObj(mobj,'Inputs','RunConditions',obj);
+        end
     end
 %%        
         %add other functions to operate on properties as required   

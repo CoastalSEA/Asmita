@@ -107,28 +107,7 @@ classdef Estuary < muiPropertyUI
                                 estobj.ExternalDisp,nodetxt);
             setClassObj(mobj,'Inputs','Estuary',estobj);               
         end     
-%%        
-        function addEleDispersion(mobj)
-            %amend dispersion matrix to add an extra element
-            % used when element added
-            obj  = getClassObj(mobj,'Inputs','Estuary');
-            nele = length(obj.ExternalDisp);
-            obj.ExternalDisp(nele+1,1) = 0;
-            pad = zeros(nele,1);
-            obj.Dispersion(nele+1,:) = pad;
-            obj.Dispersion(:,nele+1) = [pad;0]';
-            setClassObj(mobj,'Inputs','Estuary',obj);
-        end       
-%%        
-        function delEleDispersion(mobj,idx)
-            %delete dispersion properties for element(idx)
-            % used when element deleted
-            obj  = getClassObj(mobj,'Inputs','Estuary');
-            obj.ExternalDisp(idx) = [];
-            obj.Dispersion(idx,:) = [];
-            obj.Dispersion(:,idx) = [];
-            setClassObj(mobj,'Inputs','Estuary',obj);
-        end
+
 %%
 %--------------------------------------------------------------------------
 %       INITIALISE
@@ -304,7 +283,7 @@ classdef Estuary < muiPropertyUI
                 case 'Drift'
                     axtag = 'axDrift';
                     [g,nlabel] = Advection.initialiseDriftGraph(mobj);  
-                case 'TidalPumping'
+                case 'Tidal Pumping'
                     axtag = 'axTidalPump';
                     [g,nlabel] = Advection.initialiseQtpGraph(mobj); 
             end
@@ -322,17 +301,21 @@ classdef Estuary < muiPropertyUI
             %LWidths = 5*elabel/max(elabel);
             plot(g,'Parent',h_ax,'EdgeLabel',elabel,'NodeLabel',nlabel);
                 %'LineWidth',LWidths,
-            uicontrol('Parent',src, ...
-                'Style', 'pushbutton', 'String', 'Pan',...
-                'TooltipString','When active, right click for zoom menu',...
-                'Units','normalized', ...
-                'Position', [0.02 0.94 0.06 0.05], ...
-                'Callback', @(src,evtdat)Estuary.panButton(h_ax,src,evtdat));    
-            uicontrol('Parent',src, ...
-                'Style', 'pushbutton', 'String', 'Off',...
-                'Units','normalized', ...
-                'Position', [0.08 0.94 0.06 0.05], ...
-                'Callback', 'zoom(gcbf,''off'');pan(gcbf,''off'')'); 
+                
+            hpan = findobj(src,'Style','pushbutton');
+            if isempty(hpan)
+                uicontrol('Parent',src, ...
+                    'Style', 'pushbutton', 'String', 'Pan',...
+                    'TooltipString','When active, right click for zoom menu',...
+                    'Units','normalized', ...
+                    'Position', [0.02 0.94 0.06 0.05], ...
+                    'Callback', @(src,evtdat)Estuary.panButton(h_ax,src,evtdat));    
+                uicontrol('Parent',src, ...
+                    'Style', 'pushbutton', 'String', 'Off',...
+                    'Units','normalized', ...
+                    'Position', [0.08 0.94 0.06 0.05], ...
+                    'Callback', 'zoom(gcbf,''off'');pan(gcbf,''off'')'); 
+            end
         end 
 %%
         function panButton(h_ax,~,~)            
@@ -350,13 +333,10 @@ classdef Estuary < muiPropertyUI
         function Response(mobj,src,~)
             %present rate of slr and system response times on a tab
             %initialise table for response results
-            ht = findobj(src,'Type','uitable');
-            delete(ht);
-            ht = findobj(src,'Tag','Resptext');
-            delete(ht);
             eleobj = getClassObj(mobj,'Inputs','Element');
             estobj = getClassObj(mobj,'Inputs','Estuary');
             wlvobj = getClassObj(mobj,'Inputs','WaterLevels');
+            rivobj = getClassObj(mobj,'Inputs','River');
             if isempty(eleobj)
                 warndlg('No elements defined yet');
                 return;
@@ -384,9 +364,11 @@ classdef Estuary < muiPropertyUI
             vhw = Reach.getReachProp(mobj,'HWvolume');
             shw = Reach.getReachProp(mobj,'HWarea');
             dExt = estobj.ExternalDisp;
-            AsmitaModel.setDQmatrix(mobj);
-            [B,dd] = AsmitaModel.BddMatrices(mobj);
-            mobj.Model = []; %remove assignments to handle
+            %initialise the ASM_model class
+            ASM_model.setASM_model(mobj);
+            initialiseFlow(rivobj);
+            ASM_model.setDQmatrix(mobj,'flow+drift');
+            [B,dd] = ASM_model.BddMatrices(mobj);
             %maximum rate of sea level rise for system, mm/year
             slr_max = abs(dd)./cb./sm*y2s*1000;
             %maximum biomass*rate for elements with positive biomass
@@ -419,11 +401,14 @@ classdef Estuary < muiPropertyUI
             Estuary.responseTable(mobj,src,userData,tauS,tauM)
         end
         
-
 %%
- 
         function responseTable(mobj,src,tableData,tauS,tauM)
             %create table for tab to summarise estuary response properties 
+            hp = findobj(src,'Type','uipanel');
+            hx = findobj(src,'Tag','Resptext');
+            ht = findobj(src,'Type','uitable');
+            delete(ht);
+            
             eleobj = getClassObj(mobj,'Inputs','Element');
             rownames = getEleProp(eleobj,'EleName');
             colnames = {'Element Name','slr (no bio)','slr (+bio)','Tau (years)'};
@@ -438,9 +423,11 @@ classdef Estuary < muiPropertyUI
                 end
             end
             
-            hp = uipanel('Parent',src,...
-                'Units','normalized', ...
-                'Position',[.03 .05 0.57 0.8]);
+            if isempty(hp)
+                hp = uipanel('Parent',src,...
+                    'Units','normalized', ...
+                    'Position',[.03 .05 0.57 0.8]);
+            end
             uitable('Parent',hp, ...
                 'ColumnName', colnames, ...
                 'RowName', [], ...
@@ -449,23 +436,25 @@ classdef Estuary < muiPropertyUI
                 'Units','normalized',...
                 'Position',[0,0,1,1]);
             
-            msg1 = 'Maximum rates of sea level rise (mm/year) and morphological response time (Tau)';
-            msg2 = 'See Kragtwijk et al (2004) for theoretical basis of estimates';
-            
-            helptext = sprintf('%s\n%s',msg1,msg2);
-            uicontrol('Parent',src,...
-                    'Style','text','String', helptext,...                    
-                    'HorizontalAlignment', 'left',...
-                    'Units','normalized', 'Position', [0.04 0.85 0.8 0.1],...
-                    'Tag','Resptext');
-            msg3 = 'Morphological response times for whole system:';
-            helptext = sprintf('%s\n\nChannel/coarse concentration = %.1f years\nFlats/fine concentration = %.1f years',...
-                msg3,tauS,tauM);
-            uicontrol('Parent',src,...
-                    'Style','text','String', helptext,...                    
-                    'HorizontalAlignment', 'left',...
-                    'Units','normalized', 'Position', [0.61 0.55 0.4 0.25],...
-                    'Tag','Resptext');
+            if isempty(hx)
+                msg1 = 'Maximum rates of sea level rise (mm/year) and morphological response time (Tau)';
+                msg2 = 'See Kragtwijk et al (2004) for theoretical basis of estimates';
+
+                helptext = sprintf('%s\n%s',msg1,msg2);
+                uicontrol('Parent',src,...
+                        'Style','text','String', helptext,...                    
+                        'HorizontalAlignment', 'left',...
+                        'Units','normalized', 'Position', [0.04 0.85 0.8 0.1],...
+                        'Tag','Resptext');
+                msg3 = 'Morphological response times for whole system:';
+                helptext = sprintf('%s\n\nChannel/coarse concentration = %.1f years\nFlats/fine concentration = %.1f years',...
+                    msg3,tauS,tauM);
+                uicontrol('Parent',src,...
+                        'Style','text','String', helptext,...                    
+                        'HorizontalAlignment', 'left',...
+                        'Units','normalized', 'Position', [0.61 0.55 0.4 0.25],...
+                        'Tag','Resptext');
+            end
         end
     end          
 
@@ -486,6 +475,26 @@ classdef Estuary < muiPropertyUI
             else
                 eqConc = obj.EqRhoFine/cn.SedimentDensity;
             end
+        end
+%%       
+        function addEleDispersion(obj,mobj)
+            %amend dispersion matrix to add an extra element
+            % used when element added
+            nele = length(obj.ExternalDisp);
+            obj.ExternalDisp(nele+1,1) = 0;
+            pad = zeros(nele,1);
+            obj.Dispersion(nele+1,:) = pad;
+            obj.Dispersion(:,nele+1) = [pad;0]';
+            setClassObj(mobj,'Inputs','Estuary',obj);
+        end       
+%%        
+        function delEleDispersion(obj,mobj,idx)
+            %delete dispersion properties for element(idx)
+            % used when element deleted
+            obj.ExternalDisp(idx) = [];
+            obj.Dispersion(idx,:) = [];
+            obj.Dispersion(:,idx) = [];
+            setClassObj(mobj,'Inputs','Estuary',obj);
         end
     end
 end

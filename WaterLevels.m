@@ -58,6 +58,7 @@ classdef WaterLevels < muiPropertyUI
     properties (Dependent)
         AngularPeriod       %vector angular frequencies of periods
         AngularPhase        %vector angular frequencies of phases
+        TidalRange          %tidal range used instead of TidalAmp in code
     end
 
     properties (Transient)
@@ -124,14 +125,21 @@ classdef WaterLevels < muiPropertyUI
 %%
     methods
         function freq = get.AngularPeriod(obj)
+            %get dependent property covert cycle period to frequency
             freq = 2*pi./obj.CyclePeriod/muiConstants.y2s;
             freq(isinf(freq)) = 0;
         end
 %%
         function freq = get.AngularPhase(obj)
+            %get dependent property covert angualr period to frequency
             freq = obj.AngularPeriod.*obj.CyclePhase*muiConstants.y2s;
             freq(isinf(freq)) = 0;
         end  
+%%
+        function tr = get.TidalRange(obj)
+            %get tidal range from tidal amplitude
+            tr = obj.TidalAmp*2;
+        end
 %%
         function initialWL(obj,startyr)
             %initialise the water level calculation
@@ -168,7 +176,7 @@ classdef WaterLevels < muiPropertyUI
             %obtain updated water levels at given time step
             % mtime - model time from model t=0 in seconds
             % startyr - start year of simulation in seconds from Julian 0
-            tr = obj.TidalAmp*2;
+            tr = obj.TidalRange;
             trfc = obj.LWtoHWratio;
             amp = obj.CycleAmp;
             om1 = obj.AngularPeriod; %get fcn converts input to s^-1
@@ -211,7 +219,34 @@ classdef WaterLevels < muiPropertyUI
             obj.HW0 = obj.HWaterLevel;   
             obj.LW0 = obj.LWaterLevel;
         end
-
+%%
+        function tabPlot(obj,src,mobj)
+            %plot water levels on WAaterLevel tab
+            msgtxt = 'Run properties have not been set';
+            rnpobj = getClassObj(mobj,'Inputs','RunProperties',msgtxt);
+            if isempty(rnpobj), return; end
+            y2s = mobj.Constants.y2s;
+            dt = rnpobj.TimeStep;
+            nstep = rnpobj.NumSteps;            
+            mtime = (0:dt:nstep*dt)*y2s;
+            [HWL,MSL,LWL] = newWaterLevels(obj,mtime,rnpobj.StartYear*y2s);
+            
+            
+            
+            ht = findobj(src,'Type','axes');
+            delete(ht);
+            ax = axes(src,'Tag','PlotFigAxes');
+            
+            ptime = rnpobj.StartYear+mtime/y2s;
+            plot(ax,ptime,MSL,'Color',mcolor('orange'),'DisplayName','Mean water level')
+            hold on
+            plot(ax,ptime,HWL,'Color',mcolor('dark blue'),'DisplayName','High water level')
+            plot(ax,ptime,LWL,'Color',mcolor('light blue'),'DisplayName','Low water level')
+            hold off
+            xlabel('Time (years)')
+            ylabel('Elevation (mAD)')
+            title('Water levels based on current settings')
+            legend
+        end
     end
-        
 end

@@ -71,19 +71,94 @@ classdef Saltmarsh < muiPropertyUI
                 %add any additional manipulation of the input here
             end
             setClassObj(mobj,'Inputs',classname,obj);
-        end     
+        end    
 %%
+%--------------------------------------------------------------------------
+% Static functions called by AsmitaModel
+%--------------------------------------------------------------------------     
+        function Bk = BioProduction(mobj)
+            % Bk is a diagonal matrix for the total sedimentation and is the product 
+            % of the species biomass and the rate(kBm) - units of 1/s.
+            [obj,~,eleobj,cn] = Saltmarsh.getInputData(mobj);
+%             obj = getClassObj(mobj,'Inputs','Saltmarsh');
+%             eleobj = getClassObj(mobj,'Inputs','Element',msgtxt);
+%             cn = getConstantStruct(mobj.Constants);
+            eletype = getEleProp(eleobj,'EleType');
+            nele = length(eletype);
+            ism = find(strcmp(eletype,'Saltmarsh'));
+            nsm = length(ism);
+            
+            %get matrix of the biomass with a row for each element and
+            %a column for each species (kg/m^2) 
+            Bm = Biomass(obj,eleobj);
+            
+            %assign rate of biomass production to saltmarsh elements
+            kBm = getEleSpeciesProduct(obj,eleobj,cn);
+            
+            %sBk is a vector for the total sedimentation and is the product 
+            %of the species biomass and the rate(kBm) - units of 1/s.
+            sBk = zeros(nele,1);
+            for k=1:nsm
+                sBk(ism(k))  = Bm(ism(k),:)*kBm(ism(k),:)';
+            end
+            Bk = diag(sBk);
+        end
+%%
+        function Blim = limitingBiomass(mobj)
+            %maximum biomass*productivity for elements with positive biomass
+            [obj,~,eleobj,cn] = Saltmarsh.getInputData(mobj);
+            if isempty(obj)
+                Blim = 0;
+                return;
+            end
+            bmx = obj.MaxBiomass;
+            Bm = Biomass(obj,eleobj);
+            kBm = getEleSpeciesProduct(obj,eleobj,cn);
+            Blim = diag(bmx*(kBm.*(Bm>0))');
+        end
+%%    
+        function Deq = EqDepth(mobj)
+            %calculate the equilibrium depth over saltmarsh elements
+            %get model parameters
+            [obj,wlvobj,eleobj,cn] = Saltmarsh.getInputData(mobj);
+            dmx = obj.MaxSpDepth;
+            dslr = wlvobj.SLRrate/mobj.Constants.y2s; %convert to seconds            
+            eletype = getEleProp(eleobj,'EleType');            
+            ism = strcmp(eletype,'Saltmarsh');
+            Deq = zeros(length(eletype),1); 
+            %
+            sm = getEleProp(eleobj,'MovingSurfaceArea');
+            vm = getEleProp(eleobj,'MovingVolume');
+            depth = vm./sm; % water depth in element
+            [aws,~] = getVerticalExchange(obj,eleobj); 
+            ws = bioenhancedsettling(obj,depth,aws);
+            %
+            idp = depth<=max(dmx);            
+            ct = obj.MarshDepthConc; %concentration over marsh as a function of depth
+            cem = interp1q(ct.Depth,ct.Concentration,depth);
+            qm = ws.*cem./depth.*ism.*idp;
+         
+            ism = find(strcmp(eletype,'Saltmarsh'));
+            nsm = length(ism);
+            for jsm = 1:nsm                
+                Deq(ism(jsm)) = morris_eqdepth(obj,cn,qm(ism(jsm)),dslr);
+            end
+        end
+%%
+%--------------------------------------------------------------------------
+% Static functions for plots and anmations to display aspects of model setup
+%--------------------------------------------------------------------------
         function EqDepthBiomass(mobj)
             %examine influence of biomass production rates on equilibirum depth
             %produces three graphs and displays the resultant eq.depth
             %get input parameters             
-            [obj,wlvobj,cn] = Saltmarsh.getInputData(mobj);
+            [obj,wlvobj,eleobj,cn] = Saltmarsh.getInputData(mobj);
             if isempty(obj) || isempty(wlvobj), return; end
             %--------------------------------------------------------------
             % Store original values of kbm so that they can be restored
             kbm0 = obj.SpeciesProduct;     %species productivity (m2/kg/yr)
             %-------------------------------------------------------------- 
-            [sm,ct] = initialiseSaltmarshModel(obj,wlvobj,cn,mobj);
+            [sm,ct] = initialiseSaltmarshModel(obj,wlvobj,eleobj,cn,mobj);
             if isempty(ct), return; end
 
             %--------------------------------------------------------------
@@ -121,7 +196,7 @@ classdef Saltmarsh < muiPropertyUI
 %%
         function BiomassDistributionPlot(mobj)
             %plot the distribution of each species on the bare flat profile
-            [obj,wl,~] = Saltmarsh.getInputData(mobj);
+            [obj,wl,~,~] = Saltmarsh.getInputData(mobj);
             if isempty(obj) || isempty(wl), return; end
 
             width = inputdlg('MTL to HW width:','Saltmarsh width',1,{'500'});
@@ -143,13 +218,13 @@ classdef Saltmarsh < muiPropertyUI
 %%
         function MarshFlatAnimation(mobj)
             %animation of the development of marsh from initial bare flat
-            [obj,wlvobj,cn] = Saltmarsh.getInputData(mobj);
+            [obj,wlvobj,eleobj,cn] = Saltmarsh.getInputData(mobj);
             if isempty(obj) || isempty(wlvobj), return; end
             %--------------------------------------------------------------
             % Store original values of kbm so that they can be restored
             kbm0 = obj.SpeciesProduct;     %species productivity (m2/kg/yr)
             %-------------------------------------------------------------- 
-            [sm,ct] = initialiseSaltmarshModel(obj,wlvobj,cn,mobj);
+            [sm,ct] = initialiseSaltmarshModel(obj,wlvobj,eleobj,cn,mobj);
             if isempty(ct), return; end
             
             %prompt for run parameters
@@ -245,11 +320,99 @@ classdef Saltmarsh < muiPropertyUI
                 return;
             end
             bioDistributionPlot(obj,y,z,biomass,depth,a,hp);
-        end
+        end        
     end
 %%
     methods (Access=private)
-        function [sm,ct] = initialiseSaltmarshModel(obj,wlvobj,cn,mobj)
+%--------------------------------------------------------------------------
+% Functions called by AsmitaModel
+%--------------------------------------------------------------------------        
+        function Bm = Biomass(obj,eleobj)
+            %calculate the biomass for a given depth in a saltmarsh element
+            %
+            % Bm is a matrix of the biomass with a row for each element and
+            % a column for each species (kg/m^2) 
+            %
+            % Bmx is a vector of the maximum cross marsh biomass of those 
+            % species that have a positive biomass for a given element (kg/m^2)
+            %
+            %get model parameters
+            vm = getEleProp(eleobj,'MovingVolume');
+            sm = getEleProp(eleobj,'MovingSurfaceArea');
+            eletype = getEleProp(eleobj,'EleType');
+            nele = length(eletype);
+            ism = find(strcmp(eletype,'Saltmarsh'));
+            nsm = length(ism);
+            nsp = obj.NumSpecies;
+            
+            depth =vm./sm;
+            Bc = morris_biocoeffs(obj);
+            n1  = ones(nele,1);
+            dd  = [depth depth.^2 n1];
+           
+            Bm  = zeros(nele,nsp);
+%             Bmx = zeros(nele,1);
+%             sBk = Bmx;
+            for k=1:nsm
+                Bm(ism(k),:) = Bc*dd(ism(k),:)';
+                jk = find(Bm(ism(k),:) <= 0);
+                if ~isempty(jk)
+                    Bm(ism(k),jk)= 0;
+                end
+%                 kBm = Saltmarsh.getEleSpeciesProduct(obj,mobj);                
+%                 jk = find(Bm(ism(k),:)>0);
+%                 if ~isempty(jk)
+%                     Bmx(ism(k))  = max(bmx(jk));
+%                 end
+%                 sBk(ism(k))  = Bm(ism(k),:)*kBm(ism(k),:)';
+            end
+        end
+%%
+        function kBm = getEleSpeciesProduct(obj,eleobj,cn)
+            %get the species productivity for each element
+            eletype = getEleProp(eleobj,'EleType');
+            nele = length(eletype);
+            ism = find(strcmp(eletype,'Saltmarsh'));
+            nsp = obj.NumSpecies;
+            kbm  = obj.SpeciesProduct;
+            temp = ones(nele,1);
+            kBm  = zeros(nele,nsp);
+            if ~isempty(kbm)
+                kbm = kbm/cn.y2s;         %convert years to seconds
+                for k = 1:nsp
+                    kBm(ism,k) = kbm(k)./temp(ism);
+                end
+            end
+        end  
+%%
+        function [aws,c0] = getVerticalExchange(~,eleobj)
+            %get the vertical exchange of the bare saltmarsh and tidal flat
+            %and the concenctration over the marsh
+%             eleobj  = getClassObj(eleobj,'Inputs','Element');
+            eletype = getEleProp(eleobj,'EleType');
+            ws = getEleProp(eleobj,'VerticalExchange');
+            ism = strcmp(eletype,'Saltmarsh');
+            ifl = strcmp(eletype,'Tidalflat');
+            if any(ism) 
+                awm = mean(ws(ism));
+            else       %no saltmarsh elements defined
+                awm = mean(ws(ifl));
+            end
+            awf = mean(ws(ifl)); 
+            aws = [awm,awf];
+            %concentration over marsh
+            cnc  = getEleProp(eleobj,'EqConcentration');
+            if any(ism) 
+                c0 = mean(cnc(ism));
+            else       %no saltmarsh elements defined
+                c0 = mean(cnc(ifl));
+            end
+        end   
+%%
+%--------------------------------------------------------------------------
+% Static functions for plots and anmations to display aspects of model setup
+%--------------------------------------------------------------------------
+        function [sm,ct] = initialiseSaltmarshModel(obj,wlvobj,eleobj,cn,mobj)
             %Set up inputs needed by MarshFlatAnimation and EqDepthBiomass             
             newWaterLevels(wlvobj,0,0);                
             sm.dslr = wlvobj.SLRrate/cn.y2s;  %rate of sea level change (m/s)
@@ -257,7 +420,7 @@ classdef Saltmarsh < muiPropertyUI
             %intitialise transient properties            
             Element.initialiseElements(mobj);
             Element.setEqConcentration(mobj);
-            [sm.aws,c0] = getVerticalExchange(obj,mobj);    
+            [sm.aws,c0] = getVerticalExchange(obj,eleobj);    
             
             %marsh concentration options
             mco.tsn = 14.77;          %duration of spring-neap cycle (days) 
@@ -301,29 +464,7 @@ classdef Saltmarsh < muiPropertyUI
             sm.dmx = max(obj.MaxSpDepth); 
         end
 %%
-        function [aws,c0] = getVerticalExchange(~,mobj)
-            %get the vertical exchange of the bare saltmarsh and tidal flat
-            %and the concenctration over the marsh
-            eleobj  = getClassObj(mobj,'Inputs','Element');
-            eletype = getEleProp(eleobj,'EleType');
-            ws = getEleProp(eleobj,'VerticalExchange');
-            ism = strcmp(eletype,'Saltmarsh');
-            ifl = strcmp(eletype,'Tidalflat');
-            if any(ism) 
-                awm = mean(ws(ism));
-            else       %no saltmarsh elements defined
-                awm = mean(ws(ifl));
-            end
-            awf = mean(ws(ifl)); 
-            aws = [awm,awf];
-            %concentration over marsh
-            cnc  = getEleProp(eleobj,'EqConcentration');
-            if any(ism) 
-                c0 = mean(cnc(ism));
-            else       %no saltmarsh elements defined
-                c0 = mean(cnc(ifl));
-            end
-        end     
+  
 %%
         function bioInfluencePlot(obj,cn,slr,deq,biom,tx)
             %plot marsh concentrations, submergence, response to SLR
@@ -486,8 +627,8 @@ classdef Saltmarsh < muiPropertyUI
             %animation of marsh surface
             hfig = figure('Name','Marsh animation','Tag','PlotFig');
             ax = axes(hfig,'Tag','PlotFigAxes');
-            ax.Position = [0.16,0.16,0.65,0.75]; %make space for slider bar
-            setSlideControl(obj,hfig,time,z,zHW,zHW-dmx);
+            ax.Position = [0.16,0.18,0.65,0.75]; %make space for slider bar
+            hm = setSlideControl(obj,hfig,time,z,zHW,zHW-dmx);
             
             zmxdep = zHW-dmx;
             zi = z(1,:);   zHWi = zHW(1);   zmxdepi = zmxdep(1);
@@ -503,14 +644,15 @@ classdef Saltmarsh < muiPropertyUI
             hp(1).YDataSource = 'zmxdepi'; 
             ax.YLimMode = 'manual';   
             ax.YLim(2) = max([max(z,[],'all'),max(zHW)])+0.1;
-            title(sprintf('Saltmarsh growth \nTime = %s years',string(time(1))))
+            title('Saltmarsh development')
             nint = length(time);
             Mframes(nint,1) = getframe(gcf);
             Mframes(1,1) = getframe(gcf);
             for i=2:nint
                 zi = z(i,:); zHWi = zHW(i)*[1 1]; zmxdepi = zmxdep(i)*[1 1]; %#ok<NASGU>
                 refreshdata(hp,'caller')
-                title(sprintf('Saltmarsh growth \nTime = %s years',string(time(i))))
+                hm(1).Value = time(i);
+                hm(2).String = string(string(time(i)));
                 drawnow;                 
                 Mframes(i,1) = getframe(gcf); %NB print function allows more control of resolution 
             end
@@ -523,23 +665,23 @@ classdef Saltmarsh < muiPropertyUI
             end
         end
 %%
-%%
         function hm = setSlideControl(obj,hfig,time,z,zHW,zmxdep)
             %intialise slider to set different t values          
             hm(1) = uicontrol('Parent',hfig,...
                     'Style','slider','Value',time(1),... 
                     'Min',time(1),'Max',time(end),'sliderstep',[1 1]/time(end),...
                     'Callback', @(src,evt)updateSMplot(obj,src,evt),...
-                    'HorizontalAlignment', 'center',...
-                    'Units','normalized', 'Position', [0.2,0.01,0.6,0.04],...
+                    'Units','normalized', 'Position', [0.15,0.008,0.58,0.04],...
                     'UserData',struct('time',time,'z',z,'zHW',zHW,'zmxdep',zmxdep),...
-                    'Tag','stepMovie');                
+                    'HorizontalAlignment', 'center','Tag','stepMovie');                
             hm(2) = uicontrol('Parent',hfig,...
-                    'Style','text','String',num2str(time(1)),'Units','normalized',... 
-                    'Position',[0.84,0.01,0.1,0.03],'Tag','SManimation');
+                    'Style','text','String',num2str(time(1)),'FontSize',10,...
+                    'Units','normalized','Position',[0.84,0.006,0.2,0.045],...
+                    'HorizontalAlignment','left','Tag','SManimation');
             uicontrol('Parent',hfig,...
-                    'Style','text','String','T = ','Units','normalized',... 
-                    'Position',[0.81,0.01,0.05,0.03],'Tag','Ttxt');    
+                    'Style','text','String','Time = ','FontSize',10,... 
+                    'Units','normalized','Position',[0.76,0.006,0.08,0.045],...
+                    'HorizontalAlignment','left','Tag','Ttxt');    
         end  
 %%
         function updateSMplot(~,src,~)
@@ -557,7 +699,6 @@ classdef Saltmarsh < muiPropertyUI
             zHWi = sld.zHW(idx)*[1 1];       %#ok<NASGU>
             zmxdepi = sld.zmxdep(idx)*[1 1]; %#ok<NASGU>
             refreshdata(hp,'caller')
-            title(sprintf('Saltmarsh growth \nTime = %s years',string(sld.time(idx))))
             drawnow;
         end
 %%        
@@ -590,12 +731,14 @@ classdef Saltmarsh < muiPropertyUI
     end
  %%
     methods (Static,Access=private)
-        function [obj,wl,cn] = getInputData(mobj)
+        function [obj,wl,ele,cn] = getInputData(mobj)
             %initialise saltmarsh, water levels and constants
-            msgtxt = 'Saltmarsh parameters not yet defined';
+            msgtxt = 'Saltmarsh parameters not defined';
             obj = getClassObj(mobj,'Inputs','Saltmarsh',msgtxt);
             msgtxt = 'Water level data not defined';
             wl = getClassObj(mobj,'Inputs','WaterLevels',msgtxt);
+            msgtxt = 'Elements not defined';
+            ele = getClassObj(mobj,'Inputs','Element',msgtxt);
             cn = getConstantStruct(mobj.Constants);
         end
     end       

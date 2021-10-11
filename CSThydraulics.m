@@ -40,9 +40,10 @@ classdef CSThydraulics < muiPropertyUI
         Manning        %Manning friction coefficient [mouth switch head]
         StorageRatio   %storage width ratio [mouth switch head]
         Qrange         %vector of input river discharges (m^3/s)
+        
     end
     
-    properties (Transient)
+    properties (Hidden)
         CSTmodel         %dstable from CSTrunmodel with following fields
         % MeanTideLevel  %mean water suface elevation along estuary
         % TidalElevAmp   %elevation amplitude along estuary
@@ -139,19 +140,25 @@ classdef CSThydraulics < muiPropertyUI
             getdialog('Run complete');
         end
         %%
-        function summaryPlot(obj,~)
+        function tabPlot(obj,src,~)
             %create a summary of the hydraulic model results
             if isempty(obj.CSTmodel)
                 warndlg('No model results to display')
                 return;
             end
-            hfig = figure('Name','Hydraulic plot','Tag','PlotFig');
-            ax = axes('Parent',hfig,'Tag','PlotFigAxes');
-            ax.Position = [0.16,0.16,0.65,0.75]; %make space for slider bar
+            
+            if nargin<2
+                src = figure('Name','Hydraulic plot','Tag','PlotFig');
+            else
+                ax = findobj(src,'Tag','PlotFigAxes');
+                delete(ax)
+            end
+            ax = axes('Parent',src,'Tag','PlotFigAxes');
+            ax.Position = [0.16,0.18,0.65,0.75]; %make space for slider bar
             setYaxisLimits(obj,ax);
             
             Q = obj.Qrange;
-            setSlideControl(obj,hfig,Q(1),Q(end));
+            setSlideControl(obj,src,Q(1),Q(end));
             
             cstPlot(obj,ax,Q(1))
         end
@@ -181,7 +188,7 @@ classdef CSThydraulics < muiPropertyUI
             cst = interpCSTproperties(obj,Q);
             green = mcolor('green');
             orange = mcolor('orange');
-			yyaxis left
+			yyaxis(ax,'left')
             cla                                  %clear any existing plot lines
             plot(ax,cst.x,cst.z,'-r','LineWidth',1.0);           %plot time v elevation
             hold on
@@ -189,7 +196,7 @@ classdef CSThydraulics < muiPropertyUI
             plot(ax,cst.x,(cst.z-cst.a),'-.b','LineWidth',0.8)   %plot low water level
 			plot(ax,cst.x,(cst.z-cst.d),'-k','LineWidth',0.6);   %hydraulic depth below mean tide level
             ylabel('Elevation (mOD)'); 
-			yyaxis right
+			yyaxis(ax,'right')
             cla                                  %clear any existing plot lines
 			plot(ax,cst.x,cst.U,'--','Color',orange,'LineWidth',0.6)%plot tidal velocity
 			plot(ax,cst.x,cst.v,'--','Color',green,'LineWidth',0.6) %plot river velocity
@@ -200,7 +207,7 @@ classdef CSThydraulics < muiPropertyUI
                 'Tidal velocity','River velocity','Location','best');			
             title('Along channel variation');
         end
-        %%
+%%
         function updateCSTplot(obj,src,~)
             %use the updated slider value to adjust the CST plot
             stxt = findobj(src.Parent,'Tag','Discharge');
@@ -214,6 +221,9 @@ classdef CSThydraulics < muiPropertyUI
         function setYaxisLimits(obj,ax)
             %set the Y axis limits so they do not change when plot updated
             dst = obj.CSTmodel;
+            if ~isprop(dst,'MeanTideLevel')
+                dst = activatedynamicprops(dst);
+            end
             z = dst.MeanTideLevel;
             a = dst.TidalVelAmp;
             d = dst.HydDepth;
@@ -231,20 +241,26 @@ classdef CSThydraulics < muiPropertyUI
         end
 %%
         function hm = setSlideControl(obj,hfig,qmin,qmax)
-            %intialise slider to set different Q values          
+            %intialise slider to set different Q values     
+            hm1 = findobj(hfig,'Tag','stepMovie');
+            hm2 = findobj(hfig,'Tag','Discharge');
+            hm3 = findobj(hfig,'Tag','Qtxt');
+            delete([hm1,hm2,hm3])
+            
             hm(1) = uicontrol('Parent',hfig,...
                     'Style','slider','Value',qmin,... 
-                    'Min',qmin,'Max',qmax,'sliderstep',[1 1]/qmax,...
+                    'Min',qmin,'Max',qmax,'sliderstep',[1 1]/(qmax-qmin),...
                     'Callback', @(src,evt)updateCSTplot(obj,src,evt),...
-                    'HorizontalAlignment', 'center',...
-                    'Units','normalized', 'Position', [0.2,0.01,0.6,0.04],...
+                    'Units','normalized', 'Position', [0.15,0.005,0.5,0.04],...
                     'Tag','stepMovie');
             hm(2) = uicontrol('Parent',hfig,...
-                    'Style','text','String',num2str(qmin),'Units','normalized',... 
-                    'Position',[0.84,0.01,0.1,0.03],'Tag','Discharge');
+                    'Style','text','String',num2str(qmin),'FontSize',10,...
+                    'Units','normalized','Position',[0.86,0.003,0.12,0.045],... 
+                    'HorizontalAlignment','left','Tag','Discharge');
             uicontrol('Parent',hfig,...
-                    'Style','text','String','Q = ','Units','normalized',... 
-                    'Position',[0.81,0.01,0.05,0.03],'Tag','Qtxt');    
+                    'Style','text','String','River discharge = ','FontSize',10,...
+                    'Units','normalized','Position',[0.66,0.003,0.2,0.045],... 
+                    'HorizontalAlignment','left','Tag','Qtxt');    
         end        
 %%
         function [inp,rnp] = getModelParameters(obj,mobj)

@@ -138,9 +138,6 @@ classdef ASMinterface < handle
             %ReachGraph and FlowGraph if IncDynamicElements is true
             %otherwise use Estuary-Dispersion and Advection-Flow properties
             obj = getClassObj(mobj,'Inputs','ASM_model');
-            if nargin<2
-                offset = 'none';
-            end
             eleobj  = getClassObj(mobj,'Inputs','Element');
             cE = getEleProp(eleobj,'EqConcentration');
             kCeI = River.getRiverProp(mobj,'tsRiverConc')./cE;
@@ -151,20 +148,22 @@ classdef ASMinterface < handle
 
             %to set eqCorV in Element.setEleAdvOffsets need to only
             %include some of the advections based on conditions set
-            %however runtime calls use all advections included in setup
+            %and offset = RunConditions.Adv2Offset
+            %whereas runtime calls use all advections included in run
+            %and offset = RunConditions.Adv2Inc
             switch offset
-                case 'flow+drift'    %flow and drift
+                case 'flow+drift'    %include flow and drift
                     obj.DQ = D+Q+Qtp+Qs;
                     obj.dqIn = dExt+kCeI.*qIn+qtpIn+qsIn;
-                case 'flow'    %flow only
+                case 'flow'          %include flow only
                     obj.DQ = D+Q+Qtp;
                     obj.dqIn = dExt+kCeI.*qIn+qtpIn;
-                case 'drift'    %drift only
+                case 'drift'         %include drift only
                     obj.DQ = D+Qs;
                     obj.dqIn = dExt+qsIn;
-                otherwise %default is to use all advections
-                    obj.DQ = D+Q+Qtp+Qs;
-                    obj.dqIn = dExt+kCeI.*qIn+qtpIn+qsIn;
+                otherwise            %use no advections (offset = 'none')
+                    obj.DQ = D;
+                    obj.dqIn = dExt;
             end   
 
             setClassObj(mobj,'Inputs','ASM_model',obj);

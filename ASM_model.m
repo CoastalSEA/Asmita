@@ -39,10 +39,11 @@ classdef ASM_model < ASMinterface
         function setASM_model(mobj) %abstract method in ASMinterface
             %function to initialise an instance of ASM_model - called by
             %AsmitaSim.InitialiseModel
-            obj = getClassObj(mobj,'Inputs','ASM_model');
-            if isempty(obj)
-                obj = ASM_model;       
-            end
+%             obj = getClassObj(mobj,'Inputs','ASM_model');
+%             if isempty(obj)
+%                 obj = ASM_model;       
+%             end
+            obj = ASM_model; 
             eleobj = getClassObj(mobj,'Inputs','Element');
             obj.eqScaling = ones(length(eleobj),1); %initialise default values
             setClassObj(mobj,'Inputs','ASM_model',obj);
@@ -98,7 +99,82 @@ classdef ASM_model < ASMinterface
                 end
             end
             setClassObj(mobj,'Inputs','Element',eleobj);
-        end          
+        end 
+%% 
+        function setDQmatrix(mobj,offset)
+            % overloads version in ASMinterface
+            % used to test D+Q+Qtp and just Qtp when tidal pimping included
+            
+            %set the DQ, dqIn and conc properties to be used for a time step
+            %set up dispersion and advection matrices using dynamic
+            %ReachGraph and FlowGraph if IncDynamicElements is true
+            %otherwise use Estuary-Dispersion and Advection-Flow properties
+            obj = getClassObj(mobj,'Inputs','ASM_model');
+            eleobj  = getClassObj(mobj,'Inputs','Element');
+            cE = getEleProp(eleobj,'EqConcentration');
+            kCeI = River.getRiverProp(mobj,'tsRiverConc')./cE;
+            [D,dExt] = Estuary.getDispersion(mobj);
+            [Q,qIn,~] = Advection.getAdvectionFlow(mobj,'River');
+            [Qtp,qtpIn,~] = Advection.getAdvectionFlow(mobj,'Qtp');
+            [Qs,qsIn,~] = Advection.getAdvectionFlow(mobj,'Drift');
+            
+            isQtpOnly = true;
+
+            if isQtpOnly
+                rncobj = getClassObj(mobj,'Inputs','RunConditions');
+                if rncobj.IncTidalPumping
+                    DQ = Qtp;
+                    dEqIn = kCeI.*qtpIn;
+                else
+                    DQ = D+Q;
+                    dEqIn = dExt+kCeI.*qIn;
+                end
+                %
+                switch offset
+                    case 'flow+drift'    %include flow and drift
+                        obj.DQ = DQ+Qs;
+                        obj.dqIn = dEqIn+qsIn;
+                    case 'flow'          %include flow only
+                        obj.DQ = DQ;
+                        obj.dqIn = dEqIn;
+                    case 'drift'         %include drift only
+                        obj.DQ = D+Qs;
+                        obj.dqIn = dExt+qsIn;
+                    otherwise            %use no advections (offset = 'none')
+                        obj.DQ = D;
+                        obj.dqIn = dExt;
+                end                 
+                
+            %---------------------
+            % may need to modify to use D+Q if river advection only (no tidal
+            % pumping) and Qtp if tidal pumping included ie. QTP expresses
+            % tidal and river exchange == D+Q
+            %---------------------
+            else
+                %to set eqCorV in Element.setEleAdvOffsets need to only
+                %include some of the advections based on conditions set
+                %and offset = RunConditions.Adv2Offset
+                %whereas runtime calls use all advections included in run
+                %and offset = RunConditions.Adv2Inc
+                switch offset
+                    case 'flow+drift'    %include flow and drift
+                        obj.DQ = D+Q+Qtp+Qs;
+                        obj.dqIn = dExt+kCeI.*qIn+qtpIn+qsIn;
+                    case 'flow'          %include flow only
+                        obj.DQ = D+Q+Qtp;
+                        obj.dqIn = dExt+kCeI.*qIn+qtpIn;
+                    case 'drift'         %include drift only
+                        obj.DQ = D+Qs;
+                        obj.dqIn = dExt+qsIn;
+                    otherwise            %use no advections (offset = 'none')
+                        obj.DQ = D;
+                        obj.dqIn = dExt;
+                end   
+            end
+
+            setClassObj(mobj,'Inputs','ASM_model',obj);
+        end        
+        
     end
    
 end

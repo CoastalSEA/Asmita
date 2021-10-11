@@ -84,6 +84,7 @@ classdef AsmitaModel < muiDataSet
             obj.Time = 0;
             obj.DateTime = rnpobj.StartYear*y2s;
             obj.outInt = rnpobj.OutInterval;
+            obj.RunSteps = rnpobj.NumSteps;%may be overwritten in CheckStability
             
             %iniatialise model setup 
             obj = InitialiseModel(obj,mobj,dsp);
@@ -108,7 +109,7 @@ classdef AsmitaModel < muiDataSet
             startyear = sprintf('01-Jan-%d 00:00:00',rnpobj.StartYear);            
             modeldate = datetime(startyear);
             modeltime = modeldate + seconds(obj.StepTime);
-            modeltime.Format = 'y';
+            modeltime = deciyear(modeltime);
 %--------------------------------------------------------------------------
 % Assign model output to a dstable using the defined dsproperties meta-data
 %--------------------------------------------------------------------------                   
@@ -156,6 +157,7 @@ classdef AsmitaModel < muiDataSet
             if ~isempty(advobj) && rncobj.IncRiver
                 advobj.RiverGraph = Advection.initialiseRiverGraph(mobj);
             end
+            %
             if ~isempty(advobj) && rncobj.IncDrift
                 advobj.DriftGraph = Advection.initialiseDriftGraph(mobj);
             end
@@ -189,37 +191,39 @@ classdef AsmitaModel < muiDataSet
             n  = getEleProp(eleobj,'TransportCoeff');
             idx = n>0;  %elements that are defined as water volumes
             %total of all water volumens
-            vmw = sum(vm(idx));
-            vfw = sum(vf(idx));
-            vew = sum(ve(idx));
+            vmw = sum(vm(:,idx),2);
+            vfw = sum(vf(:,idx),2);
+            vew = sum(ve(:,idx),2);
             
             %plot the water elements            
-            plot(t,vmw)
+            plot(t,vmw,'DisplayName','Moving')
             hold on
-            plot(t,vfw)
-            plot(t,vew)
+            plot(t,vfw,'DisplayName','Fixed')
+            plot(t,vew,'DisplayName','Equilibrium')
             ylabel('Time (y)')
             xlabel('Volume (m^3)')
             title('Water volumes')
             hold off
+            legend('Location','southeast')
             
             %plot the sediment elements if any
             if any(n<0)
                 %totals for all sediment volums
-                vms = sum(vm(~idx));
-                vfs = sum(vf(~idx));
-                ves = sum(ve(~idx));
+                vms = sum(vm(:,~idx),2);
+                vfs = sum(vf(:,~idx),2);
+                ves = sum(ve(:,~idx),2);
                 %
                 subplot(2,1,1,ax); %convert existing plot to a subplot
                 subplot(2,1,2)
-                plot(t,vms)
+%                 plot(t,vms,'DisplayName','Moving')
                 hold on
-                plot(t,vfs)
-                plot(t,ves)
+                plot(t,vfs,'Color',mcolor('orange'),'DisplayName','Fixed')
+                plot(t,ves,'Color',mcolor('yellow'),'DisplayName','Equilibrium')
                 ylabel('Time (y)')
                 xlabel('Volume (m^3)')
                 title('Sediment volumes')
                 hold off
+                legend('Location','southeast')
             end
         end
     end 
@@ -247,12 +251,14 @@ classdef AsmitaModel < muiDataSet
              end
              %initialise the ASM_model class
              ASM_model.setASM_model(mobj);
-             %initialise unadjusted equilibirum volumes
-             ASM_model.asmitaEqFunctions(mobj);
+             %initialise unadjusted equilibrium volumes
+%              ASM_model.asmitaEqFunctions(mobj); 
+%             called in asmitaEqScalingCoeffs
              %initialise vertical exchanges corrected for erosion
              %set initial value of DQ matrix
-             ASM_model.setDQmatrix(mobj);
-             %initialise any river flow or drift equilibirum offset(eqCorV)
+%              ASM_model.setDQmatrix(mobj,rncobj.Adv2Inc);
+             %initialise any river flow or drift equilibrium offset(eqCorV)
+             %calls RuncConcitions.setAdvectionOffset and ASM_model.setDQmatrix
              Element.setEleAdvOffsets(mobj); 
              %initialise any scaling to initial conditions (kVp)
              ASM_model.asmitaEqScalingCoeffs(mobj);
@@ -263,7 +269,7 @@ classdef AsmitaModel < muiDataSet
              %initialise element concentrations
              Element.setEleConcentration(mobj);
              %check time step is small enough
-             obj = CheckStability(obj,mobj);
+%              obj = CheckStability(obj,mobj);
              if isempty(obj)
                  obj = [];
                  return; 
@@ -280,11 +286,14 @@ classdef AsmitaModel < muiDataSet
              tsyear = obj.DateTime/mobj.Constants.y2s;
              %tim = obj.Time/mobj.Constants.y2s;             
              %sprintf('step %g, time %g, year %g',jt,tim,yr)
+             rncobj = getClassObj(mobj,'Inputs','RunConditions');
              %update water levels
              WaterLevels.setWaterLevels(mobj,obj);
              Element.setEleWLchange(mobj); %NOT FOUND should call above line?
              %check whether there any forced changes due to interventions
-             Interventions.setAnnualChange(mobj,obj);
+             if rncobj.IncInterventions
+                Interventions.setAnnualChange(mobj,obj);
+             end
              %update river and drift advection to cater for timeseries flows
              Advection.updateAdvectionGraphs(mobj,tsyear);
              %update reach properties for changes in WL and morphology
@@ -297,7 +306,7 @@ classdef AsmitaModel < muiDataSet
              %update equilibrium concentrations: only needed if cE varied during run
              % Element.setEqConcentration(mobj);
              %set dispersion and advection matrices
-             ASM_model.setDQmatrix(mobj,'none')
+             ASM_model.setDQmatrix(mobj,rncobj.Adv2Inc)
              %non-eroding elements + saltmarsh adjustments
              ASM_model.setVertExch(mobj,obj);
              %update element concentrations
@@ -429,7 +438,7 @@ classdef AsmitaModel < muiDataSet
                 imes = imes+1;
                 message{imes} = 'Advection has not beed defined';
             elseif rncobj.IncRiver
-                ok = Advection.checkMassBalance(mobj,'River');
+                ok = checkMassBalance(advobj,'River');
                 if ok==0
                     imes = imes+1;    
                     message{imes} = 'Mass balance fails for defined River Flows';                
