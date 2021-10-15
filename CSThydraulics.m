@@ -207,10 +207,25 @@ classdef CSThydraulics < muiPropertyUI
                 'Tidal velocity','River velocity','Location','best');			
             title('Along channel variation');
         end
+
+%%
+        function hm = setSlideControl(obj,hfig,qmin,qmax)
+            %intialise slider to set different Q values   
+            invar = struct('sval',[],'smin',[],'smax',[],...
+                           'callback','','userdata',[],'position',[],...
+                           'stxext','','butxt','','butcback','');            
+            invar.sval = qmin;     %initial value for slider 
+            invar.smin = qmin;     %minimum slider value
+            invar.smax = qmax;     %maximum slider value
+            invar.callback = @(src,evt)updateCSTplot(obj,src,evt); %callback function for slider to use
+            invar.position = [0.15,0.005,0.45,0.04]; %position of slider
+            invar.stext = 'River discharge = ';   %text to display with slider value, if included          
+            hm = setfigslider(hfig,invar);   
+        end   
 %%
         function updateCSTplot(obj,src,~)
             %use the updated slider value to adjust the CST plot
-            stxt = findobj(src.Parent,'Tag','Discharge');
+            stxt = findobj(src.Parent,'Tag','figsliderval');
             Q = round(src.Value);
             stxt.String = num2str(Q);     %update slider text
             %figure axes and update plot
@@ -238,29 +253,6 @@ classdef CSThydraulics < muiPropertyUI
             ax.YLim = [lim1,lim2];
             yyaxis right
             ax.YLim = [lim3,lim4];
-        end
-%%
-        function hm = setSlideControl(obj,hfig,qmin,qmax)
-            %intialise slider to set different Q values     
-            hm1 = findobj(hfig,'Tag','stepMovie');
-            hm2 = findobj(hfig,'Tag','Discharge');
-            hm3 = findobj(hfig,'Tag','Qtxt');
-            delete([hm1,hm2,hm3])
-            
-            hm(1) = uicontrol('Parent',hfig,...
-                    'Style','slider','Value',qmin,... 
-                    'Min',qmin,'Max',qmax,'sliderstep',[1 1]/(qmax-qmin),...
-                    'Callback', @(src,evt)updateCSTplot(obj,src,evt),...
-                    'Units','normalized', 'Position', [0.15,0.005,0.5,0.04],...
-                    'Tag','stepMovie');
-            hm(2) = uicontrol('Parent',hfig,...
-                    'Style','text','String',num2str(qmin),'FontSize',10,...
-                    'Units','normalized','Position',[0.86,0.003,0.12,0.045],... 
-                    'HorizontalAlignment','left','Tag','Discharge');
-            uicontrol('Parent',hfig,...
-                    'Style','text','String','River discharge = ','FontSize',10,...
-                    'Units','normalized','Position',[0.66,0.003,0.2,0.045],... 
-                    'HorizontalAlignment','left','Tag','Qtxt');    
         end        
 %%
         function [inp,rnp] = getModelParameters(obj,mobj)

@@ -410,9 +410,9 @@ classdef River < handle
             legtxt = sprintf('TP for Q = %.1f m^3/s',Qin);
             
             %create base plot
-            plot(ax,xi,qtp0,'DisplayName','Current settings')
+            plot(ax,xi,qtp0,'-b','DisplayName','Current settings')
             hold on
-            plot(ax,xi,qtp,'DisplayName',legtxt)
+            plot(ax,xi,qtp,'Color',mcolor('orange'),'DisplayName',legtxt)
             hold off
             xlabel('Distance from mouth (m)')
             ylabel('Discharge (m^3/s)')
@@ -454,16 +454,19 @@ classdef River < handle
             end
         end
 %%
-        function [qtp,qtp0] = getTidalPumpingFlows(obj,mobj,qfact)
+        function [qtp,qtp0] = getTidalPumpingFlows(~,mobj,qfact)
             %allow the user to test the influence of varying river discharge
             %on tidal pumping
-%             Qstore = [obj(:).RiverFlow];
-
-%             AsmitaModel.intialiseModelParameters(mobj)  
+            
+            %initialise dispersion Reach Graph
+            Estuary.initialiseReachGraph(mobj);
             h_channels = Reach.LandwardPath(mobj);  %uses channels in current version of ReachGraph            
             reachChannelIDs = h_channels.Nodes.EleID;
 
-
+            %initialise water levels
+            asmobj.Time = 0;
+            WaterLevels.setWaterLevels(mobj,asmobj);
+            %initialise advection network and reach properties
             advobj = getClassObj(mobj,'Inputs','Advection');
             advobj.RiverGraph = Advection.initialiseRiverGraph(mobj);
             Reach.setReach(mobj);
@@ -502,12 +505,28 @@ classdef River < handle
             advobj.RiverOut =FlowOut;
         end
 %%
+        function hm = setSlideControl(obj,hfig,qmin,qmax,qin)
+            %intialise slider to set different Q values 
+            invar = struct('sval',[],'smin',[],'smax',[],...
+                           'callback','','userdata',[],'position',[],...
+                           'stxext','','butxt','','butcback','');            
+            invar.sval = qin;      %initial value for slider 
+            invar.smin = qmin;     %minimum slider value
+            invar.smax = qmax;     %maximum slider value
+            invar.callback = @(src,evt)updateTPplot(obj,src,evt); %callback function for slider to use
+            invar.userdata = qin;  %user data passed to widget
+            invar.position = [0.15,0.005,0.45,0.04]; %position of slider
+            invar.stext = 'River discharge = ';   %text to display with slider value, if included          
+            hm = setfigslider(hfig,invar);   
+        end   
+%%
         function updateTPplot(obj,src,~)
             %use the updated slider value to adjust the CST plot
-            stxt = findobj(src.Parent,'Tag','Discharge');
+            stxt = findobj(src.Parent,'Tag','figsliderval');
             Q = round(src.Value);
             stxt.String = num2str(Q);     %update slider text
-            qfact = Q/stxt.UserData;
+            sldui = findobj(src.Parent,'Tag','figslider');
+            qfact = Q/sldui.UserData;
             
             %figure axes and update plot
             ax = findobj(src.Parent,'Type','axes');
@@ -517,35 +536,10 @@ classdef River < handle
             delete(hline)
             legtxt = sprintf('TP for Q = %d m^3/s',Q);
             hold on
-            plot(ax,xi,qtp,'DisplayName',legtxt)
+            plot(ax,xi,qtp,'Color',mcolor('orange'),'DisplayName',legtxt)
             hold off
             legend
         end
-%%
-        function hm = setSlideControl(obj,hfig,qmin,qmax,qin)
-            %intialise slider to set different Q values     
-            hm1 = findobj(hfig,'Tag','stepMovie');
-            hm2 = findobj(hfig,'Tag','Discharge');
-            hm3 = findobj(hfig,'Tag','Qtxt');
-            delete([hm1,hm2,hm3])
-            
-            hm(1) = uicontrol('Parent',hfig,...
-                    'Style','slider','Value',qin,... 
-                    'Min',qmin,'Max',qmax,'sliderstep',[1 1]/(qmax-qmin),...
-                    'Callback', @(src,evt)updateTPplot(obj,src,evt),...
-                    'Units','normalized', 'Position', [0.15,0.005,0.5,0.04],...
-                    'Tag','stepMovie');
-            hm(2) = uicontrol('Parent',hfig,...
-                    'Style','text','String',num2str(qin),'FontSize',10,...
-                    'Units','normalized','Position',[0.86,0.003,0.12,0.045],... 
-                    'UserData',qin,...
-                    'HorizontalAlignment','left','Tag','Discharge');
-            uicontrol('Parent',hfig,...
-                    'Style','text','String','River discharge = ','FontSize',10,...
-                    'Units','normalized','Position',[0.66,0.003,0.2,0.045],... 
-                    'HorizontalAlignment','left','Tag','Qtxt');    
-        end   
-
 %%        
         function [rownames,colnames,userdata] = riverProperties(obj,mobj)
             %define river Properties  

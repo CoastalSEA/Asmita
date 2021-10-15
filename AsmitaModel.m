@@ -53,7 +53,7 @@ classdef AsmitaModel < muiDataSet
                 return;
             end
             %Check additional inputs and notify user what is included
-%             [message,ok] = CheckInput(obj,mobj);
+%             [message,ok] = AsmitaModel.CheckInput(mobj);
 %             if ~isempty(message)
 %                 if ~mobj.SupressPrompts  %supress prompts if true
 %                     button = questdlg(message,'Check','Continue', ...
@@ -71,7 +71,8 @@ classdef AsmitaModel < muiDataSet
 
             muicat = mobj.Cases;
             %assign the run parameters to the model instance
-            setRunParam(obj,mobj); 
+            setRunParam(obj,mobj); %this only saves the core set
+            setIncParam(obj,mobj); %add any additional Classes included in run
 %--------------------------------------------------------------------------
 % Model code 
 %--------------------------------------------------------------------------
@@ -104,7 +105,7 @@ classdef AsmitaModel < muiDataSet
             end
             close(hw);
 
-            results = obj.RunData; %MAY NEED REFORMATTING
+            results = obj.RunData; 
             %now assign results to object properties  
             startyear = sprintf('01-Jan-%d 00:00:00',rnpobj.StartYear);            
             modeldate = datetime(startyear);
@@ -117,8 +118,8 @@ classdef AsmitaModel < muiDataSet
             %if model returns single variable as array of doubles, use {results}
             dst = dstable(results{:},'RowNames',modeltime,'DSproperties',dsp);
             eleobj = getClassObj(mobj,'Inputs','Element');
-            elementid = getEleProp(eleobj,'EleID');
-            dst.Dimensions.EleID = elementid;     %element IDs used in model run
+            elementname = getEleProp(eleobj,'EleName');
+            dst.Dimensions.Element = elementname;     %element IDs used in model run
 %--------------------------------------------------------------------------
 % Save results
 %--------------------------------------------------------------------------                        
@@ -172,6 +173,65 @@ classdef AsmitaModel < muiDataSet
             
             setClassObj(mobj,'Inputs','Advection',advobj);
         end
+%%
+        function [message,ok] = CheckInput(mobj)
+            %Check which inputs are to be included and return message
+            %called at run time and as check from main menu
+            message={};  ok=1;
+            imes=1;
+            minclasses = mobj.ModelInputs.AsmitaModel;
+            msg = 'Core inputs: ';
+            for i=1:length(minclasses)
+                msg = sprintf('%s %s, ',msg,minclasses{i});
+            end
+            message{imes} = sprintf('%s are defined\n',msg(1:end-2));  %removes final comma
+            
+            %check dispersion has been set and that advection balances (if set) 
+            estobj= getClassObj(mobj,'Inputs','Estuary');            
+            if isempty(estobj.Dispersion)
+                imes = imes+1;
+                message{imes} = 'Dispersion has not beed defined';                
+                ok = 0;
+            end
+            
+            %map run conditions to additonal classes required
+            rncobj = getClassObj(mobj,'Inputs','RunConditions');
+            adnclasses = {'River',rncobj.IncRiver;...
+                          'Drift',rncobj.IncDrift;...
+                          'Saltmarsh',rncobj.IncSaltmarsh;...
+                          'Interventions',rncobj.IncInterventions;...
+                          'Advection',rncobj.IncTidalPumping;...
+                          'CSThydraulics',rncobj.IncDynHydraulics};
+                      
+            %call to isValidModel has already checked that the minimum
+            %set of classes needed to run the model have been initialised
+            %now check whether additonal classes to be included are valid
+            for j=1:size(adnclasses,1)
+                lobj = getClassObj(mobj,'Inputs',adnclasses{j});
+                isincluded = adnclasses{j,2};
+                if isempty(lobj) && isincluded
+                    imes = imes+1;
+                    message{imes} = [adnclasses{j,1},' is included but not defined'];
+                    ok = 0;
+                elseif isincluded
+                    imes = imes+1;
+                    message{imes} = ['Run includes: ' adnclasses{j,1}];
+                end
+            end
+            
+            %check that advection is set and balances (if set) 
+            advobj= getClassObj(mobj,'Inputs','Advection'); 
+            if (rncobj.IncRiver || rncobj.IncDrift) && isempty(advobj)
+                imes = imes+1;
+                message{imes} = 'Advection has not beed defined';
+            elseif rncobj.IncRiver
+                ok = checkMassBalance(advobj,'River');
+                if ok==0
+                    imes = imes+1;    
+                    message{imes} = 'Mass balance fails for defined River Flows';                
+                end             
+            end 
+        end
     end
 %%
     methods
@@ -199,7 +259,7 @@ classdef AsmitaModel < muiDataSet
             plot(t,vmw,'DisplayName','Moving')
             hold on
             plot(t,vfw,'DisplayName','Fixed')
-            plot(t,vew,'DisplayName','Equilibrium')
+            plot(t,vew,'Color',mcolor('green'),'DisplayName','Equilibrium')
             ylabel('Time (y)')
             xlabel('Volume (m^3)')
             title('Water volumes')
@@ -209,7 +269,7 @@ classdef AsmitaModel < muiDataSet
             %plot the sediment elements if any
             if any(n<0)
                 %totals for all sediment volums
-                vms = sum(vm(:,~idx),2);
+%                 vms = sum(vm(:,~idx),2);
                 vfs = sum(vf(:,~idx),2);
                 ves = sum(ve(:,~idx),2);
                 %
@@ -218,12 +278,13 @@ classdef AsmitaModel < muiDataSet
 %                 plot(t,vms,'DisplayName','Moving')
                 hold on
                 plot(t,vfs,'Color',mcolor('orange'),'DisplayName','Fixed')
-                plot(t,ves,'Color',mcolor('yellow'),'DisplayName','Equilibrium')
+                plot(t,ves,'Color',mcolor('green'),'DisplayName','Equilibrium')
                 ylabel('Time (y)')
                 xlabel('Volume (m^3)')
                 title('Sediment volumes')
                 hold off
                 legend('Location','southeast')
+                sgtitle(sprintf('Total change for %s',dst.Description))
             end
         end
     end 
@@ -234,13 +295,17 @@ classdef AsmitaModel < muiDataSet
              
              %NB the interplay between the following functions means that
              %the order in which they are called is important
-             
+             %initialise the ASM_model class
+             ASM_model.setASM_model(mobj);
              %some initialisation is common to several functions
              AsmitaModel.intialiseModelParameters(mobj);
+             
              rncobj = getClassObj(mobj,'Inputs','RunConditions');
-             if rncobj.IncInterventions
-                 Interventions.initialiseInterventions(mobj);
-             end
+%              if rncobj.IncInterventions
+%                  Interventions.initialiseInterventions(mobj);
+%              end
+             %initialise interventions even if not used (ie set to zero)
+             Interventions.initialiseInterventions(mobj);
              %initialise Marsh concentration matrix if marsh included
              if rncobj.IncSaltmarsh
                  ok = Saltmarsh.concOverMarsh(mobj);
@@ -249,8 +314,7 @@ classdef AsmitaModel < muiDataSet
                      return; 
                  end   
              end
-             %initialise the ASM_model class
-             ASM_model.setASM_model(mobj);
+             
              %initialise unadjusted equilibrium volumes
 %              ASM_model.asmitaEqFunctions(mobj); 
 %             called in asmitaEqScalingCoeffs
@@ -387,63 +451,37 @@ classdef AsmitaModel < muiDataSet
                  obj.delta = dt1*y2s;               %revised time step in seconds
              end 
         end
-%% 
-        function [message,ok] = CheckInput(~,mobj)
-            %Check which inputs are to be included and return message
-            message={};  ok=1;
-            imes=1;
-            minclasses = mobj.ModelInputs.AsmitaModel;
-            msg = 'Using: ';
-            for i=1:length(minclasses)
-                msg = sprintf('%s %s, ',msg,minclasses{i});
-            end
-            message{imes} = msg(1:end-2);  %removes final comma
-            
-            %check dispersion has been set and that advection balances (if set) 
-            estobj= getClassObj(mobj,'Inputs','Estuary');            
-            if isempty(estobj.Dispersion)
-                imes = imes+1;
-                message{imes} = 'Dispersion has not beed defined';                
-                ok = 0;
-            end
-            
-            %map run conditions to additonal classes required
+%%
+        function setIncParam(obj,mobj)
+            %add any additional muiProperty Classes included in run to
+            %RunParam property. 'Element','Estuary','WaterLevels',
+            %'RunProperties','RunConditions','EqCoeffProps' included by
+            %default
             rncobj = getClassObj(mobj,'Inputs','RunConditions');
-            adnclasses = {'River',rncobj.IncRiver;...
-                          'Drift',rncobj.IncDrift;...
-                          'Saltmarsh',rncobj.IncSaltmarsh;...
-                          'Interventions',rncobj.IncInterventions;...
-                          'Advection',rncobj.IncTidalPumping;...
-                          'CSThydraulics',rncobj.IncDynHydraulics};
-                      
-            %call to isValidModel has already checked that the minimum
-            %set of classes needed to run the model have been initialised
-            %now check whether additonal classes to be included are valid
-            for j=1:size(adnclasses,1)
-                lobj = getClassObj(mobj,'Inputs',adnclasses{j});
-                isincluded = adnclasses{j,2};
-                if isempty(lobj) && isincluded
-                    imes = imes+1;
-                    message{imes} = [adnclasses{j,1},' is included but not defined'];
-                    ok = 0;
-                elseif isincluded
-                    imes = imes+1;
-                    message{imes} = ['Run includes: ' adnclasses{j,1}];
-                end
+            if rncobj.IncInterventions
+                rncobj = getClassObj(mobj,'Inputs','Interventions');
+                obj.RunParam.Interventions = rncobj;
             end
-            
-            %check that advection is set and balances (if set) 
-            advobj= getClassObj(mobj,'Inputs','Advection'); 
-            if (rncobj.IncRiver || rncobj.IncDrift) && isempty(advobj)
-                imes = imes+1;
-                message{imes} = 'Advection has not beed defined';
-            elseif rncobj.IncRiver
-                ok = checkMassBalance(advobj,'River');
-                if ok==0
-                    imes = imes+1;    
-                    message{imes} = 'Mass balance fails for defined River Flows';                
-                end             
-            end 
+            %
+            if rncobj.IncRiver
+                rivobj = getClassObj(mobj,'Inputs','River');
+                obj.RunParam.Interventions = rivobj;
+            end
+            %
+            if rncobj.IncDrift
+                dftobj = getClassObj(mobj,'Inputs','Drift');
+                obj.RunParam.Interventions = dftobj;
+            end
+            %
+            if rncobj.IncSaltmarsh
+                smsobj = getClassObj(mobj,'Inputs','Saltmarsh');
+                obj.RunParam.Interventions = smsobj;
+            end
+            %
+            if rncobj.IncDynHydraulics
+                cstobj = getClassObj(mobj,'Inputs','CSThydraulics');
+                obj.RunParam.Interventions = cstobj;
+            end
         end
 %%
         function dsp = modelDSproperties(~) 
@@ -482,10 +520,10 @@ classdef AsmitaModel < muiDataSet
                 'Label',{'Time (y)'},...
                 'Format',{'y'});        
             dsp.Dimensions = struct(...    
-                'Name',{'EleID'},...
-                'Description',{'Element ID'},...
+                'Name',{'EleName'},...
+                'Description',{'Element Name'},...
                 'Unit',{'-'},...
-                'Label',{'Element ID'},...
+                'Label',{'Element Name'},...
                 'Format',{'-'});  
         end
     end    

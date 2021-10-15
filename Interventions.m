@@ -124,7 +124,7 @@ classdef Interventions < handle
             end
             %if no change in given year, no update needed
             rncobj  = getClassObj(mobj,'Inputs','RunConditions');
-            if isempty(idx) || ~rncobj.IncIntervention
+            if isempty(idx) || ~rncobj.IncInterventions
                 for i=1:nele
                     intobj(i).transVolChange = 0;
                     intobj(i).transAreaChange = 0;
@@ -133,7 +133,7 @@ classdef Interventions < handle
             end
             dV = vals(:,idx,1);
             dS =  vals(:,idx,2);
-            n = sign(getEleProp(inp.Element,'TransportCoeff'));
+            n = sign(getEleProp(eleobj,'TransportCoeff'));
             %update transient volume and area properties
             %convention is that +ve is an increase in water volume
             %so subtract for elements defined as sediment volumes

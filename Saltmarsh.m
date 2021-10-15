@@ -652,44 +652,36 @@ classdef Saltmarsh < muiPropertyUI
                 zi = z(i,:); zHWi = zHW(i)*[1 1]; zmxdepi = zmxdep(i)*[1 1]; %#ok<NASGU>
                 refreshdata(hp,'caller')
                 hm(1).Value = time(i);
-                hm(2).String = string(string(time(i)));
+                hm(3).String = string(string(time(i)));
                 drawnow;                 
                 Mframes(i,1) = getframe(gcf); %NB print function allows more control of resolution 
             end
             hold(ax,'off')
             
             obj.ModelMovie = Mframes; 
-            answer = questdlg('Save animation','Saltmarsh animation','Yes','No','No');
-            if strcmp(answer,'Yes')                 
-                saveAnimation(obj)
-            end
         end
 %%
         function hm = setSlideControl(obj,hfig,time,z,zHW,zmxdep)
-            %intialise slider to set different t values          
-            hm(1) = uicontrol('Parent',hfig,...
-                    'Style','slider','Value',time(1),... 
-                    'Min',time(1),'Max',time(end),'sliderstep',[1 1]/time(end),...
-                    'Callback', @(src,evt)updateSMplot(obj,src,evt),...
-                    'Units','normalized', 'Position', [0.15,0.008,0.58,0.04],...
-                    'UserData',struct('time',time,'z',z,'zHW',zHW,'zmxdep',zmxdep),...
-                    'HorizontalAlignment', 'center','Tag','stepMovie');                
-            hm(2) = uicontrol('Parent',hfig,...
-                    'Style','text','String',num2str(time(1)),'FontSize',10,...
-                    'Units','normalized','Position',[0.84,0.006,0.2,0.045],...
-                    'HorizontalAlignment','left','Tag','SManimation');
-            uicontrol('Parent',hfig,...
-                    'Style','text','String','Time = ','FontSize',10,... 
-                    'Units','normalized','Position',[0.76,0.006,0.08,0.045],...
-                    'HorizontalAlignment','left','Tag','Ttxt');    
+            %intialise slider to set different t values     
+            invar = struct('sval',[],'smin',[],'smax',[],'callback','',...
+                    'position',[],'stxext','','butxt','','butcback','');            
+            invar.sval = time(1);     %initial value for slider 
+            invar.smin = time(1);     %minimum slider value
+            invar.smax = time(end);   %maximum slider value
+            invar.callback = @(src,evt)updateSMplot(obj,src,evt); %callback function for slider to use
+            invar.userdata = struct('time',time,'z',z,'zHW',zHW,'zmxdep',zmxdep);
+            invar.stext = 'Time =  ';   %text to display with slider value, if included
+            invar.butxt =  'Save';    %text for button if included
+            invar.butcback = @(src,evt)saveanimation2file(obj.ModelMovie,src,evt); %callback for button
+            hm = setfigslider(hfig,invar);                   
         end  
 %%
         function updateSMplot(~,src,~)
             %adjust the plot to the time selected by user
-            stxt = findobj(src.Parent,'Tag','SManimation');
+            stxt = findobj(src.Parent,'Tag','figsliderval');
             T = round(src.Value);
-            stxt.String = num2str(T);     %update slider text
-            sldui = findobj(src.Parent,'Tag','stepMovie');
+            stxt.String = num2str(T);     %update slider value text
+            sldui = findobj(src.Parent,'Tag','figslider');
             sld = sldui.UserData;
             idx = find(sld.time<=T,1,'last');
             %figure axes and update plot
@@ -700,23 +692,7 @@ classdef Saltmarsh < muiPropertyUI
             zmxdepi = sld.zmxdep(idx)*[1 1]; %#ok<NASGU>
             refreshdata(hp,'caller')
             drawnow;
-        end
-%%        
-        function saveAnimation(obj)
-            %save an animation plot created by PlotFig.newAnimation    
-            if isempty(obj.ModelMovie)
-                warndlg('No movie has been created. Create movie first');
-                return;
-            end
-            [file,path] = uiputfile('*.mp4','Save file as','moviefile.mp4');
-            if file==0, return; end
-            v = VideoWriter([path,file],'MPEG-4');
-            open(v);            
-            warning('off','MATLAB:audiovideo:VideoWriter:mp4FramePadded')
-            writeVideo(v,obj.ModelMovie);
-            warning('on','MATLAB:audiovideo:VideoWriter:mp4FramePadded')
-            close(v);
-        end         
+        end       
 %%
         function profilePlot(~,y,z,a,ax)
             %plot base tidal flat profile
