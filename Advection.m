@@ -816,7 +816,15 @@ classdef Advection < handle
             %check mass balance of advective flows
             obj = setAdvectionType(obj,AdvType);
             ok = checkAdvMassBalance(obj);
-        end    
+        end
+    end
+%%
+    methods (Static,Hidden)
+        function setNewAdvection(mobj)
+            %initialise an empty instance of Advection (used in asm_oo2mui)
+            obj = Advection;
+            setClassObj(mobj,'Inputs','Advection',obj);
+        end        
     end
 %%
 %--------------------------------------------------------------------------

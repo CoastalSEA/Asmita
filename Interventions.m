@@ -214,6 +214,14 @@ classdef Interventions < handle
         end
     end
 %%
+    methods (Static,Hidden)
+        function setNewIntervention(mobj)
+            %initialise an empty instance ofInterevention (used in asm_oo2mui)
+            obj = Interventions;
+            setClassObj(mobj,'Inputs','Interventions',obj);
+        end
+    end
+%%
     methods
         function addIntEle(obj,mobj,elobj)
             %add an intervention to the array of intervention objects when

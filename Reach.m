@@ -323,6 +323,46 @@ classdef Reach < handle
                 CumVar(i,1) = downVar;
             end
         end
+        
+%%
+        function [network,answer] = getNetwork(caseDef,answer)
+            %get the network to be used using either diffusion or flow
+            % caseDef is an instance of mobj.Inputs or cobj.RunProps
+            if nargin<2
+                answer = questdlg('Select graph type','Network graph',...
+                                'Network','Reach','Network');
+            end
+            disp = caseDef.Estuary.Dispersion;%dispersin matrix, d (m/s) - uses upper triangle 
+            extdisp = caseDef.Estuary.ExternalDisp;
+            eleobj = caseDef.Element;
+            nodetxt = Estuary.setGraphVariables(eleobj);
+            network = Estuary.setReachGraph(eleobj,disp,extdisp,nodetxt); 
+
+            switch answer
+                case 'Network' %remove outside node
+                    idc = find(~strcmp(network.Nodes.Type,'Outside'));             
+                case 'Reach'    %select only channel nodes
+                    idc = find(strcmp(network.Nodes.Type,'Channel'));
+            end  
+            network = subgraph(network,idc); 
+        end   
+%%
+        function [reachlength,network] = getReachLengths(caseDef,ismidpt)
+            %extract the distance between elements to construct along
+            %channel plots as a function of distance
+            % caseDef is an instance of mobj.Inputs or cobj.RunProps
+            % ismidpt=true - lengths at mid-point of each element, otherwise
+            % cumulative length to head of each element
+            eLe = [caseDef.Element(:).Length]'; %Element.getEleProp(caseDef,'Length');
+            network = Reach.getNetwork(caseDef,'Reach');
+            CumX = Reach.getCumUpstreamReachVar(network,eLe,1);
+            rchX = Reach.getReachEleVar(network,eLe);
+            if ismidpt
+                reachlength = CumX-rchX/2;  %take x as the mid-point of the reach            
+            else
+                reachlength = CumX;
+            end
+        end   
     end
 %%
     methods (Access=private)

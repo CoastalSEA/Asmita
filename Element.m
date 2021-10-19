@@ -278,17 +278,27 @@ classdef Element < muiPropertyUI
             obj = getClassObj(mobj,'Inputs','Element',msgtxt);
             if isempty(obj), return; end
             
-            nele = length(obj);
-            for idx=1:nele
-                obj(idx).MovingVolume = obj(idx).InitialVolume;
-                obj(idx).EqVolume = obj(idx).InitialVolume;
-                obj(idx).MovingSurfaceArea = obj(idx).InitialSurfaceArea;
-                obj(idx).FixedVolume = obj(idx).InitialVolume;
-                obj(idx).FixedSurfaceArea = obj(idx).InitialSurfaceArea;
-                obj(idx).transVertExch = obj(idx).VerticalExchange;
-                obj(idx).BioProdVolume = 0;
-                obj(idx).transEleType = obj(idx).EleType;
-            end
+            null = num2cell(zeros(1,length(obj)));
+            [obj.MovingVolume] = obj(:).InitialVolume;
+            [obj.EqVolume] = obj(:).InitialVolume;
+            [obj.MovingSurfaceArea] = obj(:).InitialSurfaceArea;
+            [obj.FixedVolume] = obj(:).InitialVolume;
+            [obj.FixedSurfaceArea] = obj(:).InitialSurfaceArea;
+            [obj.transVertExch] = obj(:).VerticalExchange;
+            [obj.BioProdVolume] =  null{:};
+            [obj.transEleType] = obj(:).EleType;           
+        
+%             nele = length(obj);
+%             for idx=1:nele
+%                 obj(idx).MovingVolume = obj(idx).InitialVolume;
+%                 obj(idx).EqVolume = obj(idx).InitialVolume;
+%                 obj(idx).MovingSurfaceArea = obj(idx).InitialSurfaceArea;
+%                 obj(idx).FixedVolume = obj(idx).InitialVolume;
+%                 obj(idx).FixedSurfaceArea = obj(idx).InitialSurfaceArea;
+%                 obj(idx).transVertExch = obj(idx).VerticalExchange;
+%                 obj(idx).BioProdVolume = 0;
+%                 obj(idx).transEleType = obj(idx).EleType;
+%             end
             setClassObj(mobj,'Inputs','Element',obj);
         end           
 %%
@@ -420,7 +430,13 @@ classdef Element < muiPropertyUI
             
             %reset DQ matrix to full value with all advections
             ASM_model.setDQmatrix(mobj,rncobj.Adv2Inc);
-        end            
+        end     
+%%
+        function setElement(mobj)
+            %initialise an empty instance of Element (used in asm_oo2mui)
+            obj = Element(mobj);
+            setClassObj(mobj,'Inputs','Element',obj);
+        end
     end
 %%        
         %add other functions to operate on properties as required  

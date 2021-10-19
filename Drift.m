@@ -337,6 +337,14 @@ classdef Drift < handle
             legend(figax,hp,'Location','best');
         end
     end
+%%
+    methods (Static,Hidden)
+        function setNewDrift(mobj)
+            %initialise an empty instance of Drift (used in asm_oo2mui)
+            obj =Drift;
+            setClassObj(mobj,'Inputs','Drift',obj);
+        end
+    end
 %%    
     methods
         function initialiseFlow(obj)

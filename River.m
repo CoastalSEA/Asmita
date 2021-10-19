@@ -334,7 +334,14 @@ classdef River < handle
             ylabel('Sediment load (kg/m^3)');
             legend(sp2,gp,'Location','best');
         end
-        
+    end
+%%
+    methods (Static,Hidden)
+        function setNewRiver(mobj)
+            %initialise an empty instance of River (used in asm_oo2mui)
+            obj = River;
+            setClassObj(mobj,'Inputs','River',obj);
+        end
     end    
 %%    
     methods
@@ -393,6 +400,7 @@ classdef River < handle
             %set up the initial plot of tidal pumping discharge  
             sfact = 2;   %set slider range as factor of max river flow
             Qin = max([obj(:).RiverFlow]);
+            if Qin==0, return; end
             Qr = [Qin/sfact,Qin*sfact];
             [qtp,qtp0] = getTidalPumpingFlows(obj,mobj,1);
             if isempty(qtp), return; end

@@ -284,6 +284,12 @@ classdef Saltmarsh < muiPropertyUI
             time = (styear+mtime)/cn.y2s;            
             marshAnimationFigure(obj,y,z0,z,time,zHW,sm.dmx)
         end
+%%
+        function setSaltmarsh(mobj)
+            %initialise an empty instance of Saltmarsh(used in asm_oo2mui)
+            obj = Saltmarsh;
+            setClassObj(mobj,'Inputs','Saltmarsh',obj);
+        end        
     end
 %%
     methods

@@ -187,7 +187,15 @@ classdef Estuary < muiPropertyUI
             %assign the network graph to handle so that it can be used elsewhere
             %uses the dispersion matrix, dips and the external exchanges,
             %extdip to define network  
-            eleobj = getClassObj(mobj,'Inputs','Element');
+            % mobj can be model handle or handle to a version of eleobj
+            % this allows use at run time and to plot previous cases
+            if isa(mobj,'Element')
+                %pass version of eleobj which may not be current settings
+                eleobj = mobj;
+            else
+                %retrieve the current version of eleobj
+                eleobj = getClassObj(mobj,'Inputs','Element');
+            end
             nele = length(eleobj);
             userdata = zeros(nele+1,nele+1);
             userdata(1,2:end) = extdisp;
@@ -203,13 +211,22 @@ classdef Estuary < muiPropertyUI
 %%
         function nodetxt = setGraphVariables(mobj,root,head)
             %return variables used to label network and flow graphs
+            % mobj can be model handle or handle to a version of eleobj
+            % this allows use at run time and to plot previous cases
             if nargin<2
                 root = 'Outside';      %applies to reach and flow graphs
                 head = [];
             end
-            eleobj = getClassObj(mobj,'Inputs','Element');
-            nele = length(eleobj);
             
+            if isa(mobj,'Element')
+                %pass version of eleobj which may not be current settings
+                eleobj = mobj;
+            else
+                %retrieve the current version of eleobj
+                eleobj = getClassObj(mobj,'Inputs','Element');                
+            end
+            
+            nele = length(eleobj);
             if isempty(eleobj(1).transEleType)
                 EleType = getEleProp(eleobj,'EleType');  
             else

@@ -119,7 +119,7 @@ classdef AsmitaModel < muiDataSet
             dst = dstable(results{:},'RowNames',modeltime,'DSproperties',dsp);
             eleobj = getClassObj(mobj,'Inputs','Element');
             elementname = getEleProp(eleobj,'EleName');
-            dst.Dimensions.Element = elementname;     %element IDs used in model run
+            dst.Dimensions.EleName = [elementname;'All'];     %element names used in model run
 %--------------------------------------------------------------------------
 % Save results
 %--------------------------------------------------------------------------                        
@@ -393,9 +393,11 @@ classdef AsmitaModel < muiDataSet
                 for i=1:length(vname)
                     %sorting depends on variable list in varNames of ResDef  
                     if i<7       %element properties
-                        obj.RunData{i}(jr,:) = getEleProp(eleobj,vname{i});
+                        eleprop = getEleProp(eleobj,vname{i});
+                        obj.RunData{i}(jr,:) = [eleprop;sum(eleprop,1)];
                     elseif i<11  %reach properties
-                        obj.RunData{i}(jr,:) = Reach.getReachProp(mobj,vname{i});
+                        rchprop = Reach.getReachProp(mobj,vname{i});
+                        obj.RunData{i}(jr,:) = rchprop; %,sum(rchprop,2)];
                     else         %water level properties
                         obj.RunData{i}(jr,1) = wlvobj.(vname{i});
                         %obj.RunData{i}(jr,1) = rchobj(vname{i});
@@ -465,22 +467,27 @@ classdef AsmitaModel < muiDataSet
             %
             if rncobj.IncRiver
                 rivobj = getClassObj(mobj,'Inputs','River');
-                obj.RunParam.Interventions = rivobj;
+                obj.RunParam.River = rivobj;
             end
             %
             if rncobj.IncDrift
                 dftobj = getClassObj(mobj,'Inputs','Drift');
-                obj.RunParam.Interventions = dftobj;
+                obj.RunParam.Drift = dftobj;
             end
             %
             if rncobj.IncSaltmarsh
                 smsobj = getClassObj(mobj,'Inputs','Saltmarsh');
-                obj.RunParam.Interventions = smsobj;
+                obj.RunParam.Saltmarsh = smsobj;
             end
             %
             if rncobj.IncDynHydraulics
                 cstobj = getClassObj(mobj,'Inputs','CSThydraulics');
-                obj.RunParam.Interventions = cstobj;
+                obj.RunParam.CSThydraulics = cstobj;
+            end
+            %
+            if rncobj.IncRiver || rncobj.IncDrift || rncobj.IncDynHydraulics
+                advobj = getClassObj(mobj,'Inputs','Advection');
+                obj.RunParam.Advection = advobj;                
             end
         end
 %%

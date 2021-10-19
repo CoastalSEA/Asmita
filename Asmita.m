@@ -28,12 +28,14 @@ classdef Asmita < muiModelUI
         GeoType = {'Delta','Channel','Tidalflat','Saltmarsh','Storage',...
                    'EbbDelta','FloodDelta','DeltaFlat',...
                    'Beachface','Shoreface','Spit'};
-        SupressPrompts = false %flag for unit testing to supress user promts       
     end
     
     methods (Static)
-        function obj = Asmita                      
+        function obj = Asmita(SupressPrompts)                      
             %constructor function initialises GUI
+            if nargin==1
+                obj.SupressPrompts = SupressPrompts;
+            end
             obj = setMUI(obj);             
         end
     end
@@ -52,7 +54,7 @@ classdef Asmita < muiModelUI
             %tabs to include in DataUIs for plotting and statistical analysis
             %select which of the options are needed and delete the rest
             %Plot options: '2D','3D','4D','2DT','3DT','4DT' amended in ASM_PLotUI
-            obj.DataUItabs.Plot = {'Time','Distance','2D','3D','2DT','3DT'}; 
+            obj.DataUItabs.Plot = {'Time','Distance','Network','2D','3D'}; 
             %Statistics options: 'General','Timeseries','Taylor','Intervals'
             obj.DataUItabs.Stats = {'General','Timeseries','Taylor','Intervals'};  
             
