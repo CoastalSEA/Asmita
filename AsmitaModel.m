@@ -107,10 +107,19 @@ classdef AsmitaModel < muiDataSet
 
             results = obj.RunData; 
             %now assign results to object properties  
-            startyear = sprintf('01-Jan-%d 00:00:00',rnpobj.StartYear);            
-            modeldate = datetime(startyear);
-            modeltime = modeldate + seconds(obj.StepTime);
-            modeltime = deciyear(modeltime);
+            %code for datetime format
+            % modeldate = datetime(rnpobj.StartYear,1,1,0,0,0);
+            % modeltime = modeldate + seconds(obj.StepTime);
+            % modeltime.Format = dsp.Row.Format;
+            %code for duration format
+            modeltime = years(rnpobj.StartYear)+seconds(obj.StepTime);
+            modeltime.Format = dsp.Row.Format;
+            %code for calendatDuration format 
+            % modeldate = datetime(rnpobj.StartYear,1,1,0,0,0);
+            % modeltime = modeldate + seconds(obj.StepTime);
+            % modeltime.Format = dsp.Row.Format;
+            % modeltime = calendarDuration(datevec(modeltime));
+            
 %--------------------------------------------------------------------------
 % Assign model output to a dstable using the defined dsproperties meta-data
 %--------------------------------------------------------------------------                   
@@ -239,6 +248,9 @@ classdef AsmitaModel < muiDataSet
             %generate plot for display on Q-Plot tab
             dst = obj.Data.Dataset;
             t = dst.RowNames;
+            if iscalendarduration(t)
+                t = time2num(t);
+            end
             vm = dst.MovingVolume;
             vf = dst.FixedVolume;
             ve = dst.EqVolume;

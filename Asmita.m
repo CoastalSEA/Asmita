@@ -203,7 +203,7 @@ classdef Asmita < muiModelUI
             
             tabs.Response = {' Response ',@(src,evt)Estuary.Response(obj,src,evt)};
             tabs.Plot   = {'  Q-Plot  ',@obj.getTabData};
-            tabs.Stats = {'   Stats   ',@obj.getTabData};
+            tabs.Stats = {'   Stats   ',@obj.setTabAction};
         end
        
 %%
