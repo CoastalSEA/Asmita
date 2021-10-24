@@ -389,7 +389,7 @@ classdef Asmita < muiModelUI
 %%
         function runProps(obj,src,~)
             %set-up various types of run property
-            tabname = 'Run Properties';
+            tabname = 'Run Parameters';
             switch src.Text
                 case 'Time Step'
                     RunProperties.setInput(obj);                    

@@ -180,7 +180,7 @@ classdef AsmitaModel < muiDataSet
                 Advection.setTidalPumping(mobj);
             end
             
-            setClassObj(mobj,'Inputs','Advection',advobj);
+            setClassObj(mobj,'Inputs','Advection',advobj); %update in case graphs have been added
         end
 %%
         function [message,ok] = CheckInput(mobj)
@@ -333,6 +333,8 @@ classdef AsmitaModel < muiDataSet
              %initialise vertical exchanges corrected for erosion
              %set initial value of DQ matrix
 %              ASM_model.setDQmatrix(mobj,rncobj.Adv2Inc);
+
+
              %initialise any river flow or drift equilibrium offset(eqCorV)
              %calls RuncConcitions.setAdvectionOffset and ASM_model.setDQmatrix
              Element.setEleAdvOffsets(mobj); 
@@ -345,7 +347,7 @@ classdef AsmitaModel < muiDataSet
              %initialise element concentrations
              Element.setEleConcentration(mobj);
              %check time step is small enough
-%              obj = CheckStability(obj,mobj);
+             obj = CheckStability(obj,mobj);
              if isempty(obj)
                  obj = [];
                  return; 
@@ -376,7 +378,10 @@ classdef AsmitaModel < muiDataSet
              Reach.setReachProps(mobj);
              %update tidal pumping to reflect morphological changes
              %has an influence if depth, csa or river flow change
-             Advection.setTidalPumping(mobj);
+             %initialise tidal pumping
+             if rncobj.IncTidalPumping
+                Advection.setTidalPumping(mobj);
+             end
              %update equilibirum volumes due to changes in tidal prism
              Element.setEquilibrium(mobj);
              %update equilibrium concentrations: only needed if cE varied during run

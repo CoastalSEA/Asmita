@@ -287,18 +287,7 @@ classdef Element < muiPropertyUI
             [obj.transVertExch] = obj(:).VerticalExchange;
             [obj.BioProdVolume] =  null{:};
             [obj.transEleType] = obj(:).EleType;           
-        
-%             nele = length(obj);
-%             for idx=1:nele
-%                 obj(idx).MovingVolume = obj(idx).InitialVolume;
-%                 obj(idx).EqVolume = obj(idx).InitialVolume;
-%                 obj(idx).MovingSurfaceArea = obj(idx).InitialSurfaceArea;
-%                 obj(idx).FixedVolume = obj(idx).InitialVolume;
-%                 obj(idx).FixedSurfaceArea = obj(idx).InitialSurfaceArea;
-%                 obj(idx).transVertExch = obj(idx).VerticalExchange;
-%                 obj(idx).BioProdVolume = 0;
-%                 obj(idx).transEleType = obj(idx).EleType;
-%             end
+
             setClassObj(mobj,'Inputs','Element',obj);
         end           
 %%
@@ -307,10 +296,12 @@ classdef Element < muiPropertyUI
             msgtxt = 'No elements defined';
             obj = getClassObj(mobj,'Inputs','Element',msgtxt);
             if isempty(obj), return; end
-            nele = length(obj);
-            for i=1:nele
-                obj(i).(varname) = prop(i);
-            end
+%             nele = length(obj);
+            assignum = num2cell(prop);
+            [obj.(varname)] = assignum{:};
+%             for i=1:nele
+%                 obj(i).(varname) = prop(i);
+%             end
             setClassObj(mobj,'Inputs','Element',obj);
         end
         
@@ -364,11 +355,13 @@ classdef Element < muiPropertyUI
             %assign the element concentrations at some instant
             obj = getClassObj(mobj,'Inputs','Element');
             %get element types
-            nele = length(obj);
+%             nele = length(obj);
             conc = ASM_model.asmitaConcentrations(mobj);
-            for idx=1:nele
-                obj(idx).EleConcentration = conc(idx);
-            end
+            assignum = num2cell(conc);
+            [obj.EleConcentration] = assignum{:};
+%             for idx=1:nele
+%                 obj(idx).EleConcentration = conc(idx);
+%             end
             setClassObj(mobj,'Inputs','Element',obj);
         end
         
@@ -401,6 +394,9 @@ classdef Element < muiPropertyUI
             %find whether an offset is to be included
             RunConditions.setAdvectionOffset(mobj);
             rncobj = getClassObj(mobj,'Inputs','RunConditions');
+            
+            %WHY IS THIS COMMENTED OUT ???????????????????????????
+            %CHANGES IN setDQmatrix ????
 %             if rncobj.IncRiver || rncobj.IncDrift
 %                 if rncobj.RiverOffset && rncobj.DriftOffset
 %                     offset = 'flow+drift';
@@ -422,10 +418,12 @@ classdef Element < muiPropertyUI
                 [B,dd] = ASM_model.BddMatrices(mobj);
                 eqCorV = (B\dd).^(1./n);
             end
-            %now assign offset to elements           
-            for i=1:nele
-                    obj(i).eqAdvOffSet = eqCorV(i);
-            end
+            %now assign offset to elements 
+            assignum = num2cell(eqCorV);
+            [obj.eqAdvOffSet] = assignum{:};
+%             for i=1:nele
+%                     obj(i).eqAdvOffSet = eqCorV(i);
+%             end
             setClassObj(mobj,'Inputs','Element',obj);
             
             %reset DQ matrix to full value with all advections
