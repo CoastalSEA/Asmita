@@ -92,7 +92,6 @@ classdef EqCoeffProps < muiPropertyUI
                 obj.UserEqCoeffSelection = 'Not set';
             end
             if isstruct(obj.alpha)                
-%                 rownames = unique(eletype);
                 rownames = fieldnames(obj.alpha);
                 colnames = {'Type','Alpha','Beta','EqType'};
                 ntypes = length(rownames);

@@ -1,4 +1,4 @@
-classdef Drift < handle
+classdef Drift < matlab.mixin.Copyable
     % class to define littoral drift sources
     %
     %----------------------------------------------------------------------
@@ -60,10 +60,14 @@ classdef Drift < handle
                 end 
                 %check that drift is assigned to a channel that exists
                 eletype = getEleProp(eleobj,'EleType');
-                ok = contains(eletype{usenum(1)},'Delta');
-                ok = ok+contains(eletype{usenum(1)},'Beach');
-                ok = ok+contains(eletype{usenum(1)},'Shore');
-                ok = ok+contains(eletype{usenum(1)},'Spit');
+                extypes = mobj.GeoType(mobj.EXtypes);
+                ok = matches(eletype{usenum(1)},extypes); %requires v2019b
+                
+%                 ok = contains(eletype{usenum(1)},'Delta');
+%                 ok = ok+contains(eletype{usenum(1)},'Beach');
+%                 ok = ok+contains(eletype{usenum(1)},'Shore');
+%                 ok = ok+contains(eletype{usenum(1)},'Spit');
+                
                 if ok==0
                     warndlg('Can only connect to delta, beach, shore, or spit which must exit');
                 end
@@ -159,10 +163,12 @@ classdef Drift < handle
             obj  = getClassObj(mobj,'Inputs','Drift');
             eleobj  = getClassObj(mobj,'Inputs','Element');
             eletype = getEleProp(eleobj,'EleType');
-            okEle = strcmp(eletype,'Delta');
-            okEle = okEle+strcmp(eletype,'Beach');
-            okEle = okEle+strcmp(eletype,'Shoreface');
-            msg{1} = 'Can only connect to delta/beach/shoreface elements, which must exit\nRemove input to element %d';
+            extypes = mobj.GeoType(mobj.EXtypes);
+            okEle = matches(eletype,extypes); %requires v2019b
+%             okEle = strcmp(eletype,'Delta');
+%             okEle = okEle+strcmp(eletype,'Beach');
+%             okEle = okEle+strcmp(eletype,'Shoreface');
+            msg{1} = 'Can only connect to delta/beach/shoreface/spit elements, which must exist\nRemove input to element %d';
             msg{2} = 'Drift input added to element %d\nProperties need to be defined in Setup>Drift';
             msg{3} = 'Drift inputs have been added';            
             ndft = length(obj);
@@ -341,7 +347,7 @@ classdef Drift < handle
     methods (Static,Hidden)
         function setNewDrift(mobj)
             %initialise an empty instance of Drift (used in asm_oo2mui)
-            obj =Drift;
+            obj = Drift;
             setClassObj(mobj,'Inputs','Drift',obj);
         end
     end

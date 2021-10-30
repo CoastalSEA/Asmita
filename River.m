@@ -1,4 +1,4 @@
-classdef River < handle
+classdef River < matlab.mixin.Copyable
     %class to define river sources
     %
     %----------------------------------------------------------------------
@@ -402,12 +402,14 @@ classdef River < handle
             Qin = max([obj(:).RiverFlow]);
             if Qin==0, return; end
             Qr = [Qin/sfact,Qin*sfact];
-            [qtp,qtp0] = getTidalPumpingFlows(obj,mobj,1);
-            if isempty(qtp), return; end
+            [qtp0,reachChIDs] = getTidalPumpingFlows(obj,mobj,1);
+            if isempty(qtp0), return; end
             
             %get distances from mouth
             rchobj = getClassObj(mobj,'Inputs','Reach');
             xi = [0,rchobj(:).CumulativeLength];
+            [xi,idxi] = sort(xi);   %sort data into distance order
+            qtp0 = qtp0(idxi);
             
             %remove any existing plot and generate new plot on tab
             ht = findobj(src,'Type','axes');            
@@ -418,9 +420,14 @@ classdef River < handle
             legtxt = sprintf('TP for Q = %.1f m^3/s',Qin);
             
             %create base plot
-            plot(ax,xi,qtp0,'-b','DisplayName','Current settings')
+            stem(ax,xi,qtp0,'xb','DisplayName','Current settings')
             hold on
-            plot(ax,xi,qtp,'Color',mcolor('orange'),'DisplayName',legtxt)
+%               plot(ax,xi,qtp,'Color',mcolor('orange'),'DisplayName',legtxt)
+              s1 = stem(ax,xi(2:end),qtp0(2:end),'Color',mcolor('orange'),...
+                      'DisplayName',legtxt,...
+                      'ButtonDownFcn',@(src,evt)setDataTip(obj,src,evt));
+%               s1.Annotation.LegendInformation.IconDisplayStyle = 'off'; 
+              s1.UserData = struct('id',reachChIDs,'order',idxi(2:end));
             hold off
             xlabel('Distance from mouth (m)')
             ylabel('Discharge (m^3/s)')
@@ -462,14 +469,14 @@ classdef River < handle
             end
         end
 %%
-        function [qtp,qtp0] = getTidalPumpingFlows(~,mobj,qfact)
+        function [qtp,reachChIDs] = getTidalPumpingFlows(~,mobj,qfact)
             %allow the user to test the influence of varying river discharge
             %on tidal pumping
             
             %initialise dispersion Reach Graph
-            Estuary.initialiseReachGraph(mobj);
-            h_channels = Reach.LandwardPath(mobj);  %uses channels in current version of ReachGraph            
-            reachChannelIDs = h_channels.Nodes.EleID;
+%             Estuary.initialiseDispersionGraph(mobj);
+%             h_channels = Reach.LandwardPath(mobj);  %uses channels in current version of DispersionGraph            
+%             reachChIDs = h_channels.Nodes.EleID;
 
             %initialise water levels
             asmobj.Time = 0;
@@ -477,40 +484,32 @@ classdef River < handle
             %initialise advection network and reach properties
             advobj = getClassObj(mobj,'Inputs','Advection');
             advobj.RiverGraph = Advection.initialiseRiverGraph(mobj);
-            Reach.setReach(mobj);
-%             Advection.setTidalPumping(mobj);
+%             Reach.setReach(mobj);
             FlowIn = advobj.RiverIn;
             FlowOut = advobj.RiverOut;
             IntFlows = advobj.RiverFlows;
             
-            
-            
             %get reach based tidal pumping discharge for current river inputs
-            [tp0,tpM0] = Advection.getTidalPumpingDischarge(mobj,reachChannelIDs); 
-            qtp0 = [tpM0,tp0];
+%             reachChIDs = advobj.RiverGraph.Nodes.EleID(2:end-1);
+%             [tp0,tpM0] = Advection.getTidalPumpingDischarge(mobj,reachChIDs); 
+%             qtp0 = [tpM0(1);tp0];
+
             %get reach based tidal pumping discharge for user Qin
-            advobj.RiverFlows = IntFlows*qfact;    
-            advobj.RiverIn = FlowIn*qfact;      
-            advobj.RiverOut =FlowOut*qfact;
-%             setAdvectionProps(advobj,AdvType);
             
-%             Qin = Qstore*qfact;
-%             [obj(:).RiverFlow] = Qin;   
-%             advobj.RiverGraph = Advection.initialiseRiverGraph(mobj);
-%             Reach.setReach(mobj); 
+            exchIn = FlowIn*qfact;
+            idx = FlowIn>0 | FlowOut>0;
+            exchIn = [0;exchIn(idx);0];
+            advobj.RiverGraph = rescale_graph(advobj.RiverGraph,exchIn,true); 
+
 %             Advection.setTidalPumping(mobj);
-% %             AsmitaModel.intialiseModelParameters(mobj);  
-%            
-            advobj.RiverGraph = Advection.initialiseRiverGraph(mobj);
             Reach.setReach(mobj);
-%             Advection.setTidalPumping(mobj);
-            [tp,tpM] = Advection.getTidalPumpingDischarge(mobj,reachChannelIDs);  
-            qtp = [tpM,tp];
-            
-%             [obj(:).RiverFlow] = Qstore;   %restore original settings  
-            advobj.RiverFlows = IntFlows;    
-            advobj.RiverIn = FlowIn;      
-            advobj.RiverOut =FlowOut;
+            reachChIDs = advobj.RiverGraph.Nodes.EleID(2:end-1);
+            [tp,tpM] = Advection.getTidalPumpingDischarge(mobj,reachChIDs);  
+            qtp = [tpM(1);tp];
+
+%             advobj.RiverFlows = IntFlows;    
+%             advobj.RiverIn = FlowIn;      
+%             advobj.RiverOut =FlowOut;
         end
 %%
         function hm = setSlideControl(obj,hfig,qmin,qmax,qin)
@@ -526,7 +525,19 @@ classdef River < handle
             invar.position = [0.15,0.005,0.45,0.04]; %position of slider
             invar.stext = 'River discharge = ';   %text to display with slider value, if included          
             hm = setfigslider(hfig,invar);   
-        end   
+        end 
+%%
+        function setDataTip(~,src,~)
+            %add data tip with EleID, distance and discharge at selected point
+            datatip(src);
+            if length(src.DataTipTemplate.DataTipRows)==2
+                dt = findobj(src,'Type','datatip');
+                row = dataTipTextRow('Ele ID: ',src.UserData.id(dt.DataIndex));
+                src.DataTipTemplate.DataTipRows(end+1) = row;
+            end
+            src.DataTipTemplate.DataTipRows(1).Label = 'Upstream x: ';
+            src.DataTipTemplate.DataTipRows(2).Label = 'Qtp: ';           
+        end
 %%
         function updateTPplot(obj,src,~)
             %use the updated slider value to adjust the CST plot
@@ -541,10 +552,15 @@ classdef River < handle
             [qtp,~] = getTidalPumpingFlows(obj,ax.UserData,qfact);             
             hline = findobj(ax,'-regexp','DisplayName','TP for Q');
             xi = hline.XData;
+            s1user = hline.UserData;
+            qtp = qtp(s1user.id);
             delete(hline)
             legtxt = sprintf('TP for Q = %d m^3/s',Q);
             hold on
-            plot(ax,xi,qtp,'Color',mcolor('orange'),'DisplayName',legtxt)
+            s1 = stem(ax,xi,qtp,'Color',mcolor('orange'),...
+                      'DisplayName',legtxt,...
+                      'ButtonDownFcn',@(src,evt)setDataTip(obj,src,evt));
+            s1.UserData = s1user;
             hold off
             legend
         end

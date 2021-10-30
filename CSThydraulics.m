@@ -155,7 +155,7 @@ classdef CSThydraulics < muiPropertyUI
             end
             ax = axes('Parent',src,'Tag','PlotFigAxes');
             ax.Position = [0.16,0.18,0.65,0.75]; %make space for slider bar
-            setYaxisLimits(obj,ax);
+            setYaxisLimits(obj,ax);  %wakes dynamic properties if necessary
             
             Q = obj.Qrange;
             setSlideControl(obj,src,Q(1),Q(end));
@@ -163,10 +163,19 @@ classdef CSThydraulics < muiPropertyUI
             cstPlot(obj,ax,Q(1))
         end
 %%
-        function damp = assignCSTproperties(obj,flowpath)
+        function wl = assignCSTproperties(obj,rchobj,flowpath)
             %assign the CSTmodel properties to Asmita model elements
-            
+            flowpathID = flowpath.Nodes.EleID;
+            [reachChID] = rchobj(:).ReachChannelID;
+            [reachLen] = rchobj(:).CumulativeLength;
+            Q = flowpath.Edges.Weight(1);   %assumes all the same!!!!!!! ie single river input
             cst = interpCSTproperties(obj,Q);
+            mwl = interp1(cst.x,cst.z,[0,reachLen],'linear');
+            amp = interp1(cst.x,cst.a,[0,reachLen],'linear');
+            wl.mwl = mwl(2:end)-diff(mwl)/2;
+            wl.amp = amp(2:end)-diff(amp)/2;
+            wl.hwl = wl.mwl+wl.amp;
+            wl.lwl = wl.mwl-wl.amp;
         end
     end
 %%    
@@ -176,6 +185,10 @@ classdef CSThydraulics < muiPropertyUI
             dst = obj.CSTmodel;
             Qrows = dst.RowNames;
             cst.x = dst.Dimensions.X; 
+            if ~isprop(dst,'MeanTideLevel') 
+                %check if dynamic properties are active
+                dst = activatedynamicprops(dst);
+            end
             cst.z = interp1(Qrows,dst.MeanTideLevel,Q,'linear'); %mean tide level
             cst.a = interp1(Qrows,dst.TidalElevAmp,Q,'linear');  %tidal amplitude
 			cst.U = interp1(Qrows,dst.TidalVelAmp,Q,'linear');   %tidal velocity amplitude

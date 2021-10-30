@@ -334,9 +334,12 @@ classdef Element < muiPropertyUI
             nele = length(obj);
             eletype = getEleProp(obj,'transEleType');
             %assign concentration
-            idx = find(strcmp(eletype,'Tidalflat'));
-            idx = [idx;find(strcmp(eletype,'Saltmarsh'))];
-            idx = [idx;find(strcmp(eletype,'Storage'))];   
+%             idx = find(strcmp(eletype,'Tidalflat'));
+%             idx = [idx;find(strcmp(eletype,'Saltmarsh'))];
+%             idx = [idx;find(strcmp(eletype,'Storage'))];
+            
+            finetypes = mobj.GeoType(mobj.FNtypes);
+            idx = find(matches(eletype,finetypes)); %requires v2019b
             
             estobj = getClassObj(mobj,'Inputs','Estuary');
             for i=1:nele
@@ -370,15 +373,37 @@ classdef Element < muiPropertyUI
             %assign change in high and low water levels at some instant
             obj = getClassObj(mobj,'Inputs','Element');
             wlvobj = getClassObj(mobj,'Inputs','WaterLevels');
-            dHW = wlvobj.dHWchange;
-            dLW = wlvobj.dLWchange;
+            dHW = wlvobj.dHWchange;  %includes changes due to slr and any
+            dLW = wlvobj.dLWchange;  %imposed cycles (ntc etc)
+            dampHW = [obj(:).TidalDamping]; dampLW = dampHW; %prescribed damping
             nele = length(obj);
             eletype = getEleProp(obj,'transEleType');
+            %get the Reach element water levels which may have been
+            %modified if dynamic hydraulics are being included
+            rncobj = getClassObj(mobj,'Inputs','RunConditions');
+            if rncobj.IncDynHydraulics
+                %CSThydraulics computes water levels using the WaterLevels
+                %TidalAmp property and the river discharge at time t. To
+                %avoid running the model for each time step to reflect
+                %changes in mean tidel level and tidal amplitude at the 
+                %mouth (included in dHW and dLW), assume that along channel 
+                %variation due to changes in discharge are simply a damping 
+                %factor based on the initial amplitude at the mouth. This
+                %replaces any user defined damping.
+                rchHW = Reach.getReachEleProp(mobj,'HWlevel');
+                rchLW = Reach.getReachEleProp(mobj,'LWlevel');
+                dampHW = rchHW/wlvobj.TidalAmp;
+                dampLW = rchLW/wlvobj.TidalAmp;
+            end
+
+            LWtypes = mobj.GeoType(mobj.LWtypes);   
+            %
             for i=1:nele
-                if strcmp(eletype(i),'Delta') || strcmp(eletype(i),'Channel')
-                    obj(i).EleWLchange = dLW*obj(i).TidalDamping;
+%                 if contains(eletype(i),'Delta') || contains(eletype(i),'Channel')
+                if any(matches(LWtypes,eletype(i)))     
+                    obj(i).EleWLchange = dLW*dampLW(i);
                 else
-                    obj(i).EleWLchange = dHW*obj(i).TidalDamping;
+                    obj(i).EleWLchange = dHW*dampHW(i);
                 end
             end
             setClassObj(mobj,'Inputs','Element',obj);
@@ -394,22 +419,20 @@ classdef Element < muiPropertyUI
             %find whether an offset is to be included
             RunConditions.setAdvectionOffset(mobj);
             rncobj = getClassObj(mobj,'Inputs','RunConditions');
-            
-            %WHY IS THIS COMMENTED OUT ???????????????????????????
-            %CHANGES IN setDQmatrix ????
-%             if rncobj.IncRiver || rncobj.IncDrift
-%                 if rncobj.RiverOffset && rncobj.DriftOffset
-%                     offset = 'flow+drift';
-%                 elseif rncobj.RiverOffset
-%                     offset = 'flow';
-%                 elseif rncobj.DriftOffset
-%                     offset = 'drift';
-%                 else
-%                     offset = 'none';
-%                 end
-%             else
-%                 offset = 'none';
-%             end
+            %FOLLOWING CODE REPLACED BY setAdvectionOffset
+            % if rncobj.IncRiver || rncobj.IncDrift
+            %     if rncobj.RiverOffset && rncobj.DriftOffset
+            %         offset = 'flow+drift';
+            %     elseif rncobj.RiverOffset
+            %         offset = 'flow';
+            %     elseif rncobj.DriftOffset
+            %         offset = 'drift';
+            %     else
+            %         offset = 'none';
+            %     end
+            % else
+            %     offset = 'none';
+            % end
             %calculate the offset if required    
             ASM_model.setDQmatrix(mobj,rncobj.Adv2Offset);
             if strcmp(rncobj.Adv2Offset,'none')
@@ -482,10 +505,10 @@ classdef Element < muiPropertyUI
             %called by muiModelUI.InputTabSummary and overloads super class
             %muiPropertyUI method.            
             rownames = {obj.EleName};
-            colnames = {'Element Name','Type','Volume','Surface area','Length', ...
+            colnames = {'ID','Element Name','Type','Volume','Surface area','Length', ...
                 'ws','n', ...
                 'rhob','damp','c(ero)','Erode'};
-            props = {'EleName','EleType','InitialVolume','InitialSurfaceArea',...
+            props = {'EleID','EleName','EleType','InitialVolume','InitialSurfaceArea',...
                 'Length','VerticalExchange','TransportCoeff',...
                 'BedDensity','TidalDamping','SedMobility',...
                 'Erodible'};
@@ -509,7 +532,7 @@ classdef Element < muiPropertyUI
             uitable('Parent',hp, ...
                 'ColumnName', colnames, ...
                 'RowName', {}, ...
-                'ColumnWidth', {100 55 70 70 50 50 25 45 40 40 40}, ...
+                'ColumnWidth', {15,100 55 70 70 50 50 25 45 40 40 40}, ...
                 'Data',userdata, ...
                 'Units','normalized',...
                 'Position',[0,0,1,1]);

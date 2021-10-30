@@ -100,7 +100,8 @@ classdef AsmitaModel < muiDataSet
                 PostTimeStep(obj,mobj,dsp);
                 waitbar(jt/obj.RunSteps);
                 %to report time step during run use the following
-                msg = sprintf('ASMITA processing, please wait %d',jt);
+                msg = sprintf('ASMITA processing, step %d of %d',...
+                                                         jt,obj.RunSteps);
                 waitbar(jt/obj.RunSteps,hw,msg);                
             end
             close(hw);
@@ -108,12 +109,12 @@ classdef AsmitaModel < muiDataSet
             results = obj.RunData; 
             %now assign results to object properties  
             %code for datetime format
-            % modeldate = datetime(rnpobj.StartYear,1,1,0,0,0);
-            % modeltime = modeldate + seconds(obj.StepTime);
-            % modeltime.Format = dsp.Row.Format;
-            %code for duration format
-            modeltime = years(rnpobj.StartYear)+seconds(obj.StepTime);
+            modeldate = datetime(rnpobj.StartYear,1,1,0,0,0);
+            modeltime = modeldate + seconds(obj.StepTime);
             modeltime.Format = dsp.Row.Format;
+            %code for duration format
+            % modeltime = years(rnpobj.StartYear)+seconds(obj.StepTime);
+            % modeltime.Format = dsp.Row.Format;
             %code for calendatDuration format 
             % modeldate = datetime(rnpobj.StartYear,1,1,0,0,0);
             % modeltime = modeldate + seconds(obj.StepTime);
@@ -136,7 +137,7 @@ classdef AsmitaModel < muiDataSet
             dst.Source = metaclass(obj).Name;
             dst.MetaData = 'Any additional information to be saved';
             %save results
-            setDataSetRecord(obj,muicat,dst,'model');
+            setDataSetRecord(obj,muicat,dst,'model',[],mobj.SupressPrompts);
             
             %report mass balance on run completion
             asmobj = getClassObj(mobj,'Inputs','ASM_model');
@@ -160,7 +161,7 @@ classdef AsmitaModel < muiDataSet
             obj.Time = 0;
             WaterLevels.setWaterLevels(mobj,obj);
             %initialise dispersion Reach Graph
-            Estuary.initialiseReachGraph(mobj);
+            Estuary.initialiseDispersionGraph(mobj);
             %initialise advection graphs (River and Drift)
             rncobj = getClassObj(mobj,'Inputs','RunConditions');
             advobj = getClassObj(mobj,'Inputs','Advection');
@@ -367,7 +368,7 @@ classdef AsmitaModel < muiDataSet
              rncobj = getClassObj(mobj,'Inputs','RunConditions');
              %update water levels
              WaterLevels.setWaterLevels(mobj,obj);
-             Element.setEleWLchange(mobj); %NOT FOUND should call above line?
+%              Element.setEleWLchange(mobj); 
              %check whether there any forced changes due to interventions
              if rncobj.IncInterventions
                 Interventions.setAnnualChange(mobj,obj);
@@ -376,6 +377,8 @@ classdef AsmitaModel < muiDataSet
              Advection.updateAdvectionGraphs(mobj,tsyear);
              %update reach properties for changes in WL and morphology
              Reach.setReachProps(mobj);
+             %assign updated water levels to elements
+             Element.setEleWLchange(mobj); 
              %update tidal pumping to reflect morphological changes
              %has an influence if depth, csa or river flow change
              %initialise tidal pumping
@@ -437,8 +440,8 @@ classdef AsmitaModel < muiDataSet
              %Estimate concentration in each element
              cnc = getEleProp(eleobj,'EleConcentration');
              check_dt = diag(DQ).*cnc;
-             check_dt = min(vm./check_dt)/2;  %the factor of 2 ensures that
-                                       %dt is less than the stability limit
+             check_dt = min(vm./check_dt)/10;  %the factor of 10 ensures that
+                        %dt is substantially less than the stability limit
                        
              obj.RunSteps = rnpobj.NumSteps;                      
              if obj.delta > check_dt
@@ -478,8 +481,8 @@ classdef AsmitaModel < muiDataSet
             %default
             rncobj = getClassObj(mobj,'Inputs','RunConditions');
             if rncobj.IncInterventions
-                rncobj = getClassObj(mobj,'Inputs','Interventions');
-                obj.RunParam.Interventions = rncobj;
+                intobj = getClassObj(mobj,'Inputs','Interventions');
+                obj.RunParam.Interventions = intobj;
             end
             %
             if rncobj.IncRiver
@@ -542,7 +545,8 @@ classdef AsmitaModel < muiDataSet
                 'Description',{'Time'},...
                 'Unit',{'y'},...
                 'Label',{'Time (y)'},...
-                'Format',{'y'});        
+                'Format',{'dd-MMM-yyyy hh:mm:ss'});   %'dd-MMM-yyyy hh:mm:ss'  or 'y'
+            
             dsp.Dimensions = struct(...    
                 'Name',{'EleName'},...
                 'Description',{'Element Name'},...

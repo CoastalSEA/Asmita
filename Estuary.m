@@ -45,7 +45,7 @@ classdef Estuary < muiPropertyUI
     end
     
     properties (Transient)       %properties that are time varying
-        ReachGraph               %handle to graph of network (dispersion)
+        DispersionGraph               %handle to graph of network (dispersion)
     end
 
 %%   
@@ -103,7 +103,7 @@ classdef Estuary < muiPropertyUI
             estobj.ExternalDisp = matrixtable{1,2:end-1}';
             estobj.Dispersion = matrixtable{2:end-1,2:end-1};
             nodetxt = Estuary.setGraphVariables(mobj);
-            estobj.ReachGraph = Estuary.setReachGraph(mobj,estobj.Dispersion,...
+            estobj.DispersionGraph = Estuary.setDispersionGraph(estobj.Dispersion,...
                                 estobj.ExternalDisp,nodetxt);
             setClassObj(mobj,'Inputs','Estuary',estobj);               
         end     
@@ -112,8 +112,8 @@ classdef Estuary < muiPropertyUI
 %--------------------------------------------------------------------------
 %       INITIALISE
 %--------------------------------------------------------------------------
-        function [reachGraph,nlabel] = initialiseReachGraph(mobj)
-            %use the Estuary dispersion properties to initialise ReachGraph
+        function [reachGraph,nlabel] = initialiseDispersionGraph(mobj)
+            %use the Estuary dispersion properties to initialise DispersionGraph
             obj  = getClassObj(mobj,'Inputs','Estuary');
             if isempty(obj) || isempty(obj.Dispersion)
                 userdata = 0;
@@ -124,11 +124,11 @@ classdef Estuary < muiPropertyUI
                 Disp = obj.Dispersion;
                 ExtDisp = obj.ExternalDisp;
                 nodetxt = Estuary.setGraphVariables(mobj);
-                reachGraph = Estuary.setReachGraph(mobj,Disp,ExtDisp,nodetxt);
+                reachGraph = Estuary.setDispersionGraph(Disp,ExtDisp,nodetxt);
                 nlabel = strcat(num2str(reachGraph.Nodes.EleID),...
-                    '-',reachGraph.Nodes.Name);
+                                            '-',reachGraph.Nodes.Name);
             end
-            obj.ReachGraph = reachGraph;
+            obj.DispersionGraph = reachGraph;
             setClassObj(mobj,'Inputs','Estuary',obj);
         end
 
@@ -139,14 +139,14 @@ classdef Estuary < muiPropertyUI
         function [D,dExt] = getDispersion(mobj)
             %get the dispersion properties as an element matrix
             obj  = getClassObj(mobj,'Inputs','Estuary');
-            if isempty(obj.ReachGraph)
+            if isempty(obj.DispersionGraph)
                 D = 0; dExt = 0;
                 return
             end
             
             rncobj  = getClassObj(mobj,'Inputs','RunConditions');
             if rncobj.IncDynamicElements
-                h_reach = obj.ReachGraph;
+                h_reach = obj.DispersionGraph;
                 varmatrix = Estuary.getVarMatrix(h_reach);
                 dExt = varmatrix(1,2:end)';
                 d = varmatrix(2:end,2:end);
@@ -164,15 +164,15 @@ classdef Estuary < muiPropertyUI
         end
         
 %%
-        function updateReachGraph(mobj)
+        function updateDispersionGraph(mobj)
             %initialise and update dynamic graphs based on modified conditions (if any)            
             obj  = getClassObj(mobj,'Inputs','Estuary');
             if isempty(obj)
                 return;
             end
             
-            if isempty(obj.ReachGraph) && ~isempty(obj.Dispersion)
-                [obj.ReachGraph,~] = Estuary.initialiseReachGraph(mobj);
+            if isempty(obj.DispersionGraph) && ~isempty(obj.Dispersion)
+                [obj.DispersionGraph,~] = Estuary.initialiseDispersionGraph(mobj);
             else
                 %add code to update
             end
@@ -183,29 +183,34 @@ classdef Estuary < muiPropertyUI
 %--------------------------------------------------------------------------
 %       UTILITIES
 %-------------------------------------------------------------------------- 
-        function g = setReachGraph(mobj,disp,extdisp,nodetxt)
+        function g = setDispersionGraph(disp,extdisp,nodetxt)
             %assign the network graph to handle so that it can be used elsewhere
-            %uses the dispersion matrix, dips and the external exchanges,
-            %extdip to define network  
+            %uses the dispersion matrix, disp, and the external exchanges,
+            %extdisp to define network  
             % mobj can be model handle or handle to a version of eleobj
             % this allows use at run time and to plot previous cases
-            if isa(mobj,'Element')
-                %pass version of eleobj which may not be current settings
-                eleobj = mobj;
-            else
-                %retrieve the current version of eleobj
-                eleobj = getClassObj(mobj,'Inputs','Element');
-            end
-            nele = length(eleobj);
-            userdata = zeros(nele+1,nele+1);
-            userdata(1,2:end) = extdisp;
-            userdata(2:end,2:end) = disp;
-            g = digraph(userdata);
-            g.Nodes.EleID = nodetxt.nid;
-            g.Nodes.Type = nodetxt.ntype;
-            %node names must be unique
-            nname = Estuary.checkUniqueNames(nodetxt.nname);
-            g.Nodes.Name = nname;
+            msg1 = 'Duplicate element names are not allowed';
+            msg2 = 'Some names have been modified';
+            msg3 = 'Edit Element names using Setup>Elements>Define Elements';
+            namemsg = sprintf('%s\n%s\n%s',msg1,msg2,msg3);
+            g = exchange_graph(disp,extdisp,[],nodetxt,namemsg);
+%             if isa(mobj,'Element')
+%                 %pass version of eleobj which may not be current settings
+%                 eleobj = mobj;
+%             else
+%                 %retrieve the current version of eleobj
+%                 eleobj = getClassObj(mobj,'Inputs','Element');
+%             end
+%             nele = length(eleobj);
+%             userdata = zeros(nele+1,nele+1);
+%             userdata(1,2:end) = extdisp;
+%             userdata(2:end,2:end) = disp;
+%             g = digraph(userdata);
+%             g.Nodes.EleID = nodetxt.nid;
+%             g.Nodes.Type = nodetxt.ntype;
+%             %node names must be unique
+%             nname = Estuary.checkUniqueNames(nodetxt.nname);
+%             g.Nodes.Name = nname;
         end         
          
 %%
@@ -251,23 +256,23 @@ classdef Estuary < muiPropertyUI
         end
         
 %% 
-        function nname = checkUniqueNames(nname)
-            %check node names and replace duplicates so all nodes have
-            %unique name
-            [~,idunique] = unique(nname,'stable');
-            if ~isempty(idunique)
-                duplicates = 1:length(nname);
-                duplicates(idunique) = [];
-                for j=1:length(duplicates)
-                    idd = duplicates(j);
-                    nname{idd} = [nname{idd},sprintf(': %d',j)];
-                    msg1 = 'Duplicate element names are not allowed';
-                    msg2 = 'Some names have been modified';
-                    msg3 = 'Edit Element names using Setup>Elements>Define Elements';
-                    warndlg(sprintf('%s\n%s\n%s',msg1,msg2,msg3));
-                end
-            end
-        end
+%         function nname = checkUniqueNames(nname)
+%             %check node names and replace duplicates so all nodes have
+%             %unique name
+%             [~,idunique] = unique(nname,'stable');
+%             if ~isempty(idunique)
+%                 duplicates = 1:length(nname);
+%                 duplicates(idunique) = [];
+%                 for j=1:length(duplicates)
+%                     idd = duplicates(j);
+%                     nname{idd} = [nname{idd},sprintf(': %d',j)];
+%                     msg1 = 'Duplicate element names are not allowed';
+%                     msg2 = 'Some names have been modified';
+%                     msg3 = 'Edit Element names using Setup>Elements>Define Elements';
+%                     warndlg(sprintf('%s\n%s\n%s',msg1,msg2,msg3));
+%                 end
+%             end
+%         end
         
 %%
         function [varmatrix] = getVarMatrix(vargraph)
@@ -293,7 +298,7 @@ classdef Estuary < muiPropertyUI
             switch src.Tag
                 case 'Network'
                     axtag = 'axNetwork';
-                    [g,nlabel] = Estuary.initialiseReachGraph(mobj);
+                    [g,nlabel] = Estuary.initialiseDispersionGraph(mobj);
                 case 'Rivers'
                     axtag = 'axRivers';
                     [g,nlabel] = Advection.initialiseRiverGraph(mobj);
@@ -369,8 +374,9 @@ classdef Estuary < muiPropertyUI
             %get required model properties
             y2s = mobj.Constants.y2s;
             eletype = getEleProp(eleobj,'transEleType');
-            ich = find(strcmp(eletype,'Channel'));
-            ifl = find(strcmp(eletype,'Tidalflat'));
+            ich = strcmp(eletype,'Channel');
+            finetypes = mobj.GeoType(mobj.FNtypes);
+            ifn = matches(eletype,finetypes); %requires v2019b
             vm = getEleProp(eleobj,'MovingVolume');
             sm = getEleProp(eleobj,'MovingSurfaceArea');
             cb = getEleProp(eleobj,'BedConcentration');
@@ -410,10 +416,15 @@ classdef Estuary < muiPropertyUI
             delo = max(dExt);    %this should probably also vary for coarse and fine
             n_av = mean(n(ich));
             tauS = 1/cES/n_av*(vtot/wso/stot + vtot/delo)/y2s; %coarse
-            wso = mean(ws(ifl)); 
-            n_av = mean(abs(n(ifl)));
+            wso = mean(ws(ifn)); 
+            n_av = mean(abs(n(ifn)));
             tauM = 1/cEM/n_av*(vtot/wso/stot + vtot/delo)/y2s;  %fine
-
+            
+            %mask the external elements that are not linked to delta(s)
+            extypes = ~contains(mobj.GeoType(mobj.EXtypes),'Delta');            
+            iex = matches(eletype,mobj.GeoType(extypes)); %requires v2019b
+            slr_max(iex) = 0; slr_max_bio(iex) = 0; mT(iex) = 0;
+            
             userData = [slr_max,slr_max_bio,mT];
             Estuary.responseTable(mobj,src,userData,tauS,tauM)
         end
@@ -422,7 +433,7 @@ classdef Estuary < muiPropertyUI
         function responseTable(mobj,src,tableData,tauS,tauM)
             %create table for tab to summarise estuary response properties 
             hp = findobj(src,'Type','uipanel');
-            hx = findobj(src,'Tag','Resptext');
+            hx = findobj(src,'-regexp','Tag','Resptext');
             ht = findobj(src,'Type','uitable');
             delete(ht);
             
@@ -462,7 +473,8 @@ classdef Estuary < muiPropertyUI
                         'Style','text','String', helptext,...                    
                         'HorizontalAlignment', 'left',...
                         'Units','normalized', 'Position', [0.04 0.85 0.8 0.1],...
-                        'Tag','Resptext');
+                        'Tag','Resptext1');
+                    
                 msg3 = 'Morphological response times for whole system:';
                 helptext = sprintf('%s\n\nChannel/coarse concentration = %.1f years\nFlats/fine concentration = %.1f years',...
                     msg3,tauS,tauM);
@@ -470,13 +482,20 @@ classdef Estuary < muiPropertyUI
                         'Style','text','String', helptext,...                    
                         'HorizontalAlignment', 'left',...
                         'Units','normalized', 'Position', [0.61 0.55 0.4 0.25],...
-                        'Tag','Resptext');
+                        'Tag','Resptext2');
+            else
+                hxtxt = findobj(hx,'Tag','Resptext2');
+                msg3 = 'Morphological response times for whole system:';
+                helptext = sprintf('%s\n\nChannel/coarse concentration = %.1f years\nFlats/fine concentration = %.1f years',...
+                    msg3,tauS,tauM);
+                hxtxt.String = helptext;
             end
         end
     end          
 
-%%        
-        %add other functions to operate on properties as required  
+%% ------------------------------------------------------------------------       
+% functions that set estuary wide properties
+%--------------------------------------------------------------------------
     methods
         function eqConc = get.EqConcCoarse(obj)
             %dependent property derived from EqRhoCoarse

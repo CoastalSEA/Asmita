@@ -125,7 +125,7 @@ classdef Advection < handle
             %check whether inputs have been changed and update
             idx = diff([preExternalAdvIn,obj.ExternalAdvIn],1,2);
             idinputs = find(idx~=0);
-            if ~isempty(InputEle)     %if some source already exist
+            if ~isempty(InputEle)     %if some source already exists
                 idnewinput = setdiff(idinputs,InputEle);
                 if ~isempty(idnewinput)
                     for i=1:length(idnewinput)   %add new sources                        
@@ -404,13 +404,21 @@ classdef Advection < handle
                                                     is,tsyear);
                             end
                             %
-                            if length(inFlow)>1 %drifts vary along path
-                                h_flowpath = newDriftPath(h_flowpath,...
-                                                        inFlow,inEleID);
-                            else %source value dictates flow along path
-                                h_flowpath = newFlowPath(h_flowpath,...
-                                                        inFlow,inEleID);  
-                            end
+%                             if length(inFlow)>1 %drifts vary along path %   CHECK IF CONDITION
+%                                 h_flowpath = newDriftPath(h_flowpath,...
+%                                                         inFlow,inEleID);
+%                             else %source value dictates flow along path
+%                                 
+%                                 h_flowpath = newFlowPath(h_flowpath,...
+%                                                         inFlow,inEleID);  
+%                             end
+                            if length(inFlow)>1     %drifts vary along path %   CHECK IF CONDITION
+                                isbalance = false;  %ie no mass balance
+                            else     %source value dictates flow along path
+                                isbalance = true;   %ie update whole network
+                            end                            
+                            h_flowpath = rescale_graph(h_flowpath,...
+                                                        inFlow,isbalance);
                         end
                     end
                 end 
@@ -531,16 +539,23 @@ classdef Advection < handle
             end
 
             %allocate fluxes to the correct postion in matrix
-            %to find correct node use a landward version of FlowGraph
-            h_landward = Reach.LandwardFlow(obj.RiverGraph);
+            %to find correct node use a landward version of the RiverGraph
+%             h_landward = Reach.LandwardFlow(mobj);
+            h_landward = inverse_graph(obj.RiverGraph); 
             FlowPathIDs = h_landward.Nodes.EleID;
             EleType = h_landward.Nodes.Type;
             EleName = h_landward.Nodes.Name;
             %delFlowID = find(strcmp(EleType,'Delta'));
             %to access reach properties use the landward channel paths
-            h_channels = Reach.LandwardPath(mobj);  %uses channels in current version of ReachGraph            
+
+
+            h_channels = type_sub_graph(h_landward,'Channel');
             reachChannelIDs = h_channels.Nodes.EleID;
             reachChannelName = h_channels.Nodes.Name;
+            
+%             h_channels = type_sub_graph(estobj.DispersionGraph,'Channel');
+%             reachChannelIDs = h_channels.Nodes.EleID;
+%             reachChannelName = h_channels.Nodes.Name;
             
             %get reach based tidal pumping discharge
             [qtp,qtp0] = Advection.getTidalPumpingDischarge(mobj,reachChannelIDs);   
@@ -615,28 +630,34 @@ classdef Advection < handle
             %assign the flow graph to handle so that it can be used elsewhere
             %uses flow matrix, adv, with inputs, advin, and outputs,
             %advout, to define flow paths. nodetxt provided by calling function              
-            eleobj  = getClassObj(mobj,'Inputs','Element');
-            nele = length(eleobj);
-            userdata(nele+2,:) = zeros(1,nele+1);
-            userdata(:,nele+2) = zeros(nele+2,1);
-            userdata(end,2:end-1) = advIn;
-            userdata(2:end-1,1) = advOut;
-            userdata(2:end-1,2:end-1) = adv;
-
-            if sum(sum(userdata))==0
-                userdata = 0;
-%                 nname = {'No Flows Defined'};
-            end
-            g = digraph(userdata);
-            %now remove elements that are not connected
-            [in,out] = findedge(g);
-            idx = unique([in,out]);
-            g = subgraph(g,idx);
-            g.Nodes.EleID = nodetxt.nid(idx);
-            g.Nodes.Type = nodetxt.ntype(idx);
-            %node names must be unique
-            nname = Estuary.checkUniqueNames(nodetxt.nname);
-            g.Nodes.Name = nname(idx);
+            msg1 = 'Duplicate element names are not allowed';
+            msg2 = 'Some names have been modified';
+            msg3 = 'Edit Element names using Setup>Elements>Define Elements';
+            namemsg = sprintf('%s\n%s\n%s',msg1,msg2,msg3);
+            g = exchange_graph(adv,advIn,advOut,nodetxt,namemsg);
+            
+%             eleobj  = getClassObj(mobj,'Inputs','Element');
+%             nele = length(eleobj);
+%             userdata(nele+2,:) = zeros(1,nele+1);
+%             userdata(:,nele+2) = zeros(nele+2,1);
+%             userdata(end,2:end-1) = advIn;
+%             userdata(2:end-1,1) = advOut;
+%             userdata(2:end-1,2:end-1) = adv;
+% 
+%             if sum(sum(userdata))==0
+%                 userdata = 0;
+% %                 nname = {'No Flows Defined'};
+%             end
+%             g = digraph(userdata);
+%             %now remove elements that are not connected
+%             [in,out] = findedge(g);
+%             idx = unique([in,out]);
+%             g = subgraph(g,idx);
+%             g.Nodes.EleID = nodetxt.nid(idx);
+%             g.Nodes.Type = nodetxt.ntype(idx);
+%             %node names must be unique
+%             nname = Estuary.checkUniqueNames(nodetxt.nname);
+%             g.Nodes.Name = nname(idx);
         end
 
 %%
@@ -648,13 +669,15 @@ classdef Advection < handle
             sEleID = vargraph.Nodes.EleID(s);
             tEleID = vargraph.Nodes.EleID(t);
             EleID = getEleProp(eleobj,'EleID');
-            sEleIdx = ones(size(sEleID)); tEleIdx = sEleIdx;
+            sEleIdx = ones(size(sEleID)); 
+            tEleIdx = sEleIdx;
             for i=1:length(sEleID)
                 if sEleID(i)>0
                     sEleIdx(i) = find(EleID==sEleID(i))+1;
                 else
                     sEleIdx(i) = nele+2;
                 end
+                %
                 if tEleID(i)>0
                     tEleIdx(i) = find(EleID==tEleID(i))+1;
                 end

@@ -95,7 +95,7 @@ classdef ASMinterface < handle
                 eleobj(i).BioProdVolume = vb(i);
             end
             %mass balance check
-            ASM_model.MassBalance(mobj,robj);
+%             ASM_model.MassBalance(mobj,robj);
             %diagnostic message to command window during runtime
 %             t = robj.Time/mobj.Constants.y2s;
 %             smb = obj.SedMbal; wmb = obj.WatMbal;
@@ -362,7 +362,7 @@ classdef ASMinterface < handle
             vf = getEleProp(eleobj,'FixedVolume');
             vm = getEleProp(eleobj,'MovingVolume');
             vb = getEleProp(eleobj,'BioProdVolume');
-            dV = Interventions.getIntProp(mobj,'transVolChange');
+%             dV = Interventions.getIntProp(mobj,'transVolChange');
             [~,dExt] = Estuary.getDispersion(mobj); %uses ReachGraph
             [~,qIn,qOut] = Advection.getAdvectionFlow(mobj,'River'); %water flux in m3/s
             [~,qtpIn,qtpOut] = Advection.getAdvectionFlow(mobj,'Qtp'); %water flux in m3/s

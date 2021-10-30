@@ -28,6 +28,14 @@ classdef Asmita < muiModelUI
         GeoType = {'Delta','Channel','Tidalflat','Saltmarsh','Storage',...
                    'EbbDelta','FloodDelta','DeltaFlat',...
                    'Beachface','Shoreface','Spit'};
+        LWtypes = [1,2,6,7,10];    %GeoTypes that vary with low water
+        EXtypes = [1,6,8,9,10,11]; %GeoTypes that are external to inlet
+        FNtypes = [3,4,5];         %GeoTypes that use fine eq concentration
+        %NB: Channel is used extensively as a key word. Reach uses 'Flat' 
+        %and 'Flood' as key words. Saltmarsh, ASMinterface and ASM_model
+        %use 'Saltmarsh' and 'Tidalflat'. Estuary uses 'Delta' to find all
+        %external delta elements ie not inc. FloodDelta. Drift uses EXtypes
+        %to limit assignment of drift inputs. River uses 'Channel'
     end
     
     methods (Static)
@@ -435,6 +443,15 @@ classdef Asmita < muiModelUI
         function Help(~,~,~)
             doc asmita                              
         end    
+    end
+%%
+    methods
+        function loadAsmitaModel(obj,path,file)
+            %load a model (used in unit testing)
+            obj.Info.PathName = path;
+            obj.Info.FileName = file;
+            loadModel(obj);
+        end
     end
 %%
     methods (Access=private)

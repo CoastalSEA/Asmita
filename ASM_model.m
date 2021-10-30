@@ -118,7 +118,7 @@ classdef ASM_model < ASMinterface
             [Qtp,qtpIn,~] = Advection.getAdvectionFlow(mobj,'Qtp');
             [Qs,qsIn,~] = Advection.getAdvectionFlow(mobj,'Drift');
             
-            isQtpOnly = true;
+            isQtpOnly = false;
 
             if isQtpOnly
                 rncobj = getClassObj(mobj,'Inputs','RunConditions');

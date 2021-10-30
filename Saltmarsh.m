@@ -299,7 +299,7 @@ classdef Saltmarsh < muiPropertyUI
             if isempty(hp)
                 hp = uipanel(src,'Title','Biomass distribution','FontSize',8,...
                                 'BackgroundColor',[0.96,0.96,0.96],...
-                                'Position',[0.55 0 0.44 0.99]);
+                                'Position',[0.55 0 0.45 0.99]);
             end
             ht = findobj(hp,'Type','axes');
             delete(ht);
@@ -599,7 +599,7 @@ classdef Saltmarsh < muiPropertyUI
                 hfig = figure('Name','Biomass Plot','Tag','PlotFig');
             end
             
-            ax1_pos = [0.165,0.11,0.67,0.79]; % position of first axes
+            ax1_pos = [0.165,0.11,0.65,0.79]; % position of first axes
             ax1 = axes(hfig,'Position',ax1_pos,...
                       'XAxisLocation','bottom','YAxisLocation','left');
             

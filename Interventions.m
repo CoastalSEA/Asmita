@@ -1,4 +1,4 @@
-classdef Interventions < handle
+classdef Interventions < matlab.mixin.Copyable
     %class to define and update changes that are imposed on the system
     %
     %----------------------------------------------------------------------
