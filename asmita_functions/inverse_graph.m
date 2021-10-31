@@ -25,7 +25,9 @@ function outgraph = inverse_graph(ingraph)
     outgraph.Nodes.Type  = ingraph.Nodes.Type;
     outgraph.Nodes.Name  = ingraph.Nodes.Name;
     %reverse the in/out names 
-    outgraph.Nodes.Name{end}  = '';  %add blank because must be unique
-    outgraph.Nodes.Name{1}  = ingraph.Nodes.Name{end};
-    outgraph.Nodes.Name{end}  = ingraph.Nodes.Name{1};
+    if outgraph.Nodes.EleID(1)==0 && outgraph.Nodes.EleID(end)==0    
+        outgraph.Nodes.Name{end}  = '';  %add blank because must be unique
+        outgraph.Nodes.Name{1}  = ingraph.Nodes.Name{end};
+        outgraph.Nodes.Name{end}  = ingraph.Nodes.Name{1};
+    end
 end

@@ -1,16 +1,18 @@
-function [exmatrix,exchIn,exchOut,nodetxt] = graph_matrix(flowgraph,nele)
+function [exmatrix,exchIn,exchOut,nodetxt] = graph2matrix(flowgraph,nele)
 %
 %-------function help------------------------------------------------------
 % NAME
-%   graph_matrix.m
+%   graph2matrix.m
 % PURPOSE
 %   extract the exchange matrix and vectors of external exchanges from
 %   a directed graph with labels defined in nodetxt
 % USAGE
-%   [exmatrix,exchIn,exchOut,nodetxt] = graph_matrix(flowgraph)
+%   [exmatrix,exchIn,exchOut,nodetxt] = graph2matrix(flowgraph)
 % INPUTS
 %   flowgraph - handle to digraph object for the network
-%   nele - 
+%   nele - number of nodes required in the matrix being returned (optional)
+%          if not specified the number of nodes in the flowgraph is used 
+%          to determine nele.
 % OUTPUTS
 %   exmatrix - [nxn] matrix that defines the exchanges within the network
 %   exchIn  - 2xn vector of the exchanges with or from the outside.
@@ -58,14 +60,16 @@ function [exmatrix,exchIn,exchOut,nodetxt] = graph_matrix(flowgraph,nele)
     
     idx = nodetxt.nid>0;             %~idx can can be 1, end, or [1,end]
     exmatrix = fullmatrix(idx,idx);  %exchanges within the network
-    exchIn = fullmatrix(~idx,idx)';  %exchanges into the network
-    exchOut = fullmatrix(idx,~idx);  %exchanges out of the network
     
     if sum(~idx)==1
         %when only input or output included, the matrix is not symmetric
+        %pad the exchanges to return [nx2] array
+        exchIn = zeros(size(exmatrix,1),2); exchOut = exchIn;
+        exchIn(:,~idx) = fullmatrix(~idx,idx)';  %exchanges into the network
+        exchOut(:,~idx) = fullmatrix(idx,~idx);  %exchanges out of the network
         %add the missing exchange to the nodetxt to maintain symmetry
         ids = find(~idx);
-        if ids==1                    %outer exists so add inner
+        if ids==1                    %outer exists so add inner            
             nodetxt.nid(end+1) = 0;
             nodetxt.ntype{end+1} = '';
             nodetxt.nname{end+1} = '';
@@ -74,18 +78,31 @@ function [exmatrix,exchIn,exchOut,nodetxt] = graph_matrix(flowgraph,nele)
             nodetxt.ntype = [{''};nodetxt.ntype];
             nodetxt.nname = [{''};nodetxt.nname];            
         end
+    else
+        exchIn = fullmatrix(~idx,idx)';  %exchanges into the network
+        exchOut = fullmatrix(idx,~idx);  %exchanges out of the network
     end
 
-%     
-%     matrixsze = length(idx);
-%     %if the matrix is a subset of the network expand to full matrix
-%     %based on the number of elements
-%     if nargin>1 && ~isempty(nele) && nele>matrixsze
-%         exmatrix = zeros(nele,nele);              %null matrix
-%         exchIn = zeros(nele,2); exchOut = exchIn; %null vectors
-%         nids = nodetxt.nid(idx);
-%         exmatrix(nids,nids) = fullmatrix(idx,idx);
-%         exchIn(nids,:) = fullmatrix([1,end],idx)';
-%         exchOut(nids,:) = fullmatrix(idx,[1,end]);
-%     end
+    
+    matrixsze = size(exmatrix,1);
+    %if the matrix is a subset of the network expand to full matrix
+    %based on the number of elements required equal to nele
+    if nargin>1 && ~isempty(nele) && nele>matrixsze
+        %initialise arrays
+        exmatrix = zeros(nele,nele);                     %null matrix
+        exchIn = zeros(nele,2); exchOut = exchIn;        %null vectors
+        newid = zeros(nele,1); newtype = repmat({''},nele,1); newname = newtype;
+        %assign values based on node ID stored in nodetxt.nid
+        nids = nodetxt.nid(idx);
+        exmatrix(nids,nids) = fullmatrix(idx,idx);
+        exchIn(nids,:) = fullmatrix(~idx,idx)';
+        exchOut(nids,:) = fullmatrix(idx,~idx);
+        %update nodetext to the new array dimension
+        newid(nids) = nodetxt.nid(idx);
+        newtype(nids) = nodetxt.ntype(idx);
+        newname(nids) = nodetxt.nname(idx); 
+        nodetxt.nid = [nodetxt.nid(1);newid;nodetxt.nid(end)];
+        nodetxt.ntype = [nodetxt.ntype(1);newtype;nodetxt.ntype(end)];
+        nodetxt.nname = [nodetxt.nname(1);newname;nodetxt.nname(end)];
+    end
 end
