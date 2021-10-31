@@ -112,15 +112,20 @@ classdef Advection < handle
             prop = 'Advection';
             prompt = sprintf('Enter advection between elements %s\n(from row element to column element in direction of flow)',qunits);            
 %             h_tab = Estuary.setMatrix(mobj,prop,prompt,inoutxt,userdata);
-            matrixtable = setMatrix(eleobj,prop,prompt,inoutxt,userdata);
+%             matrixtable = setMatrix(eleobj,prop,prompt,inoutxt,userdata);          
 %             if isempty(matrixtable), return; end %user cancelled
+%             %write user defined date to variables
+%             preExternalAdvIn = obj.ExternalAdvIn;
+%             extadv = matrixtable{end,2:end-1};   %from outside
+%             obj.ExternalAdvIn = extadv';
+%             extadv = matrixtable{2:end-1,1};     %to outside
+%             obj.ExternalAdvOut = extadv;
+%             obj.InternalAdv = matrixtable{2:end-1,2:end-1};
+
             %write user defined date to variables
             preExternalAdvIn = obj.ExternalAdvIn;
-            extadv = matrixtable{end,2:end-1};   %from outside
-            obj.ExternalAdvIn = extadv';
-            extadv = matrixtable{2:end-1,1};     %to outside
-            obj.ExternalAdvOut = extadv;
-            obj.InternalAdv = matrixtable{2:end-1,2:end-1};
+            [obj.InternalAdv,obj.ExternalAdvIn,obj.ExternalAdvOut] = ...
+                            setmatrix(eleobj,prop,prompt,inoutxt,userdata);
 
             %check whether inputs have been changed and update
             idx = diff([preExternalAdvIn,obj.ExternalAdvIn],1,2);

@@ -196,15 +196,15 @@ classdef Asmita < muiModelUI
             subtabs.Settings(5,:)   = {' Run Parameters ',@obj.InputTabSummary};
             
             tabs.Tides   = {'  Tides  ',''};
-            subtabs.Tides(1,:)   = {' Network ',@(src,evt)Estuary.Network(obj,src,evt)};
+            subtabs.Tides(1,:)   = {' Network ',@(src,evt)setgraph(obj,src,evt)};
             subtabs.Tides(2,:)   = {' Water Levels ',@obj.setAsmitaTabs};
             subtabs.Tides(3,:)   = {' Hydraulics ',@obj.setAsmitaTabs};
             subtabs.Tides(4,:)   = {' Tidal Pumping ',@obj.setAsmitaTabs};
             
             tabs.Flows   = {'  Flows  ',''};
-            subtabs.Flows(1,:) = {' Rivers ',@(src,evt)Estuary.Network(obj,src,evt)};
-            subtabs.Flows(2,:) = {' Drift ',@(src,evt)Estuary.Network(obj,src,evt)};
-            subtabs.Flows(3,:) = {'Tidal Pumping',@(src,evt)Estuary.Network(obj,src,evt)};
+            subtabs.Flows(1,:) = {' Rivers ',@(src,evt)setgraph(obj,src,evt)};
+            subtabs.Flows(2,:) = {' Drift ',@(src,evt)setgraph(obj,src,evt)};
+            subtabs.Flows(3,:) = {'Tidal Pumping',@(src,evt)setgraph(obj,src,evt)};
             subtabs.Flows(4,:) = {'Input Summary',@(src,evt)Advection.inputSummary(obj,src,evt)};
             subtabs.Flows(5,:) = {'River Input',@(src,evt)River.TSplot(obj,src,evt)};
             subtabs.Flows(6,:) = {'Drift Input',@(src,evt)Drift.TSplot(obj,src,evt)};

@@ -15,8 +15,8 @@ function [exmatrix,exchIn,exchOut,nodetxt] = graph2matrix(flowgraph,nele)
 %          to determine nele.
 % OUTPUTS
 %   exmatrix - [nxn] matrix that defines the exchanges within the network
-%   exchIn  - 2xn vector of the exchanges with or from the outside.
-%   exchOut - 2xn vector of the exchanges to the outside.
+%   exchIn  - 2xn array of the exchanges with or from the outside.
+%   exchOut - 2xn array of the exchanges to the outside.
 %             NB: the network defines an exchange between one or two
 %             domains. These external domains are typically spatially
 %             distinct relative to the network being above/below,
@@ -42,7 +42,6 @@ function [exmatrix,exchIn,exchOut,nodetxt] = graph2matrix(flowgraph,nele)
 % CoastalSEA (c) Oct 2021
 %--------------------------------------------------------------------------
 %
-
     %recover the node text data
     nodetxt.nid = flowgraph.Nodes.EleID;
     nodetxt.ntype = flowgraph.Nodes.Type;

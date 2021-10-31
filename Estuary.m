@@ -81,54 +81,53 @@ classdef Estuary < muiPropertyUI
             msgtxt = 'Elements not yet defined';
             eleobj = getClassObj(mobj,'Inputs','Element',msgtxt);
             msgtxt = 'Estuary properties not yet defined';
-            estobj = getClassObj(mobj,'Inputs','Estuary',msgtxt);
-            if isempty(eleobj) || isempty(estobj), return; end
+            obj = getClassObj(mobj,'Inputs','Estuary',msgtxt);
+            if isempty(eleobj) || isempty(obj), return; end
             
+            %assign data for matrix of exchanges
             nele = length(eleobj);
             nelp = nele+2;
-
-            %create or get data and build matrix of exchanges
             userdata = zeros(nelp,nelp);
-            if ~isempty(estobj.Dispersion)
-                userdata(1,2:end-1) = estobj.ExternalDisp';
-                userdata(2:end-1,2:end-1) = estobj.Dispersion;
+            if ~isempty(obj.Dispersion)
+                userdata(1,2:end-1) = obj.ExternalDisp(:,1)';
+                userdata(2:end-1,2:end-1) = obj.Dispersion;
             end
-
+            
+            %define tableUI for user to edit matrix
             prop = 'Dispersion';
             prompt = 'Enter horizontal exchange between elements (m/s)';
             prompt = sprintf('%s\n(from row element to column element in landward direction) NB: River values are read only.',prompt);
             inoutxt = {'0: Outside';'+: Rivers'};
-            matrixtable = setMatrix(eleobj,prop,prompt,inoutxt,userdata);
-            
-            estobj.ExternalDisp = matrixtable{1,2:end-1}';
-            estobj.Dispersion = matrixtable{2:end-1,2:end-1};
-            nodetxt = Estuary.setGraphVariables(mobj);
-            estobj.DispersionGraph = Estuary.setDispersionGraph(estobj.Dispersion,...
-                                estobj.ExternalDisp,nodetxt);
-            setClassObj(mobj,'Inputs','Estuary',estobj);               
+            [obj.DispersionGraph,obj.Dispersion,obj.ExternalDisp] = ...
+                            setmatrix(eleobj,prop,prompt,inoutxt,userdata);
+            %assign updated instance
+            setClassObj(mobj,'Inputs','Estuary',obj);               
         end     
 
 %%
 %--------------------------------------------------------------------------
 %       INITIALISE
 %--------------------------------------------------------------------------
-        function [reachGraph,nlabel] = initialiseDispersionGraph(mobj)
+        function [dispersionGraph,nlabel] = initialiseDispersionGraph(mobj)
             %use the Estuary dispersion properties to initialise DispersionGraph
             obj  = getClassObj(mobj,'Inputs','Estuary');
             if isempty(obj) || isempty(obj.Dispersion)
                 userdata = 0;
                 nlabel = {'No Dispersion Defined'};
-                reachGraph = digraph(userdata);
+                dispersionGraph = digraph(userdata);
             else
                 Element.initialiseElements(mobj);                 
                 Disp = obj.Dispersion;
                 ExtDisp = obj.ExternalDisp;
-                nodetxt = Estuary.setGraphVariables(mobj);
-                reachGraph = Estuary.setDispersionGraph(Disp,ExtDisp,nodetxt);
-                nlabel = strcat(num2str(reachGraph.Nodes.EleID),...
-                                            '-',reachGraph.Nodes.Name);
+                inoutxt = {'Outside';'Rivers'};
+                eleobj  = getClassObj(mobj,'Inputs','Element');
+                nodetxt = setnodetext(eleobj,inoutxt);
+
+                dispersionGraph = matrix2graph(Disp,ExtDisp,[],nodetxt);
+                nlabel = strcat(num2str(dispersionGraph.Nodes.EleID),...
+                                            '-',dispersionGraph.Nodes.Name);
             end
-            obj.DispersionGraph = reachGraph;
+            obj.DispersionGraph = dispersionGraph;
             setClassObj(mobj,'Inputs','Estuary',obj);
         end
 
@@ -146,18 +145,16 @@ classdef Estuary < muiPropertyUI
             
             rncobj  = getClassObj(mobj,'Inputs','RunConditions');
             if rncobj.IncDynamicElements
-                h_reach = obj.DispersionGraph;
-                varmatrix = Estuary.getVarMatrix(h_reach);
-                dExt = varmatrix(1,2:end)';
-                d = varmatrix(2:end,2:end);
+                dispgraph = obj.DispersionGraph;
+                [d,exchIn] = graph2matrix(dispgraph);
+                dExt = exchIn(:,1);
             else
-                dExt = obj.ExternalDisp;
+                dExt = obj.ExternalDisp(:,1);
                 d = obj.Dispersion;
             end
             d = d + d';
             D = -d;
-            eleobj  = getClassObj(mobj,'Inputs','Element');
-            nele = length(eleobj);
+            nele = size(d,1);
             for j=1:nele
                 D(j,j) = sum(d(j,:))+dExt(j);
             end            
@@ -172,186 +169,17 @@ classdef Estuary < muiPropertyUI
             end
             
             if isempty(obj.DispersionGraph) && ~isempty(obj.Dispersion)
-                [obj.DispersionGraph,~] = Estuary.initialiseDispersionGraph(mobj);
+                obj.DispersionGraph = Estuary.initialiseDispersionGraph(mobj);
             else
                 %add code to update
             end
             setClassObj(mobj,'Inputs','Estuary',obj);
         end
         
-%%        
-%--------------------------------------------------------------------------
-%       UTILITIES
-%-------------------------------------------------------------------------- 
-        function g = setDispersionGraph(disp,extdisp,nodetxt)
-            %assign the network graph to handle so that it can be used elsewhere
-            %uses the dispersion matrix, disp, and the external exchanges,
-            %extdisp to define network  
-            % mobj can be model handle or handle to a version of eleobj
-            % this allows use at run time and to plot previous cases
-            msg1 = 'Duplicate element names are not allowed';
-            msg2 = 'Some names have been modified';
-            msg3 = 'Edit Element names using Setup>Elements>Define Elements';
-            namemsg = sprintf('%s\n%s\n%s',msg1,msg2,msg3);
-            g = exchange_graph(disp,extdisp,[],nodetxt,namemsg);
-%             if isa(mobj,'Element')
-%                 %pass version of eleobj which may not be current settings
-%                 eleobj = mobj;
-%             else
-%                 %retrieve the current version of eleobj
-%                 eleobj = getClassObj(mobj,'Inputs','Element');
-%             end
-%             nele = length(eleobj);
-%             userdata = zeros(nele+1,nele+1);
-%             userdata(1,2:end) = extdisp;
-%             userdata(2:end,2:end) = disp;
-%             g = digraph(userdata);
-%             g.Nodes.EleID = nodetxt.nid;
-%             g.Nodes.Type = nodetxt.ntype;
-%             %node names must be unique
-%             nname = Estuary.checkUniqueNames(nodetxt.nname);
-%             g.Nodes.Name = nname;
-        end         
-         
-%%
-        function nodetxt = setGraphVariables(mobj,root,head)
-            %return variables used to label network and flow graphs
-            % mobj can be model handle or handle to a version of eleobj
-            % this allows use at run time and to plot previous cases
-            if nargin<2
-                root = 'Outside';      %applies to reach and flow graphs
-                head = [];
-            end
-            
-            if isa(mobj,'Element')
-                %pass version of eleobj which may not be current settings
-                eleobj = mobj;
-            else
-                %retrieve the current version of eleobj
-                eleobj = getClassObj(mobj,'Inputs','Element');                
-            end
-            
-            nele = length(eleobj);
-            if isempty(eleobj(1).transEleType)
-                EleType = getEleProp(eleobj,'EleType');  
-            else
-                EleType = getEleProp(eleobj,'transEleType');  
-            end
-            
-            nodetxt.nid = zeros(nele+1,1);
-            nodetxt.nid(1) = 0;
-            nodetxt.nid(2:end) = getEleProp(eleobj,'EleID');
-            nodetxt.ntype = cell(nele+1,1);
-            nodetxt.ntype{1} = root;
-            nodetxt.ntype(2:end) = EleType;                    
-            nodetxt.nname = cell(nele+1,1);
-            nodetxt.nname{1} = root;
-            nodetxt.nname(2:end) = getEleProp(eleobj,'EleName');
-            
-            if ~isempty(head)         %only applies to flow graph
-                nodetxt.nid(nele+2)=0;
-                nodetxt.ntype{nele+2} = head;
-                nodetxt.nname{nele+2} = head;
-            end
-        end
-        
-%% 
-%         function nname = checkUniqueNames(nname)
-%             %check node names and replace duplicates so all nodes have
-%             %unique name
-%             [~,idunique] = unique(nname,'stable');
-%             if ~isempty(idunique)
-%                 duplicates = 1:length(nname);
-%                 duplicates(idunique) = [];
-%                 for j=1:length(duplicates)
-%                     idd = duplicates(j);
-%                     nname{idd} = [nname{idd},sprintf(': %d',j)];
-%                     msg1 = 'Duplicate element names are not allowed';
-%                     msg2 = 'Some names have been modified';
-%                     msg3 = 'Edit Element names using Setup>Elements>Define Elements';
-%                     warndlg(sprintf('%s\n%s\n%s',msg1,msg2,msg3));
-%                 end
-%             end
-%         end
-        
-%%
-        function [varmatrix] = getVarMatrix(vargraph)
-            %extract components of graph to define dispersion or advection            
-            nn = numnodes(vargraph);
-            [s,t] = findedge(vargraph);
-            varmatrix = sparse(s,t,vargraph.Edges.Weight,nn,nn);
-            varmatrix = full(varmatrix);
-        end
 %%
 %--------------------------------------------------------------------------
 %       OUTPUT
 %--------------------------------------------------------------------------   
-        function Network(mobj,src,~)
-            %update the Network or Flow tabs with directed graphs of network
-            estobj = getClassObj(mobj,'Inputs','Element');
-            advobj = getClassObj(mobj,'Inputs','Advection');
-            if isempty(estobj) && isempty(advobj)
-                cla(src.Children);
-                return
-            end
-
-            switch src.Tag
-                case 'Network'
-                    axtag = 'axNetwork';
-                    [g,nlabel] = Estuary.initialiseDispersionGraph(mobj);
-                case 'Rivers'
-                    axtag = 'axRivers';
-                    [g,nlabel] = Advection.initialiseRiverGraph(mobj);
-                case 'Drift'
-                    axtag = 'axDrift';
-                    [g,nlabel] = Advection.initialiseDriftGraph(mobj);  
-                case 'Tidal Pumping'
-                    axtag = 'axTidalPump';
-                    [g,nlabel] = Advection.initialiseQtpGraph(mobj); 
-            end
-            
-            %plot resulting graph on tab
-            elabel = g.Edges.Weight;            
-            h_ax = findobj('Tag',axtag);
-            if isempty(h_ax)
-                h_ax = axes('Parent',src,'Tag',axtag,'Color','none', ...
-                    'Color',[0.9,0.9,0.9], ...
-                    'Position', [0 0 1 1], ...
-                    'XColor','none', 'YColor','none','ZColor','none', ...
-                    'NextPlot','replacechildren');    
-            end
-            %LWidths = 5*elabel/max(elabel);
-            plot(g,'Parent',h_ax,'EdgeLabel',elabel,'NodeLabel',nlabel);
-                %'LineWidth',LWidths,
-                
-            hpan = findobj(src,'Style','pushbutton');
-            if isempty(hpan)
-                uicontrol('Parent',src, ...
-                    'Style', 'pushbutton', 'String', 'Pan',...
-                    'TooltipString','When active, right click for zoom menu',...
-                    'Units','normalized', ...
-                    'Position', [0.02 0.94 0.06 0.05], ...
-                    'Callback', @(src,evtdat)Estuary.panButton(h_ax,src,evtdat));    
-                uicontrol('Parent',src, ...
-                    'Style', 'pushbutton', 'String', 'Off',...
-                    'Units','normalized', ...
-                    'Position', [0.08 0.94 0.06 0.05], ...
-                    'Callback', 'zoom(gcbf,''off'');pan(gcbf,''off'')'); 
-            end
-        end 
-%%
-        function panButton(h_ax,~,~)            
-            %Create push button to enable pan and zoom
-            hCM = uicontextmenu;
-            uimenu('Parent',hCM,'Label','Switch to zoom',...
-                'Callback','zoom(gcbf,''on'')');
-            hPan = pan;
-            setAllowAxesPan(hPan,h_ax,true);
-            hPan.UIContextMenu = hCM;
-            pan('on')
-        end
-        
-%%
         function Response(mobj,src,~)
             %present rate of slr and system response times on a tab
             %initialise table for response results

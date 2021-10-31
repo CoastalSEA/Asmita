@@ -10,8 +10,8 @@ function flowgraph = matrix2graph(exmatrix,exchIn,exchOut,nodetxt,namemsg)
 %   flowgraph = matrix2graph(exmatrix,exchange,nodetxt,namemsg)
 % INPUTS
 %   exmatrix - [nxn] matrix that defines the exchanges within the network
-%   exchIn  - 2xn vector of the exchanges with or from the outside, or [].
-%   exchOut - 2xn vector of the exchanges to the outside, or [].
+%   exchIn  - 2xn array of the exchanges with or from the outside, or [].
+%   exchOut - 2xn array of the exchanges to the outside, or [].
 %             NB: the network defines an exchange between one or two
 %             domains. These external domains are typically spatially
 %             distinct relative to the network being above/below,

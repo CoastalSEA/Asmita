@@ -538,28 +538,28 @@ classdef Element < muiPropertyUI
                 'Position',[0,0,1,1]);
         end
 %%
-        function  newtable = setMatrix(obj,prop,prompt,inoutxt,userdata)  
-            %create table to input or edit dispersion and advection values            
-            nelp = length(obj)+2;
-            colnames = cell(nelp,1);
-            %colnames{1} = ['0: Outside'];
-            colnames{1} = inoutxt{1};
-            for i=1:nelp-2
-                colnames{i+1} = [num2str(obj(i).EleID),': ', ...
-                                  char(obj(i).EleName)];
-            end
-            %colnames{nelp} = ['+: Rivers'];
-            colnames{nelp} = inoutxt{2};
-            rownames = colnames;
-            
-            title = prop;
-            header = prompt;
-            data = num2cell(userdata,1);
-            oldtable = table(data{:},'RowNames',rownames,'VariableNames', colnames); 
-            but.Text = {'Save','Cancel'}; %labels for tab button definition
-            newtable = tablefigureUI(title,header,oldtable,true,but,[0.1,0.6]);
-            if isempty(newtable), newtable = oldtable; return; end        
-        end
+%         function  newtable = setMatrix(obj,prop,prompt,inoutxt,userdata)  
+%             %create table to input or edit dispersion and advection values            
+%             nelp = length(obj)+2;
+%             colnames = cell(nelp,1);
+%             %colnames{1} = ['0: Outside'];
+%             colnames{1} = inoutxt{1};
+%             for i=1:nelp-2
+%                 colnames{i+1} = [num2str(obj(i).EleID),': ', ...
+%                                   char(obj(i).EleName)];
+%             end
+%             %colnames{nelp} = ['+: Rivers'];
+%             colnames{nelp} = inoutxt{2};
+%             rownames = colnames;
+%             
+%             title = prop;
+%             header = prompt;
+%             data = num2cell(userdata,1);
+%             oldtable = table(data{:},'RowNames',rownames,'VariableNames', colnames); 
+%             but.Text = {'Save','Cancel'}; %labels for tab button definition
+%             newtable = tablefigureUI(title,header,oldtable,true,but,[0.1,0.6]);
+%             if isempty(newtable), newtable = oldtable; return; end        
+%         end
     end   
 %%    
     methods (Access=private)
