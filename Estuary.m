@@ -98,7 +98,7 @@ classdef Estuary < muiPropertyUI
             prompt = 'Enter horizontal exchange between elements (m/s)';
             prompt = sprintf('%s\n(from row element to column element in landward direction) NB: River values are read only.',prompt);
             inoutxt = {'0: Outside';'+: Rivers'};
-            [obj.DispersionGraph,obj.Dispersion,obj.ExternalDisp] = ...
+            [obj.Dispersion,obj.ExternalDisp,obj.DispersionGraph] = ...
                             setmatrix(eleobj,prop,prompt,inoutxt,userdata);
             %assign updated instance
             setClassObj(mobj,'Inputs','Estuary',obj);               
@@ -110,16 +110,17 @@ classdef Estuary < muiPropertyUI
 %--------------------------------------------------------------------------
         function [dispersionGraph,nlabel] = initialiseDispersionGraph(mobj)
             %use the Estuary dispersion properties to initialise DispersionGraph
+            %when called for a tab plot return graph and labels
             obj  = getClassObj(mobj,'Inputs','Estuary');
             if isempty(obj) || isempty(obj.Dispersion)
-                userdata = 0;
-                nlabel = {'No Dispersion Defined'};
+                userdata = 0;                
                 dispersionGraph = digraph(userdata);
+                nlabel = {'No Dispersion Defined'};
             else
                 Element.initialiseElements(mobj);                 
                 Disp = obj.Dispersion;
                 ExtDisp = obj.ExternalDisp;
-                inoutxt = {'Outside';'Rivers'};
+                inoutxt = {'Sea';'Rivers'};
                 eleobj  = getClassObj(mobj,'Inputs','Element');
                 nodetxt = setnodetext(eleobj,inoutxt);
 
@@ -127,6 +128,7 @@ classdef Estuary < muiPropertyUI
                 nlabel = strcat(num2str(dispersionGraph.Nodes.EleID),...
                                             '-',dispersionGraph.Nodes.Name);
             end
+            %when called during run time update instance
             obj.DispersionGraph = dispersionGraph;
             setClassObj(mobj,'Inputs','Estuary',obj);
         end

@@ -160,23 +160,7 @@ classdef River < matlab.mixin.Copyable
                prop(idele,1) = obj(i).(varname);
            end
        end
-%%   
-        function [rele,okEle,msg,flow] = getSourceProps(mobj)
-            %get the properties of a river source for advection            
-            obj  = getClassObj(mobj,'Inputs','River');
-            eleobj  = getClassObj(mobj,'Inputs','Element');
-            eletype = getEleProp(eleobj,'EleType');
-            okEle = strcmp(eletype,'Channel');                              
-            msg{1} = 'Can only connect to a channel, which must exit\nRemove input to element %d';
-            msg{2} = 'River input added to element %d\nProperties need to be defined in Setup>Rivers';
-            msg{3} = 'River inputs have been added and need to be defined in Setup>Rivers';
-            nriv = length(obj);
-            rele(nriv,1) = 0; flow(nriv,1) = 0;
-            for i=1:nriv
-                rele(i) = find([eleobj(:).EleID]==obj(i).ChannelID);
-                flow(i) = obj(i).RiverFlow;
-            end
-        end     
+    
 %%
         function obj = setRiverTS(mobj)
             %prompt user for file name and setup river timeseries
@@ -358,6 +342,24 @@ classdef River < matlab.mixin.Copyable
                 obj(i).tsRiverConc = obj(i).RiverConc;  
             end
         end
+%%   
+        function source = getSourceProps(obj,eleobj,~)
+            %get the properties of a river source for advection            
+            eletype = getEleProp(eleobj,'EleType');
+            source.okEle = strcmp(eletype,'Channel');                              
+            msg{1} = 'Can only connect to a channel, which must exit\nRemove input to element %d';
+            msg{2} = 'River input added to element %d\nProperties need to be defined in Setup>Rivers';
+            msg{3} = 'River inputs have been added and need to be defined in Setup>Rivers';
+            nriv = length(obj);
+            rele(nriv,1) = 0; flow(nriv,1) = 0;
+            for i=1:nriv
+                rele(i) = find([eleobj(:).EleID]==obj(i).ChannelID);
+                flow(i) = obj(i).RiverFlow;
+            end
+            source.InputEle = rele; 
+            source.msg = msg; 
+            source.flow = flow;
+        end         
 %%        
         function riverPropertiesTable(obj,src,mobj)
             %table for Input Summary tab display of river properties
@@ -398,7 +400,7 @@ classdef River < matlab.mixin.Copyable
             if isempty(wlvobj), return; end
 
             %set up the initial plot of tidal pumping discharge  
-            sfact = 2;   %set slider range as factor of max river flow
+            sfact = 10;   %set slider range as factor of max river flow
             Qin = max([obj(:).RiverFlow]);
             if Qin==0, return; end
             Qr = [Qin/sfact,Qin*sfact];
@@ -415,7 +417,7 @@ classdef River < matlab.mixin.Copyable
             ht = findobj(src,'Type','axes');            
             delete(ht);
             ax = axes('Parent',src,'Tag','PlotFigAxes');
-            ax.Position = [0.16,0.18,0.65,0.75]; %make space for slider bar
+            ax.Position = [0.16,0.18,0.65,0.75]; %make space for slider bar            
             setSlideControl(obj,src,Qr(1),Qr(end),Qin);
             legtxt = sprintf('TP for Q = %.1f m^3/s',Qin);
             
@@ -423,11 +425,11 @@ classdef River < matlab.mixin.Copyable
             stem(ax,xi,qtp0,'xb','DisplayName','Current settings')
             hold on
 %               plot(ax,xi,qtp,'Color',mcolor('orange'),'DisplayName',legtxt)
-              s1 = stem(ax,xi(2:end),qtp0(2:end),'Color',mcolor('orange'),...
+              s1 = stem(ax,xi,qtp0,'Color',mcolor('orange'),...
                       'DisplayName',legtxt,...
                       'ButtonDownFcn',@(src,evt)setDataTip(obj,src,evt));
 %               s1.Annotation.LegendInformation.IconDisplayStyle = 'off'; 
-              s1.UserData = struct('id',reachChIDs,'order',idxi(2:end));
+              s1.UserData = struct('id',[0;reachChIDs],'order',idxi);
             hold off
             xlabel('Distance from mouth (m)')
             ylabel('Discharge (m^3/s)')
@@ -472,54 +474,35 @@ classdef River < matlab.mixin.Copyable
         function [qtp,reachChIDs] = getTidalPumpingFlows(~,mobj,qfact)
             %allow the user to test the influence of varying river discharge
             %on tidal pumping
-            
-            %initialise dispersion Reach Graph
-%             Estuary.initialiseDispersionGraph(mobj);
-%             h_channels = Reach.LandwardPath(mobj);  %uses channels in current version of DispersionGraph            
-%             reachChIDs = h_channels.Nodes.EleID;
-
-            %initialise water levels
-            asmobj.Time = 0;
+            asmobj.Time = 0;   %initialise water levels for t=0
             WaterLevels.setWaterLevels(mobj,asmobj);
             %initialise advection network and reach properties
             advobj = getClassObj(mobj,'Inputs','Advection');
-            advobj.RiverGraph = Advection.initialiseRiverGraph(mobj);
-%             Reach.setReach(mobj);
+            riverGraph = Advection.initialiseRiverGraph(mobj);
             FlowIn = advobj.RiverIn;
-            FlowOut = advobj.RiverOut;
-            IntFlows = advobj.RiverFlows;
-            
-            %get reach based tidal pumping discharge for current river inputs
-%             reachChIDs = advobj.RiverGraph.Nodes.EleID(2:end-1);
-%             [tp0,tpM0] = Advection.getTidalPumpingDischarge(mobj,reachChIDs); 
-%             qtp0 = [tpM0(1);tp0];
 
             %get reach based tidal pumping discharge for user Qin
-            
             exchIn = FlowIn*qfact;
-            idx = FlowIn>0 | FlowOut>0;
-            exchIn = [0;exchIn(idx);0];
-            advobj.RiverGraph = rescale_graph(advobj.RiverGraph,exchIn,true); 
-
-%             Advection.setTidalPumping(mobj);
+            riverGraph = rescale_graph(riverGraph,exchIn,true);
+            advobj.RiverGraph = riverGraph;
+            setClassObj(mobj,'Inputs','Advection',advobj);
             Reach.setReach(mobj);
-            reachChIDs = advobj.RiverGraph.Nodes.EleID(2:end-1);
+            
+            reachGraph = type_sub_graph(riverGraph,'Channel');
+            reachChIDs = reachGraph.Nodes.EleID;
             [tp,tpM] = Advection.getTidalPumpingDischarge(mobj,reachChIDs);  
             qtp = [tpM(1);tp];
-
-%             advobj.RiverFlows = IntFlows;    
-%             advobj.RiverIn = FlowIn;      
-%             advobj.RiverOut =FlowOut;
         end
 %%
         function hm = setSlideControl(obj,hfig,qmin,qmax,qin)
             %intialise slider to set different Q values 
-            invar = struct('sval',[],'smin',[],'smax',[],...
+            invar = struct('sval',[],'smin',[],'smax',[],'size', [],...
                            'callback','','userdata',[],'position',[],...
                            'stxext','','butxt','','butcback','');            
-            invar.sval = qin;      %initial value for slider 
-            invar.smin = qmin;     %minimum slider value
-            invar.smax = qmax;     %maximum slider value
+            invar.sval = qin;        %initial value for slider 
+            invar.smin = qmin;       %minimum slider value
+            invar.smax = qmax;       %maximum slider value
+            invar.size = [0.1,0.1];  %stepsize for slider
             invar.callback = @(src,evt)updateTPplot(obj,src,evt); %callback function for slider to use
             invar.userdata = qin;  %user data passed to widget
             invar.position = [0.15,0.005,0.45,0.04]; %position of slider
@@ -527,20 +510,22 @@ classdef River < matlab.mixin.Copyable
             hm = setfigslider(hfig,invar);   
         end 
 %%
-        function setDataTip(~,src,~)
+        function setDataTip(~,src,evt)
             %add data tip with EleID, distance and discharge at selected point
-            datatip(src);
-            if length(src.DataTipTemplate.DataTipRows)==2
-                dt = findobj(src,'Type','datatip');
-                row = dataTipTextRow('Ele ID: ',src.UserData.id(dt.DataIndex));
-                src.DataTipTemplate.DataTipRows(end+1) = row;
+            dt = findobj(src,'Type','datatip');
+            if isempty(dt) 
+                dt = datatip(src,evt.IntersectionPoint(1),evt.IntersectionPoint(2));
+                if length(src.DataTipTemplate.DataTipRows)==2
+                    row = dataTipTextRow('Ele ID: ',src.UserData.id);
+                    src.DataTipTemplate.DataTipRows(end+1) = row;
+                end
             end
             src.DataTipTemplate.DataTipRows(1).Label = 'Upstream x: ';
             src.DataTipTemplate.DataTipRows(2).Label = 'Qtp: ';           
         end
 %%
         function updateTPplot(obj,src,~)
-            %use the updated slider value to adjust the CST plot
+            %use the updated slider value to adjust the TidalPumping plot
             stxt = findobj(src.Parent,'Tag','figsliderval');
             Q = round(src.Value);
             stxt.String = num2str(Q);     %update slider text
@@ -553,7 +538,7 @@ classdef River < matlab.mixin.Copyable
             hline = findobj(ax,'-regexp','DisplayName','TP for Q');
             xi = hline.XData;
             s1user = hline.UserData;
-            qtp = qtp(s1user.id);
+            qtp = qtp(s1user.order);
             delete(hline)
             legtxt = sprintf('TP for Q = %d m^3/s',Q);
             hold on

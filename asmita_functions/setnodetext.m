@@ -1,4 +1,4 @@
-function nodetxt = setnodetext(eleobj,inoutxt)
+function nodetxt = setnodetext(eleobj,inoutxt,atype)
 %
 %-------function help------------------------------------------------------
 % NAME
@@ -6,10 +6,11 @@ function nodetxt = setnodetext(eleobj,inoutxt)
 % PURPOSE
 %   generate UI to edit dispersion or advection matrix 
 % USAGE
-%   nodetxt = setnodetext(eleobj,inoutxt)
+%   nodetxt = setnodetext(eleobj,inoutxt,atype)
 % INPUT
 %   eleobj - instance of Element class (which need not be current settings)
 %   inoutxt - cell array of labels for input and output (source and sink)
+%   atype - cell array of types to be included (optional)
 % OUTPUT
 %   nodetxt - struct with fields for:
 %               nid - node id
@@ -29,12 +30,19 @@ function nodetxt = setnodetext(eleobj,inoutxt)
     end
     eleid = getEleProp(eleobj,'EleID');
     elename = getEleProp(eleobj,'EleName');
+    
+    if nargin>2 && ~isempty(atype)
+        idx = matches(eletype,atype);
+        nele = sum(idx);
+    else
+        nele = length(eleid);
+        idx = 1:nele;
+    end
 
     %use the element id, type and name to return the nodetxt, a struct with
-    %nid - node id, ntype - node type, nname - node name
-    nele = length(eleid);
+    %nid - node id, ntype - node type, nname - node name    
     nodetxt.nid = zeros(nele+2,1);
-    nodetxt.nid = [0;eleid;0];
-    nodetxt.ntype = [{''};eletype;{''}];                   
-    nodetxt.nname = [inoutxt(1);elename;inoutxt(2)];
+    nodetxt.nid = [0;eleid(idx);0];
+    nodetxt.ntype = [{''};eletype(idx);{''}];                   
+    nodetxt.nname = [inoutxt(1);elename(idx);inoutxt(2)];
 end

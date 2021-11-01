@@ -157,27 +157,6 @@ classdef Drift < matlab.mixin.Copyable
                prop(idele,1) = obj(i).(varname);
            end
        end
-%%   
-        function [rele,okEle,msg,flow] = getSourceProps(mobj)
-            %get the properties of a drift source for advection
-            obj  = getClassObj(mobj,'Inputs','Drift');
-            eleobj  = getClassObj(mobj,'Inputs','Element');
-            eletype = getEleProp(eleobj,'EleType');
-            extypes = mobj.GeoType(mobj.EXtypes);
-            okEle = matches(eletype,extypes); %requires v2019b
-%             okEle = strcmp(eletype,'Delta');
-%             okEle = okEle+strcmp(eletype,'Beach');
-%             okEle = okEle+strcmp(eletype,'Shoreface');
-            msg{1} = 'Can only connect to delta/beach/shoreface/spit elements, which must exist\nRemove input to element %d';
-            msg{2} = 'Drift input added to element %d\nProperties need to be defined in Setup>Drift';
-            msg{3} = 'Drift inputs have been added';            
-            ndft = length(obj);
-            rele(ndft,1) = 0; flow(ndft,1) = 0;
-            for i=1:ndft
-                rele(i) = find([eleobj(:).EleID]==obj(i).DriftEleID);
-                flow(i) = obj(i).DriftRate;
-            end
-        end  
 %%
         function setDriftTS(mobj)
             %prompt user for file name and setup drift timeseries
@@ -359,6 +338,28 @@ classdef Drift < matlab.mixin.Copyable
                 obj(i).tsDriftRate = obj(i).DriftRate;        
             end
         end
+%%   
+        function source = getSourceProps(obj,eleobj,mobj)
+            %get the properties of a drift source for advection
+            eletype = getEleProp(eleobj,'EleType');
+            extypes = mobj.GeoType(mobj.EXtypes);
+            source.okEle = matches(eletype,extypes); %requires v2019b
+%             okEle = strcmp(eletype,'Delta');
+%             okEle = okEle+strcmp(eletype,'Beach');
+%             okEle = okEle+strcmp(eletype,'Shoreface');
+            msg{1} = 'Can only connect to delta/beach/shoreface/spit elements, which must exist\nRemove input to element %d';
+            msg{2} = 'Drift input added to element %d\nProperties need to be defined in Setup>Drift';
+            msg{3} = 'Drift inputs have been added';            
+            ndft = length(obj);
+            rele(ndft,1) = 0; flow(ndft,1) = 0;
+            for i=1:ndft
+                rele(i) = find([eleobj(:).EleID]==obj(i).DriftEleID);
+                flow(i) = obj(i).DriftRate;
+            end
+            source.InputEle = rele; 
+            source.msg = msg; 
+            source.flow = flow;
+        end          
 %%        
         function driftPropertiesTable(obj,src,mobj)
             %table for Input Summary tab display of drift properties

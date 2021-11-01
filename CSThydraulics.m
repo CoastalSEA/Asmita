@@ -60,12 +60,12 @@ classdef CSThydraulics < muiPropertyUI
             %the tabname and position on tab for the data to be displayed
             obj = setTabProps(obj,mobj);  %muiPropertyUI function
             %check that CSTmodel is available as an App
-            appinfo = matlab.apputil.getInstalledAppInfo;
-            idx = find(strcmp({appinfo.name},'CSTmodel'), 1);
-            if isempty(idx)
-                warndlg('To include hydraulics in Asmita the CSTmodel App must be installed');
-                obj = [];
-            end
+            msg = 'To include hydraulics in Asmita the CSTmodel App must be installed';
+            appinfo = matlab.apputil.getInstalledAppInfo;            
+            if isempty(appinfo), warndlg(msg); return; end
+            
+            idx = find(strcmp({appinfo.name},'CSTmodel'), 1);  
+            if isempty(idx), warndlg(msg); return; end
         end
     end
     %%
@@ -165,10 +165,11 @@ classdef CSThydraulics < muiPropertyUI
 %%
         function wl = assignCSTproperties(obj,rchobj,flowpath)
             %assign the CSTmodel properties to Asmita model elements
-            flowpathID = flowpath.Nodes.EleID;
-            [reachChID] = rchobj(:).ReachChannelID;
+            flowpathID = flowpath.Nodes.EleID;     %needed to assign correctly?
+            [reachChID] = rchobj(:).ReachChannelID;%needed to assign correctly?
             [reachLen] = rchobj(:).CumulativeLength;
             Q = flowpath.Edges.Weight(1);   %assumes all the same!!!!!!! ie single river input
+            
             cst = interpCSTproperties(obj,Q);
             mwl = interp1(cst.x,cst.z,[0,reachLen],'linear');
             amp = interp1(cst.x,cst.a,[0,reachLen],'linear');
@@ -224,7 +225,7 @@ classdef CSThydraulics < muiPropertyUI
 %%
         function hm = setSlideControl(obj,hfig,qmin,qmax)
             %intialise slider to set different Q values   
-            invar = struct('sval',[],'smin',[],'smax',[],...
+            invar = struct('sval',[],'smin',[],'smax',[],'size', [],...
                            'callback','','userdata',[],'position',[],...
                            'stxext','','butxt','','butcback','');            
             invar.sval = qmin;     %initial value for slider 

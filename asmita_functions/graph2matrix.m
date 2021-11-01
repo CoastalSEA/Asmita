@@ -29,8 +29,6 @@ function [exmatrix,exchIn,exchOut,nodetxt] = graph2matrix(flowgraph,nele)
 %               nid - node id
 %               ntype - node type
 %               nname - node name
-%   namemsg - node names must be unique. optional warning message used if 
-%             duplicates names found
 % NOTES
 %   digraph can have exchanges in and/or out to define networks with inputs
 %   only or outputs only. The unwanted exchange variable is passed as empty
@@ -47,12 +45,12 @@ function [exmatrix,exchIn,exchOut,nodetxt] = graph2matrix(flowgraph,nele)
     nodetxt.ntype = flowgraph.Nodes.Type;
     nodetxt.nname = flowgraph.Nodes.Name;
     
-    if nargin>1 && ~isempty(nele)    %user has specified the network size
-        nn = nele;
-    else
-        nn = numnodes(flowgraph);    %use the flowgraph to determine size
-    end
-    
+%     if nargin>1 && ~isempty(nele)    %user has specified the network size
+%         nn = nele;
+%     else
+%         nn = numnodes(flowgraph);    %use the flowgraph to determine size
+%     end
+    nn = numnodes(flowgraph);        %use the flowgraph to determine size
     [s,t] = findedge(flowgraph);
     spmatrix = sparse(s,t,flowgraph.Edges.Weight,nn,nn);
     fullmatrix = full(spmatrix);     %matrix of network and exchanges
