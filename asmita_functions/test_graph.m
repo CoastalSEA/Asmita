@@ -46,6 +46,8 @@ function test_graph(funcname,option)
             test_rescale(ingraph,testdata);
         case 'type_sub_graph'
             test_type(ingraph);
+        case 'ele2node'
+            test_ele2node(ingraph);
     end
 end
 
@@ -105,6 +107,15 @@ function test_type(ingraph)
     plot_graph(ingraph,outgraph,'sub graph for Channel type');
 end
 
+%%
+function test_ele2node(ingraph)
+    %test extraction of node IDs from element IDs or Type
+    figure; plot(ingraph);
+    nodeids = ele2node(ingraph,[0,4,5,6]);
+    figure; plot(subgraph(ingraph,nodeids));
+    nodeids = ele2node(ingraph,{'Channel','test'});
+    figure; plot(subgraph(ingraph,nodeids));
+end
 %%
 function ingraph = get_graph(testdata)
     %create a digraph based on the testdata

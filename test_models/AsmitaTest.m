@@ -18,7 +18,7 @@ classdef AsmitaTest <  matlab.unittest.TestCase
                         'Venice 9EM.mat',...
                         'Severn 16EM.mat',...
                         'Pagham 3EM.mat',...
-                        'Inlet 7EM.mat'};       
+                        'Inlet 7EMts.mat'};       
     end
 %%
     methods (Test)
@@ -33,17 +33,23 @@ classdef AsmitaTest <  matlab.unittest.TestCase
             actSolution = runasmitamodel(asmitaTest.testFile{testModel});
             testdataset = load(asmitaTest.UserCase{testModel});
             %new test data set file format (parts of sobj)
-%             if contains(asmitaTest.UserCase{testModel},'mui')
+            if contains(asmitaTest.UserCase{testModel},'mui')
                 lobj = testdataset.sobj;
                 useCase = length(lobj.Cases.DataSets.AsmitaModel);
                 dst = getDataset(lobj.Cases,useCase,1);
                 %first 6 properties for all time steps, all elements 
                 expSolution = dst.DataTable{:,1:6};
-%             else
-%                 %original test data set file format
-%                 expSolution = testdataset.expSolution; %file with sub-set saved
-%                 expSolution = reshape(expSolution,size(actSolution));
-%             end            
+            else
+                %original test data set file format
+                expSolution = testdataset.expSolution; %file with sub-set saved
+                expSolution = reshape(expSolution,size(actSolution));
+            end    
+            
+            figure;
+            plot(1:size(actSolution,1),actSolution(:,1),...
+                                1:size(actSolution,1),expSolution(:,1));
+            legend('Model Solution','Data Solution')
+            
             asmitaTest.verifyEqual(actSolution,expSolution,'RelTol',0.05);
         end
     end

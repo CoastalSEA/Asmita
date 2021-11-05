@@ -31,8 +31,9 @@ function asm = asm_oo2mui()
 %     rmpath('D:\Work\Tools\MATLAB\MUImodels2\muiApps\Asmita')
     
     load([spath,sfile],'inp');
-%     fnames = fieldnames(sobj);  
-%     
+    %following is now in asmitaOO_structfile.m to avoid path conflict
+    %betwwen AsmitaOO and mui version
+%     fnames = fieldnames(sobj);      
 %     for ii=1:length(fnames)
 %         lobj = sobj.(fnames{ii});
 %         if ~isempty(lobj)
@@ -145,16 +146,19 @@ function asm = asm_oo2mui()
                                 ele(iele).(sameprops{j}) = old(iele).(sameprops{j});
                             end
                         end
-                        ele(iele).BedDensity = old(iele).BedConcentration*2650;
+                        ele(iele).BedDensity = old(iele).BedConcentration*1625+1025;
+                        if strcmp(ele(iele).EleType,'Delta')
+                            ele(iele).EleType = 'EbbDelta';
+                        end
                     end
                     asm.Inputs.Element = ele;
                     
                 case 'h_riv'
                     old = inp.h_riv;
-                    sameprops = {'ChannelID','RiverFlow','RiverTSC'}; 
+                    sameprops = {'ChannelID','RiverFlow'}; 
                     nriv = length(old);
                     River.setNewRiver(asm);
-                    ariv = getClassObj(asm,'Inputs','River');
+                    ariv = getClassObj(asm,'Inputs','River','RiverTSC');
                     for iriv=1:nriv
                         riv(iriv) = copy(ariv); 
                         for j= 1:length(sameprops)                        
@@ -184,7 +188,7 @@ function asm = asm_oo2mui()
                     sameprops = {'DriftEleID','DriftRate','DriftTSC'};
                     ndft = length(old);
                     Drift.setNewDrift(asm);
-                    adft = getClassObj(asm,'Inputs','Drift');
+                    adft = getClassObj(asm,'Inputs','Drift','DriftTSC');
                     for idft=1:ndft
                         dft(idft) = copy(adft); 
                         for j= 1:length(sameprops)
@@ -218,6 +222,7 @@ function asm = asm_oo2mui()
             end
         end
     end
+    update_exchanges(asm);  %update the exchange arrays to be n*2 
     
     %save new model to mat file
     asm.Info.PathName = 'D:\Work\Tools\MATLAB\MUImodels2\muiApps\Asmita\test_models\muiASM model files';
@@ -226,8 +231,33 @@ function asm = asm_oo2mui()
     closeMainFig(asm) 
     rmpath('D:\Work\Tools\MATLAB\MUImodels2\muiApps\Asmita')
 end
+%%
+function update_exchanges(mobj)
+    %function to update exchange arrays
+     obj  = getClassObj(mobj,'Inputs','Estuary');
+     if ~isempty(obj)
+        obj.ExternalDisp(:,2) = zeros(size(obj.ExternalDisp,1),1,1);
+        setClassObj(mobj,'Inputs','Estuary',obj); 
+     end
+     clear obj
+     %
+     obj  = getClassObj(mobj,'Inputs','Advection');
+     if ~isempty(obj)
+        temp =  obj.RiverIn;
+        obj.RiverIn(:,1) = zeros(size(obj.RiverIn,1),1);
+        obj.RiverIn(:,2) = temp;
+        obj.RiverOut(:,2) = zeros(size(obj.RiverOut,1),1);
 
 
+        temp =  obj.DriftIn;
+        obj.DriftIn(:,1) = zeros(size(obj.DriftIn,1),1);
+        obj.DriftIn(:,2) = temp;
+        obj.DriftOut(:,2) = zeros(size(obj.DriftOut,1),1);
+
+        setClassObj(mobj,'Inputs','Advection',obj);    
+     end
+     clear obj
+end
 %%        
 function obj = saveAfile(obj)
     %prompt user to Save As in selected folder

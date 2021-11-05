@@ -30,8 +30,8 @@ classdef AsmitaCFmatfiles < matlab.unittest.TestCase
         %called from UserUnitTesting by selecting the relevant test case 
         
         function RunModelTest(asmitaCFmatfiles,testModel)
-            %run test using Matlab unittest function
-            testdataset = load(asmitaCFmatfiles.UserCase{testModel});
+            %compare with actual soluation from a file saved for the model
+            testdataset = load(asmitaCFmatfiles.testFile{testModel});
             lobj = testdataset.sobj;
             useCase = length(lobj.Cases.DataSets.AsmitaModel);
             dst = getDataset(lobj.Cases,useCase,1);
@@ -45,14 +45,16 @@ classdef AsmitaCFmatfiles < matlab.unittest.TestCase
             
             clear useCase dst lobj testdataset
             
+            %load exepcted results from TestData file
             testdataset = load([pwd,'\AsmitaOO Data files\',asmitaCFmatfiles.UserCase{testModel},'.mat']);
             %first 3 properties for all time steps, all elements 
             expSolution = testdataset.expSolution; %file with sub-set saved
             expSolution = reshape(expSolution,size(actSolution));
             clear testdataset
+
             figure;
-            plot(1:size(actSolution,1),actSolution(:,1),1:size(actSolution,1),expSolution(:,1));
-            
+            plot(1:size(actSolution,1),expSolution(:,1));
+            legend('Model Solution','Data Solution')
             asmitaCFmatfiles.verifyEqual(actSolution,expSolution,'RelTol',0.05);
         end
     end

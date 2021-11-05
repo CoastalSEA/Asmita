@@ -111,7 +111,7 @@ classdef Saltmarsh < muiPropertyUI
                 Blim = 0;
                 return;
             end
-            bmx = obj.MaxBiomass;
+            bmx = obj.MaxBiomass'; %CHECK NEED FOR TRANSPOSE
             Bm = Biomass(obj,eleobj);
             kBm = getEleSpeciesProduct(obj,eleobj,cn);
             Blim = diag(bmx*(kBm.*(Bm>0))');

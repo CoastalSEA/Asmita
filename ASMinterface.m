@@ -11,7 +11,7 @@ classdef ASMinterface < handle
     %----------------------------------------------------------------------
     %
     properties (Transient)
-        eqScaling   %scaling of equilibirum relative to initial value
+%         eqScaling   %scaling of equilibirum relative to initial value
         export      %summation of net export over run (for mass balance)
         intervent   %summation of interventions over run (for mass balance)
         dWLvolume   %summation of volume changes due to water level change
@@ -74,8 +74,12 @@ classdef ASMinterface < handle
             %     dvf(vis0) = 0; %force dvf to zero if vm=0
             % end
             
-            % change in water volume (only applies to water volumes)
-            dvm = diag(n>0)*(sm.*dwl);
+            % change in water volume - applies to both sediment and water
+            % volumes hence use sign(n) rather than n>0 
+            dvm = sign(n).*sm.*dwl;  
+            %
+%             elenames = getEleProp(eleobj,'EleName');
+%             table(dwl,ve,vm,sm,dvf,dvm,Gam,dd,B,'RowNames',elenames)
             %
             vm = vm + dvm + dvf - dvb; %total change (moving surface)
             vf = vf + dvf - dvb;       %morphological change (fixed surface)
@@ -95,7 +99,7 @@ classdef ASMinterface < handle
                 eleobj(i).BioProdVolume = vb(i);
             end
             %mass balance check
-%             ASM_model.MassBalance(mobj,robj);
+            ASM_model.MassBalance(mobj,robj);
             %diagnostic message to command window during runtime
 %             t = robj.Time/mobj.Constants.y2s;
 %             smb = obj.SedMbal; wmb = obj.WatMbal;
@@ -105,6 +109,7 @@ classdef ASMinterface < handle
         
 %%
         function [B,dd] = BddMatrices(mobj)
+            %compute the solution matrix B and vector dd (ie B*gamma-dd)
             %get model parameters
             eleobj = getClassObj(mobj,'Inputs','Element');
             sm = getEleProp(eleobj,'MovingSurfaceArea');
@@ -134,13 +139,14 @@ classdef ASMinterface < handle
 %% 
         function setDQmatrix(mobj,offset)
             %set the DQ, dqIn and conc properties to be used for a time step
-            %set up dispersion and advection matrices using dynamic
-            %ReachGraph and FlowGraph if IncDynamicElements is true
-            %otherwise use Estuary-Dispersion and Advection-Flow properties
+            %****overloaded in ASM_model
             obj = getClassObj(mobj,'Inputs','ASM_model');
             eleobj  = getClassObj(mobj,'Inputs','Element');
             cE = getEleProp(eleobj,'EqConcentration');
             kCeI = River.getRiverProp(mobj,'tsRiverConc')./cE;
+            %set up dispersion and advection matrices using dynamic
+            %DispersionGraph and FlowGraph if IncDynamicElements is true
+            %otherwise use Estuary-Dispersion and Advection-Flow properties
             [D,dExt] = Estuary.getDispersion(mobj);
             [Q,qIn,~] = Advection.getAdvectionFlow(mobj,'River');
             [Qtp,qtpIn,~] = Advection.getAdvectionFlow(mobj,'Qtp');
@@ -271,24 +277,24 @@ classdef ASMinterface < handle
             setClassObj(mobj,'Inputs','Element',eleobj);
         end
         
-%%
-        function asmitaEqScalingCoeffs(mobj)
-            %function to define scaling for the equilibrium relative to
-            %the initial condition          
-            obj = getClassObj(mobj,'Inputs','ASM_model');
-            eleobj = getClassObj(mobj,'Inputs','Element');
-            rncobj = getClassObj(mobj,'Inputs','RunConditions');
-            
-            vm0 = getEleProp(eleobj,'InitialVolume');
-            ASM_model.asmitaEqFunctions(mobj);
-            ve = getEleProp(eleobj,'EqVolume');
-            if rncobj.ScaleValues
-                obj.eqScaling(:,1) = vm0./ve;
-            else
-                obj.eqScaling(:,1) = ones(size(vm0));
-            end
-            setClassObj(mobj,'Inputs','ASM_model',obj);
-        end
+% %%
+%         function asmitaEqScalingCoeffs(mobj)
+%             %function to define scaling for the equilibrium relative to
+%             %the initial condition          
+%             obj = getClassObj(mobj,'Inputs','ASM_model');
+%             eleobj = getClassObj(mobj,'Inputs','Element');
+%             rncobj = getClassObj(mobj,'Inputs','RunConditions');
+%             
+%             vm0 = getEleProp(eleobj,'InitialVolume');
+%             ASM_model.asmitaEqFunctions(mobj);
+%             ve = getEleProp(eleobj,'EqVolume');
+%             if rncobj.ScaleValues
+%                 obj.eqScaling(:,1) = vm0./ve;
+%             else
+%                 obj.eqScaling(:,1) = ones(size(vm0));
+%             end
+%             setClassObj(mobj,'Inputs','ASM_model',obj);
+%         end
            
 %%
         function conc = asmitaConcentrations(mobj,varargin)
@@ -362,7 +368,7 @@ classdef ASMinterface < handle
             vf = getEleProp(eleobj,'FixedVolume');
             vm = getEleProp(eleobj,'MovingVolume');
             vb = getEleProp(eleobj,'BioProdVolume');
-%             dV = Interventions.getIntProp(mobj,'transVolChange');
+            dV = Interventions.getIntProp(mobj,'transVolChange');
             [~,dExt] = Estuary.getDispersion(mobj); %uses ReachGraph
             [~,qIn,qOut] = Advection.getAdvectionFlow(mobj,'River'); %water flux in m3/s
             [~,qtpIn,qtpOut] = Advection.getAdvectionFlow(mobj,'Qtp'); %water flux in m3/s
@@ -393,21 +399,27 @@ classdef ASMinterface < handle
             %calculate water mass balance (+ve is increase in water volume)             
             %change in water volume due to change in water level at high water; 
             idx = strcmp(eletype,'Tidalflat');
-            if all(n(idx)<0)     %all tidal flats defined as sediment volumes
-                                 %only use elements defined as water volumes   
-                wetArea = wM*getEleProp(eleobj,'MovingSurfaceArea');                
-            elseif any(n(idx)<0) %some tidal flats defined as sediment volumes
-                wetArea = NaN;
-            else                 %all tidal flats defined as water volumes                
-                 wetArea = Reach.getReachProp(mobj,'HWarea');
-            end                          
+%             if all(n(idx)<0)     %all tidal flats defined as sediment volumes
+%                                  %only use elements defined as water volumes   
+%                 wetArea = wM*getEleProp(eleobj,'MovingSurfaceArea');                
+%             elseif any(n(idx)<0) %some tidal flats defined as sediment volumes
+%                 wetArea = NaN;
+%             else                 %all tidal flats defined as water volumes                
+%                  wetArea = Reach.getReachProp(mobj,'HWarea');
+%             end 
+            
+            
+            
+            
             dHW = wlvobj.dHWchange; 
             damp = getEleProp(eleobj,'TidalDamping');
             idr = Reach.getReachProp(mobj,'ReachChannelID');
+            wetArea = Reach.getReachProp(mobj,'HWarea');
             obj.dWLvolume = obj.dWLvolume+sum(wetArea.*(dHW*damp(idr)));
             
             %change in water volume due to volume changes (water + sediment)
             sLW = Reach.getReachProp(mobj,'LWarea');
+            ttt=  Reach.getReachProp(mobj,'TidalRange');
             tr = wlvobj.HWaterLevel-wlvobj.LWaterLevel;            
             dtr = (tr-wlvobj.TidalRange)*damp;
             %wM limits the elements included to those that are water volumes
@@ -423,9 +435,9 @@ classdef ASMinterface < handle
         end
         
 %%
-        function MassBalance = SandMudCorrection(mobj,robj)
-            obj = getClassObj(mobj,'Inputs','ASM_model');
-            MassBalance = obj.SedMbal;
+%         function MassBalance = SandMudCorrection(mobj,robj)
+%             obj = getClassObj(mobj,'Inputs','ASM_model');
+%             MassBalance = obj.SedMbal;
 %             delta = robj.delta;
 %             idx = (strcmp(eletype,'Tidalflat'));
 %             idx = idx+(strcmp(eletype,'Saltmarsh'));
@@ -481,7 +493,7 @@ classdef ASMinterface < handle
 %             
 %             %upate Mass balance
 %             MassBalance = MassBalance-diff;
-        end
+%         end
     end
 end
 

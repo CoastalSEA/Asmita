@@ -39,7 +39,7 @@ classdef Element < muiPropertyUI
         Length = 0              %length of element along line of channel (m)
         VerticalExchange = 0    %vertical exchange (m/s)
         TransportCoeff = 3      %transport coefficientn n (-)
-        BedDensity = 1650       %bed desnity(kg/m^3)
+        BedDensity = 1650       %bed density(kg/m^3)
         SedMobility = 1         %sediment mobility (used to calibrate tidal pumping)        
         TidalDamping = 1        %option to define tidal amplification/damping factor 
                                 %for each element as a/a0. To adjust tidal
@@ -57,6 +57,7 @@ classdef Element < muiPropertyUI
         EleConcentration        %actual concentration in element during run
         transVertExch           %vertical exchange during run including adjustments
         EleWLchange             %water level change that applies to element (hw or lw)
+        eqScaling               %scaling of equilibrium relative to initial value
         eqAdvOffSet             %correction to account for advection at t=0
         BioProdVolume           %cumulative biological production volume
         transEleType            %transient element type (can change during run)
@@ -278,7 +279,8 @@ classdef Element < muiPropertyUI
             obj = getClassObj(mobj,'Inputs','Element',msgtxt);
             if isempty(obj), return; end
             
-            null = num2cell(zeros(1,length(obj)));
+            null = num2cell(zeros(1,length(obj)));  
+            unity = num2cell(ones(1,length(obj)));
             [obj.MovingVolume] = obj(:).InitialVolume;
             [obj.EqVolume] = obj(:).InitialVolume;
             [obj.MovingSurfaceArea] = obj(:).InitialSurfaceArea;
@@ -287,6 +289,8 @@ classdef Element < muiPropertyUI
             [obj.transVertExch] = obj(:).VerticalExchange;
             [obj.BioProdVolume] =  null{:};
             [obj.transEleType] = obj(:).EleType;           
+            [obj.eqScaling] = unity{:}; %initialise default values
+            [obj.EleWLchange] = null{:};
 
             setClassObj(mobj,'Inputs','Element',obj);
         end           
@@ -296,28 +300,23 @@ classdef Element < muiPropertyUI
             msgtxt = 'No elements defined';
             obj = getClassObj(mobj,'Inputs','Element',msgtxt);
             if isempty(obj), return; end
-%             nele = length(obj);
             assignum = num2cell(prop);
             [obj.(varname)] = assignum{:};
-%             for i=1:nele
-%                 obj(i).(varname) = prop(i);
-%             end
             setClassObj(mobj,'Inputs','Element',obj);
         end
         
 %%                 
         function setEquilibrium(mobj)
-            %Set equilibirum volumes for all elements
+            %Set equilibrium volumes for all elements
             %calls AsmitaModel.asmitaEqFunctions(mobj) so that alternatives
             %can be used by overloading in the AsmitaModel class
             %scaling to initial values
-            asmobj = getClassObj(mobj,'Inputs','ASM_model');
-            eqScaling = asmobj.eqScaling;
+            obj = getClassObj(mobj,'Inputs','Element');
+            eqScaling = getEleProp(obj,'eqScaling');
             %update unadjusted equilibrium volumes to account for changes
             %in tidal prism
             ASM_model.asmitaEqFunctions(mobj);  %updates Element.EqVolume
-            %correction for advection
-            obj = getClassObj(mobj,'Inputs','Element');
+            %correction for advection            
             eqAdvCor = getEleProp(obj,'eqAdvOffSet');            
             %set adjusted values of equilibrium volume
             for i=1:length(obj)
@@ -334,17 +333,14 @@ classdef Element < muiPropertyUI
             nele = length(obj);
             eletype = getEleProp(obj,'transEleType');
             %assign concentration
-%             idx = find(strcmp(eletype,'Tidalflat'));
-%             idx = [idx;find(strcmp(eletype,'Saltmarsh'))];
-%             idx = [idx;find(strcmp(eletype,'Storage'))];
-            
             finetypes = mobj.GeoType(mobj.FNtypes);
-            idx = find(matches(eletype,finetypes)); %requires v2019b
+            idx = find(ismatch(eletype,finetypes)); %could be repalces with matches
             
             estobj = getClassObj(mobj,'Inputs','Estuary');
             for i=1:nele
                 if any(idx==i)
                     %note: if no fines value defined uses the coarse value
+                    %see get.EqConcFine in Estuary class
                     obj(i).EqConcentration = estobj.EqConcFine;
                 else
                     obj(i).EqConcentration = estobj.EqConcCoarse;
@@ -358,13 +354,9 @@ classdef Element < muiPropertyUI
             %assign the element concentrations at some instant
             obj = getClassObj(mobj,'Inputs','Element');
             %get element types
-%             nele = length(obj);
             conc = ASM_model.asmitaConcentrations(mobj);
             assignum = num2cell(conc);
             [obj.EleConcentration] = assignum{:};
-%             for idx=1:nele
-%                 obj(idx).EleConcentration = conc(idx);
-%             end
             setClassObj(mobj,'Inputs','Element',obj);
         end
         
@@ -400,7 +392,7 @@ classdef Element < muiPropertyUI
             %
             for i=1:nele
 %                 if contains(eletype(i),'Delta') || contains(eletype(i),'Channel')
-                if any(matches(LWtypes,eletype(i)))     
+                if any(ismatch(LWtypes,eletype(i)))     
                     obj(i).EleWLchange = dLW*dampLW(i);
                 else
                     obj(i).EleWLchange = dHW*dampHW(i);
@@ -408,31 +400,34 @@ classdef Element < muiPropertyUI
             end
             setClassObj(mobj,'Inputs','Element',obj);
         end
-        
+%%
+        function setEqScalingCoeffs(mobj)
+            %function to define scaling for the equilibrium relative to
+            %the initial condition          
+            obj = getClassObj(mobj,'Inputs','Element');
+            rncobj = getClassObj(mobj,'Inputs','RunConditions');
+            
+            vm0 = getEleProp(obj,'InitialVolume');
+            ASM_model.asmitaEqFunctions(mobj);
+            ve = getEleProp(obj,'EqVolume');
+            if rncobj.ScaleValues
+                scale = num2cell(vm0./ve);
+                [obj.eqScaling] = scale{:};
+            else
+                unity = num2cell(ones(1,length(obj)));
+                [obj.eqScaling] = unity{:};
+            end
+            setClassObj(mobj,'Inputs','Element',obj);
+        end        
 %%
         function setEleAdvOffsets(mobj)
             %assign element advection offfset due to river flow or drift
-            obj = getClassObj(mobj,'Inputs','Element');
-            asmobj = getClassObj(mobj,'Inputs','ASM_model');            
+            obj = getClassObj(mobj,'Inputs','Element');          
             nele = length(obj);
             n = getEleProp(obj,'TransportCoeff');           
             %find whether an offset is to be included
             RunConditions.setAdvectionOffset(mobj);
             rncobj = getClassObj(mobj,'Inputs','RunConditions');
-            %FOLLOWING CODE REPLACED BY setAdvectionOffset
-            % if rncobj.IncRiver || rncobj.IncDrift
-            %     if rncobj.RiverOffset && rncobj.DriftOffset
-            %         offset = 'flow+drift';
-            %     elseif rncobj.RiverOffset
-            %         offset = 'flow';
-            %     elseif rncobj.DriftOffset
-            %         offset = 'drift';
-            %     else
-            %         offset = 'none';
-            %     end
-            % else
-            %     offset = 'none';
-            % end
             %calculate the offset if required    
             ASM_model.setDQmatrix(mobj,rncobj.Adv2Offset);
             if strcmp(rncobj.Adv2Offset,'none')
@@ -444,9 +439,7 @@ classdef Element < muiPropertyUI
             %now assign offset to elements 
             assignum = num2cell(eqCorV);
             [obj.eqAdvOffSet] = assignum{:};
-%             for i=1:nele
-%                     obj(i).eqAdvOffSet = eqCorV(i);
-%             end
+
             setClassObj(mobj,'Inputs','Element',obj);
             
             %reset DQ matrix to full value with all advections
@@ -537,29 +530,6 @@ classdef Element < muiPropertyUI
                 'Units','normalized',...
                 'Position',[0,0,1,1]);
         end
-%%
-%         function  newtable = setMatrix(obj,prop,prompt,inoutxt,userdata)  
-%             %create table to input or edit dispersion and advection values            
-%             nelp = length(obj)+2;
-%             colnames = cell(nelp,1);
-%             %colnames{1} = ['0: Outside'];
-%             colnames{1} = inoutxt{1};
-%             for i=1:nelp-2
-%                 colnames{i+1} = [num2str(obj(i).EleID),': ', ...
-%                                   char(obj(i).EleName)];
-%             end
-%             %colnames{nelp} = ['+: Rivers'];
-%             colnames{nelp} = inoutxt{2};
-%             rownames = colnames;
-%             
-%             title = prop;
-%             header = prompt;
-%             data = num2cell(userdata,1);
-%             oldtable = table(data{:},'RowNames',rownames,'VariableNames', colnames); 
-%             but.Text = {'Save','Cancel'}; %labels for tab button definition
-%             newtable = tablefigureUI(title,header,oldtable,true,but,[0.1,0.6]);
-%             if isempty(newtable), newtable = oldtable; return; end        
-%         end
     end   
 %%    
     methods (Access=private)

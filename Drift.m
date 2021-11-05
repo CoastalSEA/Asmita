@@ -61,7 +61,7 @@ classdef Drift < matlab.mixin.Copyable
                 %check that drift is assigned to a channel that exists
                 eletype = getEleProp(eleobj,'EleType');
                 extypes = mobj.GeoType(mobj.EXtypes);
-                ok = matches(eletype{usenum(1)},extypes); %requires v2019b
+                ok = ismatch(eletype{usenum(1)},extypes); %could replace with matches
                 
 %                 ok = contains(eletype{usenum(1)},'Delta');
 %                 ok = ok+contains(eletype{usenum(1)},'Beach');
@@ -90,7 +90,7 @@ classdef Drift < matlab.mixin.Copyable
             advobj.DriftIn(rele) = usenum(2);
             
             setClassObj(mobj,'Inputs','Advection',advobj); 
-            warndlg({'Drift ADDED';
+            getdialog({'Drift ADDED';
                      'Do not forget to update Drift Advection'});
         end
 %%
@@ -110,7 +110,7 @@ classdef Drift < matlab.mixin.Copyable
             obj(idx).DriftRate = flow;
             
             setClassObj(mobj,'Inputs','Drift',obj);
-            warndlg({'Drift ADDED';
+            getdialog({'Drift ADDED';
                      'Do not forget to update Drift Advection'});
         end
 %%
@@ -135,21 +135,20 @@ classdef Drift < matlab.mixin.Copyable
                 setClassObj(mobj,'Inputs','Advection',advobj);
             end
             
-            warndlg({'Drift DELETED';
+            getdialog({'Drift DELETED';
                      'Do not forget to update Drift Advection'});
         end        
 %%
        function prop = getDriftProp(mobj,varname)
            %function to access drift properties from other functions
+           eleobj  = getClassObj(mobj,'Inputs','Element');
+           prop = zeros(length(eleobj),1);
            obj  = getClassObj(mobj,'Inputs','Drift');
-           prop = zeros(length(mobj.h_ele),1);
            if isempty(mobj.h_dft) || isempty(mobj.h_dft(1).(varname))
                %no drift of no variable defined
                return;
            end
-           
-           eleobj  = getClassObj(mobj,'Inputs','Element');
-           prop = zeros(length(eleobj),1);
+
            ndft = length(obj);
            for i=1:ndft
                %assign value to the element the drift source flows into
@@ -224,12 +223,12 @@ classdef Drift < matlab.mixin.Copyable
             %function to access time dependent drift property from other functions
             % idft is the index of the drift object
             % tsyear is the model time for which a drift is required
-            obj  = getClassObj(mobj,'Inputs','Drift',msgtxt);  
+            obj  = getClassObj(mobj,'Inputs','Drift');  
             if isempty(obj) %no drift defined
                 prop = 0; EleID = 0;
                 return;
             elseif isempty(obj(idft).DriftTSC) %no timeseries input
-                EleID = obj(idft).ChannelID;
+                EleID = obj(idft).DriftEleID;
                 prop = obj(idft).DriftRate;
                 return;
             end
@@ -277,7 +276,7 @@ classdef Drift < matlab.mixin.Copyable
             
             msgtxt = 'No Drift inputs defined';
             obj  = getClassObj(mobj,'Inputs','Drift',msgtxt);           
-            if ~isempty(obj)
+            if isempty(obj)
                 return;
             else
                 tsid = zeros(length(obj),1);
@@ -287,7 +286,7 @@ classdef Drift < matlab.mixin.Copyable
                     numtimeseries = numtimeseries + tsid(i);                    
                 end
                 if  numtimeseries<1
-                    warndlg('No drift timeseries defined')
+                    getdialog('No drift timeseries defined')
                     return;
                 end
             end
@@ -343,7 +342,7 @@ classdef Drift < matlab.mixin.Copyable
             %get the properties of a drift source for advection
             eletype = getEleProp(eleobj,'EleType');
             extypes = mobj.GeoType(mobj.EXtypes);
-            source.okEle = matches(eletype,extypes); %requires v2019b
+            source.okEle = ismatch(eletype,extypes); %could replace with matches
 %             okEle = strcmp(eletype,'Delta');
 %             okEle = okEle+strcmp(eletype,'Beach');
 %             okEle = okEle+strcmp(eletype,'Shoreface');

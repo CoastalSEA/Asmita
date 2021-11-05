@@ -2,10 +2,11 @@ function UserUnitTesting()
     %function to select and call selected unit test of asmita
 
     %set up path to Asmita and then call model
-    testpath = pwd;
-    modelpath = '../';
-    addpath(testpath,modelpath);
-    clear testpath modelpath
+    testpath = 'D:\Work\Tools\MATLAB\MUImodels2\muiApps\Asmita\test_models';
+    datapath = 'D:\Work\Tools\MATLAB\MUImodels2\muiApps\Asmita\test_models\AsmitaOO Data files';
+    modelpath = 'D:\Work\Tools\MATLAB\MUImodels2\muiApps\Asmita\test_models\muiASM model files';
+    addpath(testpath,datapath,modelpath);
+    
 
     listtext = {'HumberTest','AmelanderTest','VeniceTest','SevernTest',...
                     'PaghamTest','InletTest'};
@@ -16,12 +17,14 @@ function UserUnitTesting()
     if ok==0, return; end %user selected cancel
 
     import matlab.unittest.selectors.HasParameter
-%     s1 = matlab.unittest.TestSuite.fromFile('AsmitaTest.m',...
-%         HasParameter('Name',listtext{selection}));
-    
-    s1 = matlab.unittest.TestSuite.fromFile('AsmitaCFmatfiles.m',...
+    s1 = matlab.unittest.TestSuite.fromFile('AsmitaTest.m',...
         HasParameter('Name',listtext{selection}));
     
+%     s1 = matlab.unittest.TestSuite.fromFile('AsmitaCFmatfiles.m',...
+%         HasParameter('Name',listtext{selection}));
+    
     s1.run
+    rmpath(testpath,datapath,modelpath)
+    clear testpath datapath modelpath
 end
             

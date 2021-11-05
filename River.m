@@ -93,7 +93,7 @@ classdef River < matlab.mixin.Copyable
             advobj.RiverIn(rele) = usenum(2);
             
             setClassObj(mobj,'Inputs','Advection',advobj);
-            warndlg({'River ADDED';
+            getdialog({'River ADDED';
                      'Do not forget to update River Advection'});
         end
 %%
@@ -114,7 +114,7 @@ classdef River < matlab.mixin.Copyable
             obj(idx).RiverConc = 0;
             
             setClassObj(mobj,'Inputs','River',obj);
-            warndlg({'River ADDED';
+            getdialog({'River ADDED';
                      'Do not forget to update River Advection'});
         end 
 %%
@@ -139,20 +139,20 @@ classdef River < matlab.mixin.Copyable
                 setClassObj(mobj,'Inputs','Advection',advobj);
             end
 
-            warndlg({'River DELETED';
+            getdialog({'River DELETED';
                      'Do not forget to update River Advection'});
         end        
 %%
        function prop = getRiverProp(mobj,varname)
            %function to access river properties from other functions
+           eleobj  = getClassObj(mobj,'Inputs','Element');
+           prop = zeros(length(eleobj),1);
            obj  = getClassObj(mobj,'Inputs','River');           
            if isempty(obj) || isempty(obj(1).(varname))
                %no river or no variable defined
                return;
            end
-           
-           eleobj  = getClassObj(mobj,'Inputs','Element');
-           prop = zeros(length(eleobj),1);
+
            nriv = length(obj);
            for i=1:nriv
                %assign value to the element the river source flows into
@@ -257,8 +257,9 @@ classdef River < matlab.mixin.Copyable
             delete(ht);
             
             msgtxt = 'No River inputs defined';
-            obj  = getClassObj(mobj,'Inputs','River',msgtxt);           
-            if ~isempty(obj)
+            obj  = getClassObj(mobj,'Inputs','River');           
+            if isempty(obj)
+                getdialog(msgtxt);
                 return;
             else
                 tsid = zeros(length(obj),1);
@@ -268,7 +269,7 @@ classdef River < matlab.mixin.Copyable
                     numtimeseries = numtimeseries + tsid(i);                    
                 end
                 if  numtimeseries<1
-                    warndlg('No river timeseries defined')
+                    getdialog('No river timeseries defined')
                     return;
                 end
             end
@@ -409,7 +410,7 @@ classdef River < matlab.mixin.Copyable
             
             %get distances from mouth
             rchobj = getClassObj(mobj,'Inputs','Reach');
-            xi = [0,rchobj(:).CumulativeLength];
+            xi = [rchobj(:).CumulativeLength];
             [xi,idxi] = sort(xi);   %sort data into distance order
             qtp0 = qtp0(idxi);
             
@@ -486,10 +487,10 @@ classdef River < matlab.mixin.Copyable
             riverGraph = rescale_graph(riverGraph,exchIn,true);
             advobj.RiverGraph = riverGraph;
             setClassObj(mobj,'Inputs','Advection',advobj);
-            Reach.setReach(mobj);
+            Reach.setReach(mobj,true); %sets IDs and properties
             
-            reachGraph = type_sub_graph(riverGraph,'Channel');
-            reachChIDs = reachGraph.Nodes.EleID;
+            g_landward = Reach.getReachChannelIDs(mobj);
+            reachChIDs = g_landward.Nodes.EleID(2:end);
             [tp,tpM] = Advection.getTidalPumpingDischarge(mobj,reachChIDs);  
             qtp = [tpM(1);tp];
         end

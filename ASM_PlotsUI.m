@@ -16,7 +16,9 @@ classdef ASM_PlotsUI < muiDataUI
     properties (Transient)
         %Abstract variables for muiDataUI---------------------------        
         %names of tabs providing different data accces options
-        TabOptions = {'Time','Distance','Network','2D','3D','2DT','3DT'};       
+        TabOptions = {'Time','Distance','Network','2D','3D','2DT','3DT'}; 
+        %selections that force a call to setVariableLists
+        updateSelections = {'Case','Variable'};
         %Additional variables for application------------------------------
         Tabs2Use         %number of tabs to include  (set in getPlotGui)     
     end  
@@ -108,22 +110,20 @@ classdef ASM_PlotsUI < muiDataUI
             sel_uic = S.Selections;
             caserec = sel_uic{strcmp(S.Order,'Case')}.Value;
             cobj = getCase(mobj.Cases,caserec);
-%             dsnames = fieldnames(cobj.Data); 
-%             ids = sel_uic{strcmp(S.Order,'Dataset')}.Value;
 
             for i=1:length(sel_uic)                
                 switch sel_uic{i}.Tag
                     case 'Case'                        
                         sel_uic{i}.String = muicat.CaseDescription;
                         sel_uic{i}.UserData = sel_uic{i}.Value; %used to track changes
-                    case 'Element'
-                        eleobj = getClassObj(mobj,'Inputs','Element');
-                        sel_uic{i}.String = [getEleProp(eleobj,'EleName');'All'];
-                        sel_uic{i}.Value = 1;
                     case 'Variable' 
                         ds = fieldnames(cobj.Data);
                         sel_uic{i}.String = cobj.Data.(ds{1}).VariableDescriptions;
-                        sel_uic{i}.Value = 1;
+                        sel_uic{i}.UserData = sel_uic{i}.Value; %used to track changes
+                    case 'Element'
+                        varval = sel_uic{2}.Value;  %current variable selection
+                        sel_uic{i}.String = setElementList(obj,cobj,varval);
+                        sel_uic{i}.Value = 1;                            
                     case 'Type'
                         sel_uic{i}.String = S.Type;
                     otherwise
@@ -133,76 +133,19 @@ classdef ASM_PlotsUI < muiDataUI
             obj.TabContent(itab).Selections = sel_uic;
         end
 %%
-%         function caserec = subCaseRec(obj,src,muicat,listrec)
-%             %find correct caserec from listrec (id in sublist)
-%             cdesc = subCaseList(obj,src,muicat);
-%             if ~isempty(cdesc)
-%                 casedesc = cdesc{listrec};
-%                 caserec = find(strcmp(muicat.CaseDescription,casedesc)); 
-%             else
-%                 caserec = [];
-%             end
-%         end
-% %%
-%         function cdesc = subCaseList(~,src,muicat)
-%             %modify list to a subset of the full case list
-%             classes = muicat.CaseClass;
-%             switch src.Tag
-%                 case 'Time'
-%                     idx = ~ismember(classes,'ctBeachProfileData');                    
-%                 case 'Distance'
-%                     idx = ismember(classes,'ctBeachProfileData');
-%                 otherwise
-%                     idx = true(length(classes),1);
-%             end
-%             cdesc = muicat.CaseDescription(idx);
-%         end
-% %%
-%         function varnum = subVarRec(obj,src,cobj,listnum)
-%             %find correct varnum from subvarlist (id in sub-list)
-%             vdesc = subVarList(obj,src,cobj);
-%             vardesc = vdesc{listnum};
-%             varnum = find(strcmp(varlist,vardesc));
-%         end
-% %%
-%         function [vdesc,varlist] = subVarList(~,src,cobj)
-%             %modify list to a subset of the full case list
-%             ds = fieldnames(cobj.Data);
-%             varlist = cobj.Data.(ds{1}).VariableDescriptions;            
-%              switch src.Tag                  
-%                 case 'Profiles'
-%                     pvars = {'FeatureCode','Elevation'};
-%                     idx = ismember(varlist,pvars);
-%                     vdesc = varlist(idx);
-%                 otherwise
-%                     vdesc = varlist;
-%              end
-%         end
-%%
-%         function resetSubRecs(obj,src,mobj)
-%             %adjust UIselections to use the full record/variable id
-%             %Correct selections on Timeseries, Profiles and Rose tabs
-%             muicat = mobj.Cases.Catalogue;            
-%             switch src.Tag
-%                 case {'Timeseries','Rose'}
-%                    obj.UIselection.caserec = getCaseRec(1);
-%                 case 'Profiles'
-%                     for idx=1:length(obj.UIselection)
-%                         caserec = getCaseRec(idx);
-%                         obj.UIselection(idx).caserec = caserec;
-%                         %correct variable id
-%                         cobj = getCase(mobj.Cases,caserec);
-%                         listnum = obj.UIselection(idx).variable;
-%                         varnum = subVarRec(obj,src,cobj,listnum);                        
-%                         obj.UIselection(idx).variable = varnum;
-%                     end
-%             end
-%             %
-%             function caserec = getCaseRec(idx)
-%                 listrec = obj.UIselection(idx).caserec;
-%                 caserec = subCaseRec(obj,src,muicat,listrec);
-%             end
-%         end
+    function elelist = setElementList(~,cobj,varval)
+        %set the element list based on the current Variable selection
+        eleobj = cobj.RunParam.Element; %values used in selected Case
+        fullist = [getEleProp(eleobj,'EleName');'All'];
+        varlist = cobj.Data.Dataset.VariableNames;
+        idele = find(strcmp(varlist,cobj.outType{1}));
+        if varval<idele
+            elelist = fullist;
+        else
+            idr = unique(getEleProp(eleobj,'ReachID'));
+            elelist = fullist(idr);
+        end
+    end
 %%        
         function useSelection(obj,src,mobj)  
             %make use of the selection made to create a plot of selected type
@@ -234,8 +177,8 @@ classdef ASM_PlotsUI < muiDataUI
             S.HeadText = sprintf('1 %s\n2 %s\n3 %s',txt1,txt2,txt3);  
             %Specification of uicontrol for each selection variable  
             %Use default lists except
-            S.Titles = {'Case','Element','Variable','Type'};  
-            S.Order = {'Case','Element','Variable','Type'};
+            S.Titles = {'Case','Variable','Element','Type'};  
+            S.Order = {'Case','Variable','Element','Type'};
             
             %Tab control button options
             S.TabButText = {'New','Add','Delete','Clear'}; %labels for tab button definition

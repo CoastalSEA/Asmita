@@ -16,6 +16,8 @@ classdef AsmitaModel < muiDataSet
 %     
     properties
         %inherits Data, RunParam, MetaData and CaseIndex from muiDataSet
+        %first variable in dsproperties list of a new output type
+        outType = {'ReachPrism'}; %first reach variable - see PostTimeStep
     end
     
     properties (Transient)
@@ -175,7 +177,7 @@ classdef AsmitaModel < muiDataSet
             
             %initialise reaches
             setClassObj(mobj,'Inputs','Reach',[]); %clear any previously created reaches
-            Reach.setReach(mobj);
+            Reach.setReach(mobj,true); %sets up reaches and sets properties
             %initialise tidal pumping
             if ~isempty(advobj) && rncobj.IncTidalPumping
                 Advection.setTidalPumping(mobj);
@@ -314,9 +316,6 @@ classdef AsmitaModel < muiDataSet
              AsmitaModel.intialiseModelParameters(mobj);
              
              rncobj = getClassObj(mobj,'Inputs','RunConditions');
-%              if rncobj.IncInterventions
-%                  Interventions.initialiseInterventions(mobj);
-%              end
              %initialise interventions even if not used (ie set to zero)
              Interventions.initialiseInterventions(mobj);
              %initialise Marsh concentration matrix if marsh included
@@ -340,7 +339,7 @@ classdef AsmitaModel < muiDataSet
              %calls RuncConcitions.setAdvectionOffset and ASM_model.setDQmatrix
              Element.setEleAdvOffsets(mobj); 
              %initialise any scaling to initial conditions (kVp)
-             ASM_model.asmitaEqScalingCoeffs(mobj);
+             Element.setEqScalingCoeffs(mobj);
              %initialise equilibrium conditions
              Element.setEquilibrium(mobj); 
              %constraints and saltmarsh enhanced settling
@@ -348,7 +347,7 @@ classdef AsmitaModel < muiDataSet
              %initialise element concentrations
              Element.setEleConcentration(mobj);
              %check time step is small enough
-             obj = CheckStability(obj,mobj);
+%              obj = CheckStability(obj,mobj);
              if isempty(obj)
                  obj = [];
                  return; 
@@ -405,22 +404,27 @@ classdef AsmitaModel < muiDataSet
         function obj = PostTimeStep(obj,mobj,dsp)
             %store the results for each time step
             eleobj= getClassObj(mobj,'Inputs','Element'); 
-            wlvobj= getClassObj(mobj,'Inputs','WaterLevels'); 
+%             wlvobj= getClassObj(mobj,'Inputs','WaterLevels'); 
+            
             if obj.iStep==1 || rem(obj.iStep,obj.outInt)==0
                 vname = {dsp.Variables.Name};
+                idele = find(strcmp(vname,obj.outType{1}));%NB if dsp is changed
+%                 idrch = find(strcmp(vname,obj.outType{2}));%outTypw needs chekcing
                 jr = length(obj.StepTime)+1;
                 obj.StepTime(jr,1) = obj.Time;
                 for i=1:length(vname)
-                    %sorting depends on variable list in varNames of ResDef  
-                    if i<7       %element properties
+                    %sorting depends on variable list in DSproperties
+                    if i<idele       %element properties
                         eleprop = getEleProp(eleobj,vname{i});
                         obj.RunData{i}(jr,:) = [eleprop;sum(eleprop,1)];
-                    elseif i<11  %reach properties
+                    else             %reach properties
                         rchprop = Reach.getReachProp(mobj,vname{i});
-                        obj.RunData{i}(jr,:) = rchprop; %,sum(rchprop,2)];
-                    else         %water level properties
-                        obj.RunData{i}(jr,1) = wlvobj.(vname{i});
-                        %obj.RunData{i}(jr,1) = rchobj(vname{i});
+                        obj.RunData{i}(jr,:) = rchprop;    
+%                     elseif i<idrch   %reach properties
+%                         rchprop = Reach.getReachProp(mobj,vname{i});
+%                         obj.RunData{i}(jr,:) = rchprop; %,sum(rchprop,2)];
+%                     else             %water level properties
+%                         obj.RunData{i}(jr,1) = wlvobj.(vname{i});
                     end
                 end
             end            
@@ -475,10 +479,10 @@ classdef AsmitaModel < muiDataSet
         end
 %%
         function setIncParam(obj,mobj)
-            %add any additional muiProperty Classes included in run to
-            %RunParam property. 'Element','Estuary','WaterLevels',
-            %'RunProperties','RunConditions','EqCoeffProps' included by
-            %default
+            %add any additional muiProperty Classes included in run to be
+            %saved to RunParam property. 'Element','Estuary','WaterLevels',
+            %'RunProperties','RunConditions','EqCoeffProps' classses are 
+            %included by default
             rncobj = getClassObj(mobj,'Inputs','RunConditions');
             if rncobj.IncInterventions
                 intobj = getClassObj(mobj,'Inputs','Interventions');
@@ -519,27 +523,30 @@ classdef AsmitaModel < muiDataSet
             %accept most data types but the values in each vector must be unique
             
             %struct entries are cell arrays and can be column or row vectors
-            %NB if number of variables changes update limits in PostTimeStep
+            %NB if number of variables changes, update the outType property
+            % Also variable names in dsp.Variables must match Element 
+            % properties for use in PostTimeStep.
             dsp.Variables = struct(...                      
                 'Name',{'MovingVolume','FixedVolume','EqVolume',...
                            'BioProdVolume','EleConcentration',...
-                           'MovingSurfaceArea','ReachPrism',...
+                           'MovingSurfaceArea','EleWLchange','ReachPrism',...
                            'UpstreamPrism','UpstreamCSA','RiverFlow',...             
-                           'MeanSeaLevel','HWaterLevel','LWaterLevel'},...
+                           'MWlevel','HWlevel','LWlevel','TidalRange'},...                           
                 'Description',{'Moving Volume','Fixed Volume','Equilibrium Volume',...
                            'Biological Production','Concentration',...
-                           'Surface Area','Reach Prism','Tidal Prism',...
-                           'Upstream CSA','River Flow','Mean Sea Level',...
-                           'High Water','Low Water'},...
-                'Unit',{'m^3','m^3','m^3','m^3','ppm','m^2','m^3',...
-                           'm^3','m^2','m^3/s','mAD','mAD','mAD'},...
+                           'Surface Area','Water Level Change',...
+                           'Reach Prism','Tidal Prism',...
+                           'Upstream CSA','River Flow','Mean Water Level',...
+                           'High Water','Low Water','Tidal Range'},...
+                'Unit',{'m^3','m^3','m^3','m^3','ppm','m^2','m','m^3',...
+                           'm^3','m^2','m^3/s','mAD','mAD','mAD','m'},...
                 'Label',{'Volume (m^3)','Volume (m^3)','Volume (m^3)',...
                            'Volume (m^3)','Concentration (ppm)',...
-                           'Surface area (m^2)','Volume (m^3)',...
+                           'Surface area (m^2)','WL Change (m)','Volume (m^3)',...
                            'Volume (m^3)','Cross-sectional area (m^2)',...
                            'Discharge (m^3/s)','Elevation (mAD)',...
-                           'Elevation (mAD)','Elevation (mAD)'},...
-                'QCflag',repmat({'model'},1,13)); 
+                           'Elevation (mAD)','Elevation (mAD)','Range (m)'},...
+                'QCflag',repmat({'model'},1,15)); 
             dsp.Row = struct(...
                 'Name',{'Time'},...
                 'Description',{'Time'},...

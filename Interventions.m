@@ -17,8 +17,8 @@ classdef Interventions < matlab.mixin.Copyable
     end
     
     properties (Transient)
-        transVolChange
-        transAreaChange
+        transVolChange = 0
+        transAreaChange = 0
     end
 
     methods (Access=private)
@@ -39,16 +39,19 @@ classdef Interventions < matlab.mixin.Copyable
             %initialise the transient intervention properties and set the
             %years and annual change values in ASM_model
             obj  = getClassObj(mobj,'Inputs','Interventions');
-            nele = length(obj);
+            if isempty(obj), return; end
+            
+            %for each element sort the specified changes into an vectors of
+            %unique years and volume/area changes
+            nintele = length(obj);  %number of elements with interventions
             uyrs = [];
-            for i=1:nele
+            for i=1:nintele
                 uyrs = cat(1,uyrs,obj(i).Year{1});
             end     
             uyrs = unique(uyrs);
-            %uyrs = uyrs(2:end);
             nyr  = length(uyrs);
-            vals = zeros(nele,nyr,2);
-            for i=1:nele
+            vals = zeros(nintele,nyr,2);
+            for i=1:nintele
                 obj(i).transVolChange = 0;  %initialise transient properties
                 obj(i).transAreaChange = 0;
                 year = obj(i).Year{1};
@@ -60,9 +63,10 @@ classdef Interventions < matlab.mixin.Copyable
                 end
             end
             setClassObj(mobj,'Inputs','Interventions',obj);
+            
             %store of changes set up during model initialisation
             asmobj  = getClassObj(mobj,'Inputs','ASM_model');
-            asmobj.UniqueYears = uyrs;  %*****MODIFY TO SUIT NEW MODEL/RESULTS HANDLING
+            asmobj.UniqueYears = uyrs; 
             asmobj.AnnualChange = vals;
             setClassObj(mobj,'Inputs','ASM_model',asmobj);
         end      
@@ -152,9 +156,8 @@ classdef Interventions < matlab.mixin.Copyable
 %%
         function prop = getIntProp(mobj,varname)
             %get intervention property and return as an element array
-            prop = [];
-            msgtxt = 'No interventions have been defined';
-            obj  = getClassObj(mobj,'Inputs','Interventions',msgtxt);
+            prop = 0;
+            obj  = getClassObj(mobj,'Inputs','Interventions');
             if isempty(obj), return; end           
             prop = [obj.(varname)]';
         end      
@@ -162,8 +165,8 @@ classdef Interventions < matlab.mixin.Copyable
         function IntTabPlot(mobj,src,~)
             %plot the interventions that have been defined on the tab
             msgtxt = 'No interventions have been defined';
-            intobj  = getClassObj(mobj,'Inputs','Interventions',msgtxt);
-            if isempty(intobj), return; end    
+            intobj  = getClassObj(mobj,'Inputs','Interventions');
+            if isempty(intobj), getdialog(msgtxt); return; end    
             
             ht = findobj(src,'Type','Axes');
             delete(ht);

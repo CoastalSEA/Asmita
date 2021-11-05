@@ -144,7 +144,7 @@ classdef WaterLevels < muiPropertyUI
         function initialWL(obj,startyr)
             %initialise the water level calculation
             %startyr is the start year of the simulation in seconds
-            tr = obj.TidalAmp*2;
+            tr = obj.TidalRange;
             trfc = obj.LWtoHWratio;
             obj.HW0 = obj.MSL0 + tr/(1+trfc);
             obj.LW0 = obj.MSL0 - tr*trfc/(1+trfc);
@@ -210,8 +210,8 @@ classdef WaterLevels < muiPropertyUI
             dtr = real(sum(amp.*exp(1i*(om1*realtime+om2)))); %change in tidal range at t
             obj.MeanSeaLevel = msl;    
             %new water levels 
-            obj.HWaterLevel = msl-obj.dtr0 + (tr+2*dtr)/(1+trfc); %0.5tr if trfc=1           
-            obj.LWaterLevel = msl-obj.dtr0 - (tr+2*dtr)*trfc/(1+trfc);
+            obj.HWaterLevel = msl-obj.dtr0 + (tr+dtr)/(1+trfc); %0.5tr if trfc=1           
+            obj.LWaterLevel = msl-obj.dtr0 - (tr+dtr)*trfc/(1+trfc);
             %difference with old water levels
             obj.dHWchange = obj.HWaterLevel-obj.HW0;
             obj.dLWchange = obj.LWaterLevel-obj.LW0;  
@@ -221,7 +221,7 @@ classdef WaterLevels < muiPropertyUI
         end
 %%
         function tabPlot(obj,src,mobj)
-            %plot water levels on WAaterLevel tab
+            %plot water levels on the WaterLevel tab
             msgtxt = 'Run properties have not been set';
             rnpobj = getClassObj(mobj,'Inputs','RunProperties',msgtxt);
             if isempty(rnpobj), return; end
@@ -231,12 +231,12 @@ classdef WaterLevels < muiPropertyUI
             mtime = (0:dt:nstep*dt)*y2s;
             [HWL,MSL,LWL] = newWaterLevels(obj,mtime,rnpobj.StartYear*y2s);
             
-            
-            
+            %clear any existing plot
             ht = findobj(src,'Type','axes');
             delete(ht);
             ax = axes(src,'Tag','PlotFigAxes');
             
+            %create plot of water level change over the model run period
             ptime = rnpobj.StartYear+mtime/y2s;
             plot(ax,ptime,MSL,'Color',mcolor('orange'),'DisplayName','Mean water level')
             hold on

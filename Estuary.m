@@ -45,7 +45,7 @@ classdef Estuary < muiPropertyUI
     end
     
     properties (Transient)       %properties that are time varying
-        DispersionGraph               %handle to graph of network (dispersion)
+        DispersionGraph          %handle to graph of network (dispersion)
     end
 
 %%   
@@ -206,7 +206,7 @@ classdef Estuary < muiPropertyUI
             eletype = getEleProp(eleobj,'transEleType');
             ich = strcmp(eletype,'Channel');
             finetypes = mobj.GeoType(mobj.FNtypes);
-            ifn = matches(eletype,finetypes); %requires v2019b
+            ifn = ismatch(eletype,finetypes); %could replacae with matches
             vm = getEleProp(eleobj,'MovingVolume');
             sm = getEleProp(eleobj,'MovingSurfaceArea');
             cb = getEleProp(eleobj,'BedConcentration');
@@ -216,10 +216,12 @@ classdef Estuary < muiPropertyUI
             cEM = estobj.EqConcFine;
             vhw = Reach.getReachProp(mobj,'HWvolume');
             shw = Reach.getReachProp(mobj,'HWarea');
-            dExt = estobj.ExternalDisp;
+            dExt = estobj.ExternalDisp(:,1);
             %initialise the ASM_model class
             ASM_model.setASM_model(mobj);
-            initialiseFlow(rivobj);
+            if ~isempty(rivobj)
+                initialiseFlow(rivobj);
+            end
             ASM_model.setDQmatrix(mobj,'flow+drift');
             [B,dd] = ASM_model.BddMatrices(mobj);
             %maximum rate of sea level rise for system, mm/year
@@ -247,12 +249,12 @@ classdef Estuary < muiPropertyUI
             n_av = mean(n(ich));
             tauS = 1/cES/n_av*(vtot/wso/stot + vtot/delo)/y2s; %coarse
             wso = mean(ws(ifn)); 
-            n_av = mean(abs(n(ifn)));
+            n_av = mean(abs(n(ifn)));  %tauM is NaN if ifn=0 no fine types 
             tauM = 1/cEM/n_av*(vtot/wso/stot + vtot/delo)/y2s;  %fine
             
             %mask the external elements that are not linked to delta(s)
             extypes = ~contains(mobj.GeoType(mobj.EXtypes),'Delta');            
-            iex = matches(eletype,mobj.GeoType(extypes)); %requires v2019b
+            iex = ismatch(eletype,mobj.GeoType(extypes)); %couuld replace with matches
             slr_max(iex) = 0; slr_max_bio(iex) = 0; mT(iex) = 0;
             
             userData = [slr_max,slr_max_bio,mT];

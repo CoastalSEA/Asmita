@@ -24,18 +24,25 @@ classdef Asmita < muiModelUI
     end
     
     properties
-        %GeoType defines the types of element that have been implemented
-        GeoType = {'Delta','Channel','Tidalflat','Saltmarsh','Storage',...
-                   'EbbDelta','FloodDelta','DeltaFlat',...
+        %GeoType defines the types of element that can be used
+        GeoType = {'Channel','Tidalflat','Saltmarsh','Storage',...
+                   'FloodDelta','DeltaFlat','EbbDelta',...
                    'Beachface','Shoreface','Spit'};
-        LWtypes = [1,2,6,7,10];    %GeoTypes that vary with low water
-        EXtypes = [1,6,8,9,10,11]; %GeoTypes that are external to inlet
-        FNtypes = [3,4,5];         %GeoTypes that use fine eq concentration
-        %NB: Channel is used extensively as a key word. Reach uses 'Flat' 
-        %and 'Flood' as key words. Saltmarsh, ASMinterface and ASM_model
-        %use 'Saltmarsh' and 'Tidalflat'. Estuary uses 'Delta' to find all
-        %external delta elements ie not inc. FloodDelta. Drift uses EXtypes
-        %to limit assignment of drift inputs. River uses 'Channel'
+        %the following properties then define masks that define various
+        %connectivity within the model
+        LWtypes = [1,5,7,9]; %GeoTypes that vary with low water
+        EXtypes = 6:10;      %GeoTypes that are external to inlet
+        RCtypes = 1;         %Geotypes that define a reach          - could be [1,5]
+        REtypes = 2:6;       %Geotypes that can belong to a reach   - could be [2,3,4,6]
+        FNtypes = [2,3,4];   %GeoTypes that use fine eq concentration
+                             %assume this excludes DeltaFlat????
+        %NB: Rivers can only connect to 'Channel' - hard coded in River class.
+        %Drift uses EXtypes to limit assignment of drift inputs.
+        %Reach uses 'FloodDelta' as a key word.
+        %Saltmarsh, ASMinterface and ASM_model use 'Saltmarsh' and 'Tidalflat'. 
+        
+        %Estuary uses 'Delta' to find all external delta elements ie not inc. FloodDelta. 
+
     end
     
     methods (Static)

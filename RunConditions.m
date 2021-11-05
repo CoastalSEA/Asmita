@@ -79,28 +79,28 @@ classdef RunConditions < muiPropertyUI
         function setAdvectionOffset(mobj)
             %find whether an offset is to be included
             obj = getClassObj(mobj,'Inputs','RunConditions');
-            if obj.IncRiver && obj.IncDrift %both included
-                obj.Adv2Inc = 'flow+drift';           %include both;
+            if obj.IncRiver && obj.IncDrift        %both included
+                obj.Adv2Inc = 'flow+drift';        %include both;
                 if obj.RiverOffset && obj.DriftOffset
-                    obj.Adv2Offset = 'flow+drift';        %include both offsets
+                    obj.Adv2Offset = 'flow+drift'; %include both offsets
                 elseif obj.RiverOffset
-                    obj.Adv2Offset = 'flow';              %include river offset
+                    obj.Adv2Offset = 'flow';       %include river offset
                 elseif obj.DriftOffset
-                    obj.Adv2Offset = 'drift';             %include drift offset
+                    obj.Adv2Offset = 'drift';      %include drift offset
                 else
                     obj.Adv2Offset = 'none';
                 end         
-            elseif obj.IncRiver                %only river included
-                obj.Adv2Inc = 'flow';                 %include river
+            elseif obj.IncRiver                    %only river included
+                obj.Adv2Inc = 'flow';              %include river
                 if obj.RiverOffset
-                    obj.Adv2Offset = 'flow';              %include river offset
+                    obj.Adv2Offset = 'flow';       %include river offset
                 else
                     obj.Adv2Offset = 'none';
                 end
-            elseif obj.IncDrift                %only drift included
-                obj.Adv2Inc = 'drift';                %include drift
+            elseif obj.IncDrift                    %only drift included
+                obj.Adv2Inc = 'drift';             %include drift    
                 if obj.DriftOffset
-                    obj.Adv2Offset = 'drift';             %include drift offset
+                    obj.Adv2Offset = 'drift';      %include drift offset
                 else
                     obj.Adv2Offset = 'none';    
                 end

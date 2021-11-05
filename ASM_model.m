@@ -44,8 +44,6 @@ classdef ASM_model < ASMinterface
 %                 obj = ASM_model;       
 %             end
             obj = ASM_model; 
-            eleobj = getClassObj(mobj,'Inputs','Element');
-            obj.eqScaling = ones(length(eleobj),1); %initialise default values
             setClassObj(mobj,'Inputs','ASM_model',obj);
         end
     end

@@ -32,7 +32,7 @@ function nodetxt = setnodetext(eleobj,inoutxt,atype)
     elename = getEleProp(eleobj,'EleName');
     
     if nargin>2 && ~isempty(atype)
-        idx = matches(eletype,atype);
+        idx = ismatch(eletype,atype); %could be replaced by matches
         nele = sum(idx);
     else
         nele = length(eleid);
