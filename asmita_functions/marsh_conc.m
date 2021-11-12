@@ -50,9 +50,9 @@ function [acem,asmt] = marsh_conc(c0,zm,wsm,wl,options)
     sumc = 0;   %sum of concentration over individual up-crossings
 %     sumt = 0;   %sum of time over individual up-crossings
 %     count= 0;   %number of times water is over marsh during sp-np cycle
-    tide = simple_tide(wl,tsn,delt/60);
+    tide = simple_tide(wl,tsn,delt/60); %uses tsn in days and tint in minutes
 %     ptime = tide.t/3600/24;    
-%     figure;  plot(ptime,tide.dz);
+%     figure;  plot(ptime,tide.z);
     nrec = length(tide.t);
     dcc = zeros(nrec,1);
     for it = 1:nrec
@@ -70,15 +70,15 @@ function [acem,asmt] = marsh_conc(c0,zm,wsm,wl,options)
                 dc = ((-wsm-tide.dz(it))*conc+cs*tide.dz(it))*delt/flodep;
                 if conc+dc<0       %trap negative concentration
                     conc = 0;
-                else
+                elseif dc>0        %increment concentration by change
                     conc = conc+dc;
                 end
             end
-            dcc(it,1) = conc;
-            sumc = sumc+conc*delt; %sum over individual up-crossings
-            scsn = scsn+conc*delt; %total concentration over sp-np cycle
+            dcc(it,1) = conc;       %only used for test plot
+            sumc = sumc+conc*delt;  %sum over individual up-crossings
+            scsn = scsn+conc*delt;  %total concentration over sp-np cycle
 %             sumt = sumt+delt;      %sum of up-crossing time
-            sumT = sumT+delt;      %total submerged time over sp-np cycle
+            sumT = sumT+delt;       %total submerged time over sp-np cycle
             dcflg= 1;
         elseif tide.z(it)<zm && dcflg==1
 %             count = count +1;

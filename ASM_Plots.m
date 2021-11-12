@@ -94,7 +94,8 @@ classdef ASM_Plots < muiPlots
                 %add the digraph data for the selected case
                 obj = getNetworkData(obj,mobj);
             elseif strcmp({'Distance'},obj.UIset.callTab)
-                obj = getDistanceData(obj,mobj);
+%                 obj = getDistanceData(obj,mobj);
+                obj = setDistancePlotType(obj,mobj);
             else
                 if contains(obj.UIset.callTab,{'2D','2DT','3D','3DT'})
                     obj = setAxisTicks(obj);
@@ -195,16 +196,17 @@ classdef ASM_Plots < muiPlots
             
             %for distance plots allow user to choose element or distance 
             %if there are enough channel elements
-            if strcmp({'Distance'},obj.UIset.callTab)
-                caseDef = getRunParams(obj,mobj,1);
-                ide = find(strcmp({caseDef.Element(:).EleType},'Channel'));                
-                idt = find(strcmp(obj.UIset.typeList,obj.UIset.Type.String));
-                idsurf = find(strcmp(obj.UIset.typeList,'surf'));
-                if length(ide)>2 && idt<idsurf
-                    %require more than 2 reaches for a distance plot
-                    obj = setDistancePlotType(obj,mobj);
-                end
-            end
+%             if strcmp({'Distance'},obj.UIset.callTab)
+%                 caseDef = getRunParams(obj,mobj,1);
+%                 rctype = mobj.GeoType(mobj.RCtypes);
+%                 ide = ismatch({caseDef.Element(:).EleType},rctype);               
+%                 idt = find(strcmp(obj.UIset.typeList,obj.UIset.Type.String));
+%                 idsurf = find(strcmp(obj.UIset.typeList,'surf'));
+%                 if sum(ide)>2 && idt<idsurf
+%                     %require more than 2 reaches for a distance plot
+%                     obj = setDistancePlotType(obj,mobj);
+%                 end
+%             end
         end
 %%
         function obj = setAxisTicks(obj)
@@ -229,9 +231,6 @@ classdef ASM_Plots < muiPlots
             %generate new distance plot in figure  
             obj.UIset.callTab = '2DT'; %use default tab name in muiPlots
             obj = setAxisTicks(obj);
-%             obj.TickLabels.XTick = 1:length(obj.Data.X);
-%             obj.TickLabels.XTickLabel = obj.Data.X;
-%             obj.Data.X =1:length(obj.Data.X);
             %generate an animation of plot type is a line/point type
             idx = find(strcmp(obj.UIset.typeList,obj.UIset.Type.String));
             idsurf = find(strcmp(obj.UIset.typeList,'surf'));
@@ -245,7 +244,9 @@ classdef ASM_Plots < muiPlots
                 adjustAxisTicks(obj,gca);  %adjust tick labels  if defined
             else
                 %plot selected lines/points type as an animation 
-                obj.Data.T = round(obj.Data.T*10)/10;
+                if ~isdatetime(obj.Data.T)
+                    obj.Data.T = round(obj.Data.T*10)/10;
+                end
                 newAnimation(obj);
             end
         end
@@ -270,12 +271,20 @@ classdef ASM_Plots < muiPlots
                 %change variable from element to reach values
                 obj.Data.Y = yrch;
             end
+            %
+            if length(obj.Data.X)~=length(obj.Data.reachlength)
+                obj.Data.X  = obj.Data.reachlength;
+            end
+            obj.Title = replace(obj.Title,'Element Name','Distance');
+            obj.AxisLabels.X = 'Distance (m)';
         end
 %%
         function setNetworkPlot(obj)
             %call the animation method for digraphs in muiPlots
             obj.UIset.callTab = 'Digraph'; %use default tab name in muiPlots
-            obj.Data.T = round(obj.Data.T*10)/10;
+            if ~isdatetime(obj.Data.T)
+                obj.Data.T = round(obj.Data.T*10)/10;
+            end
             newAnimation(obj)
         end
 %%

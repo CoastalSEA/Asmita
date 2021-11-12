@@ -310,17 +310,33 @@ classdef Interventions < matlab.mixin.Copyable
             offset = 0.1;  %offset from max value to provide margin at top
             vmax = max(Vol); smax = max(Surf);
             axes('Parent',src);            
-            s1 = subplot(2,1,1);            
-            plot(tim,Vol,'DisplayName',legtxt);
+            s1 = subplot(2,1,1); 
+            if length(Vol)<3
+                bar(tim,Vol,'DisplayName',legtxt);
+            else
+                plot(tim,Vol,'DisplayName',legtxt);
+            end
             title(legtxt);
             ylabel('Volume change (m^3)');
-            s1.YLim(2) = vmax+offset*vmax;
+            if vmax<0 && vmax<s1.YLim(2)
+                s1.YLim(1) = vmax+offset*vmax;
+            else
+                s1.YLim(2) = vmax+offset*vmax;
+            end
             %
             s2 =  subplot(2,1,2);
-            plot(tim,Surf,'DisplayName',legtxt);
+            if length(Vol)<3
+                bar(tim,Vol,'DisplayName',legtxt);
+            else
+                plot(tim,Surf,'DisplayName',legtxt);
+            end
             xlabel('Year');
             ylabel('Area change (m^2)');
-            s2.YLim(2) = smax+offset*smax;
+            if smax<0 && smax<s2.YLim(2)
+                s2.YLim(1) = smax+offset*smax;
+            else
+                s2.YLim(2) = smax+offset*smax;
+            end
         end
     end
     

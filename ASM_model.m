@@ -37,20 +37,14 @@ classdef ASM_model < ASMinterface
 %%
     methods (Static, Sealed)                
         function setASM_model(mobj) %abstract method in ASMinterface
-            %function to initialise an instance of ASM_model - called by
-            %AsmitaSim.InitialiseModel
-%             obj = getClassObj(mobj,'Inputs','ASM_model');
-%             if isempty(obj)
-%                 obj = ASM_model;       
-%             end
+            %function to initialise an instance of ASM_model
             obj = ASM_model; 
             setClassObj(mobj,'Inputs','ASM_model',obj);
         end
     end
 %% ------------------------------------------------------------------------
     methods (Static)
-    %overload functions in ASMinterface as required
- 
+    %overload functions in ASMinterface as required 
         function asmitaEqFunctions(mobj)
             %function to define the equilibrium volume for a given prism
             eleobj = getClassObj(mobj,'Inputs','Element');
@@ -119,12 +113,20 @@ classdef ASM_model < ASMinterface
             isQtpOnly = false;
 
             if isQtpOnly
+                 %--------------------- NOT CURRENTLY WORKING -------------
+                 %TEST code to examine use of Qtp in place of exchange
+                 %components D+Q that relate to the channel elements
+                 % *does not work for Severn but does work for Venice*
+                 %---------------------------------------------------------
                 rncobj = getClassObj(mobj,'Inputs','RunConditions');
                 if rncobj.IncTidalPumping
-                    DQ = Qtp;
-                    dEqIn = kCeI.*qtpIn;
-                else
-                    DQ = D+Q;
+                    DQ = D; dEqIn = dExt;
+                    idx = abs(Qtp)>0;        %index of qtp exchanges
+                    DQ(idx) = Qtp(idx);
+                    idi = abs(qtpIn)>0;      %index of qtpIn exchanges
+                    dEqIn(idi) = qtpIn(idi); %assumes no input from rivers 
+                else                         %which would be negative qtpOut
+                    DQ = D+Q;                %and need correcting by kCeI
                     dEqIn = dExt+kCeI.*qIn;
                 end
                 %
@@ -143,11 +145,7 @@ classdef ASM_model < ASMinterface
                         obj.dqIn = dExt;
                 end                 
                 
-            %---------------------
-            % may need to modify to use D+Q if river advection only (no tidal
-            % pumping) and Qtp if tidal pumping included ie. QTP expresses
-            % tidal and river exchange == D+Q
-            %---------------------
+           
             else
                 %to set eqCorV in Element.setEleAdvOffsets need to only
                 %include some of the advections based on conditions set

@@ -332,7 +332,7 @@ classdef Asmita < muiModelUI
                     Saltmarsh.setInput(obj);
                     tabUpdate(obj,'System');
                 case 'Equilibrium Marsh Depth'
-                    Saltmarsh.EqDepthBiomass(obj);
+                    Saltmarsh.EqDepthBiomassPlot(obj);
                 case 'Biomass Distribution'
                     Saltmarsh.BiomassDistributionPlot(obj);
                 case 'Marsh-flat Animation'

@@ -28,11 +28,12 @@ function deq = morris_eqdepth(sm,cn,qm,dslr)
 % CoastalSEA (c)Apr 2021
 %--------------------------------------------------------------------------
 %
-    kbm = sm.SpeciesProduct';  
+    kbm = sm.SpeciesProduct;  
     kbm = kbm/cn.y2s;           %rate of biomass production (m^2/kg/s)
     %kbm = kbm/acb;             %correct for bed density
     Bc = morris_biocoeffs(sm);  %biomass coefficients
     %
+    if isrow(kbm), kbm = kbm'; end  %force a column vector
     KBM = repmat(kbm,1,3);      %replicate kbm for each coefficient
     kbc = Bc.*KBM;              %multiply each coefficient by kbm
     cfs = sum(kbc,1);           %sum each coefficient for all species

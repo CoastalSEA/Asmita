@@ -489,9 +489,9 @@ classdef River < matlab.mixin.Copyable
             setClassObj(mobj,'Inputs','Advection',advobj);
             Reach.setReach(mobj,true); %sets IDs and properties
             
-            g_landward = Reach.getReachChannelIDs(mobj);
+            g_landward = Reach.getReachGraph(mobj);
             reachChIDs = g_landward.Nodes.EleID(2:end);
-            [tp,tpM] = Advection.getTidalPumpingDischarge(mobj,reachChIDs);  
+            [tp,tpM] = Advection.getTidalPumpingDischarge(mobj);  
             qtp = [tpM(1);tp];
         end
 %%

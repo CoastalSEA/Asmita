@@ -67,7 +67,7 @@ classdef Reach < handle
 
             obj = Reach;                          %new instance
             %set ID properties of each reach (ReachEleID,ReachChannelID)
-            setReachChannelProperties(obj,mobj);  %assigned to mobj.Inputs
+            obj = setReachChannelProperties(obj,mobj);
             
             %assign initial reach id to elements for use in plotting   
             eleobj = getClassObj(mobj,'Inputs','Element');
@@ -125,33 +125,8 @@ classdef Reach < handle
             
             %set the LW channel based properties of reach
             obj = setLWproperties(obj,eleobj);
-            
-            %connectivity graphs and type + node ids
-%             
-%             eletype = h_network.Nodes.Type;
-%             reachEleID = h_network.Nodes.EleID;
-%             rchtype = mobj.GeoType(mobj.EXtypes);
-%             idtype = ismatch(eletype,rchtype);
-%             nodeid = ele2node(h_network,idtype);
-% %             reachEleID = reachEleID(idtype);
-            
-%             rchChID = [obj(:).ReachChannelID];
-% %             rchChID = rchChID(2:end);
-%             for i=1:length(rchChID)
-%                 %set channel based properties of reach
-%                 if rchChID(i)==0
-%                     obj(i,1).LWvolume = 0;
-%                     obj(i,1).LWarea = 0;                
-%                     obj(i,1).ReachLength = 0;
-%                 else
-%                     idx = eleID==rchChID(i);
-%                     obj(i,1).LWvolume = V(idx);
-%                     obj(i,1).LWarea = S(idx);                
-%                     obj(i,1).ReachLength = eLe(idx);
-%                 end
-%             end
-            
-            [g_landward,~] = Reach.getReachChannelIDs(mobj);
+
+            [g_landward,~] = Reach.getReachGraph(mobj);
             %set reach length of each element and cumulative length from mouth
             setReachLength(obj,g_landward)
 
@@ -177,7 +152,7 @@ classdef Reach < handle
 %% ------------------------------------------------------------------------
 % functions called to access properties from external methods
 %--------------------------------------------------------------------------      
-        function [g_landward,g_network] = getReachChannelIDs(mobj)
+        function [g_landward,g_network] = getReachGraph(mobj)
             %returns network and reach graphs
             %uses the DispersionGraph to get the landward path, 
             estobj = getClassObj(mobj,'Inputs','Estuary');
@@ -202,21 +177,11 @@ classdef Reach < handle
             if nargin<3
                 incall = false;  %incall - return all reaches if true,
             end                  %         omit outer reach if false
+            
             obj = getClassObj(mobj,'Inputs','Reach');
             if isempty(obj)
                 Reach.setReach(mobj,true);
             end
-%             if isempty(obj) || isempty(obj(1).(varname))
-%                 %handle case of a channel only reach when ReachEleID is
-%                 %empty but still need to return channel values
-%                 if ~strcmp(varname,'ReachEleID') 
-%                     msg = sprintf('Reach property %s not available',varname);
-%                     warndlg(msg);
-%                     prop = []; return;
-%                 end
-%             elseif isempty(obj)
-%                 Reach.setReach(mobj,true);
-%             end
 
             % ReachELeID contains variable length arrays so
             %return as cells and everything else as an array
@@ -262,53 +227,36 @@ classdef Reach < handle
                     prop(idx,1) = reachprop(i);                    
                 end
             end
-            %deltas are outside and so not in a reach
-            %assign them the properties of the linked channel element  
-            
-            %WHY NOT SET TO ZERO?????????????????????????????????
-            %MAIN NEED MAY BE PRISM FOR eq VOL OF DELTA ELEMENTS
-%             eletype = getEleProp(eleobj,'EleType');
-%             extypes = mobj.GeoType(mobj.EXtypes);            
-%             idl = find(ismatch(eletype,extypes));
-%             if ~isempty(idl)
-%                 eleid = getEleProp(eleobj,'EleID');
-%                 eleid = eleid(idl);
-%                 reachEleID = g_network.Nodes.EleID;                
-%                 for k=1:length(idl)
-%                     deltaidx= find(reachEleID==eleid(k)); %*idx ref h_reach ids
-%                     channelidx = successors(g_network,deltaidx);
-%                     channelpidx = predecessors(g_network,deltaidx);
-%                     if isempty(channelidx)
-%                         channelidx = channelpidx;
-%                     end
-%                     channelID = reachEleID(channelidx);   %*ID ref element id
-%                     idr = reachChannelID==channelID;      %idr ref h_landward ids
-%                     prop(idl(k),1) = reachprop(idr);
-%                 end
-%             end
         end
         
 %%
-        function Var = getReachEleVar(h_landward,EleVar)
-            %assign elements variables to reaches
-            rchID = h_landward.Nodes.EleID;
-%             eletype = h_landward.Nodes.Type;
-            reachChannelID = rchID(2:end); %remove outer node           
-            Var = EleVar(reachChannelID,:);       
+        function Var = getReachEleVar(g_landward,EleVar)
+            %assign Element properties, EleVar, to reaches
+            idx = g_landward.Nodes.EleID>0;
+            reachChannelID = g_landward.Nodes.EleID(idx);    
+            if isvector(EleVar)
+                Var = EleVar(reachChannelID);    %single property for each element
+            else
+                Var = EleVar(:,reachChannelID);  %rows are time cols are elements
+            end
         end
     
 %%
-        function AvVar = getAvUpstreamReachVar(h_landward,ReachVar,Eflag)
-            %set path dependent parameters (uses graph ids)
-            %average of reach and all adjacent upstream reach values           
-            reachChannelID = h_landward.Nodes.EleID;
+        function AvVar = getAvUpstreamReachVar(g_landward,ReachVar,Eflag)
+            %set path dependent parameters (uses graph ids). average of 
+            %ReachVar for each reach and all adjacent upstream reach values 
+            %ReachVar can be an Element array if Eflag is true    
+            if nargin<3, Eflag = false; end %assumes ReachVar input
+            
+            idx = g_landward.Nodes.EleID>0;
+            reachChannelID = g_landward.Nodes.EleID(idx);  
             nreach = length(reachChannelID);
             if Eflag    %input variable elements, so change to reaches
-                ReachVar = Reach.getReachEleVar(h_landward,ReachVar);
+                ReachVar = Reach.getReachEleVar(g_landward,ReachVar);
             end
             AvVar = zeros(nreach,1);
             for i=1:nreach
-                upstreamids = successors(h_landward,i);
+                upstreamids = successors(g_landward,i);
                 upVar = 0;
                 if ~isempty(upstreamids)
                     for k=1:length(upstreamids)
@@ -321,17 +269,21 @@ classdef Reach < handle
         end
         
 %%
-        function CumVar = getCumUpstreamReachVar(h_landward,ReachVar,Eflag)
-            %set path dependent parameters (uses graph ids)
-            %cumulative value of variable in upstream direction            
-            reachChannelID = h_landward.Nodes.EleID;
+        function CumVar = getCumUpstreamReachVar(g_landward,ReachVar,Eflag)
+            %set path dependent parameters (uses graph ids) cumulative value 
+            %of ReachVar variable in upstream direction. ReachVar can be an 
+            %Element array if Eflag is true    
+            if nargin<3, Eflag = false; end %assumes ReachVar input
+            
+            idx = g_landward.Nodes.EleID>0;
+            reachChannelID = g_landward.Nodes.EleID(idx);  
             nreach = length(reachChannelID);
             if Eflag    %input variable elements, so change to reaches
-                ReachVar = Reach.getReachEleVar(h_landward,ReachVar);
+                ReachVar = Reach.getReachEleVar(g_landward,ReachVar);
             end
             CumVar = zeros(nreach,1);
             for i=1:nreach
-                downstreamids = predecessors(h_landward,i);
+                downstreamids = predecessors(g_landward,i);
                 downVar = ReachVar(i);
                 if ~isempty(downstreamids)
                     for k=1:length(downstreamids)
@@ -346,15 +298,23 @@ classdef Reach < handle
 %%
         function [network,answer] = getNetwork(caseDef,answer)    %NOT TESTED
             %get the network to be used using either diffusion or flow
-            % caseDef is an instance of mobj.Inputs or cobj.RunProps
+            % caseDef is an instance of mobj, mobj.Inputs or cobj.RunProps
             if nargin<2
                 answer = questdlg('Select graph type','Network graph',...
                                 'Network','Reach','Network');
             end
-            disp = caseDef.Estuary.Dispersion;       %dispersion matrix
-            extdisp = caseDef.Estuary.ExternalDisp;  %external exchange
+            
             inoutxt = {'Sea';'Rivers'};
-            eleobj  = getClassObj(caseDef,'Inputs','Element');
+            if isa(caseDef,'Asmita')
+                eleobj = getClassObj(caseDef,'Inputs','Element');
+                estobj = getClassObj(caseDef,'Inputs','Estuary');
+                disp = estobj.Dispersion;       %dispersion matrix
+                extdisp = estobj.ExternalDisp;  %external exchange
+            else
+                eleobj = caseDef.Element;
+                disp = caseDef.Estuary.Dispersion;       %dispersion matrix
+                extdisp = caseDef.Estuary.ExternalDisp;  %external exchange
+            end
             nodetxt = setnodetext(eleobj,inoutxt);
             dispGraph = matrix2graph(disp,extdisp,[],nodetxt);
 
@@ -363,7 +323,7 @@ classdef Reach < handle
                     idc = find(~strcmp(dispGraph.Nodes.Type,'Sea'));             
                 case 'Reach'   %select only channel nodes
                     idr = unique(getEleProp(eleobj,'ReachID'));
-                    idc = find(strcmp(dispGraph.Nodes.EleID,idr));
+                    idc = ismember(dispGraph.Nodes.EleID,idr); %remove Sea
             end  
             network = subgraph(dispGraph,idc); 
         end   
@@ -374,9 +334,10 @@ classdef Reach < handle
             % caseDef is an instance of mobj.Inputs or cobj.RunParam
             % ismidpt=true - lengths at mid-point of each element, otherwise
             % cumulative length to head of each element
-            eLe = [caseDef.Element(:).Length]'; %Element.getEleProp(caseDef,'Length');
             network = Reach.getNetwork(caseDef,'Reach');
-            CumX = Reach.getCumUpstreamReachVar(network,eLe,1);
+            eLe = [caseDef.Element(:).Length]';
+%             eLe = Reach.getReachEleVar(network,eLe);  %reach element lengths
+            CumX = Reach.getCumUpstreamReachVar(network,eLe,true);
             rchX = Reach.getReachEleVar(network,eLe);
             if ismidpt
                 reachlength = CumX-rchX/2;  %take x as the mid-point of the reach            
@@ -389,11 +350,11 @@ classdef Reach < handle
 % functions called by setReachProps
 %--------------------------------------------------------------------------
     methods (Access=private)
-        function setReachChannelProperties(obj,mobj)
+        function obj = setReachChannelProperties(obj,mobj)
             %set channel based properties of reach (ReachEleID,ReachChannel)
 
             %get network and landward graphs and asssociated IDs
-            [g_landward,g_network]= Reach.getReachChannelIDs(mobj);
+            [g_landward,g_network]= Reach.getReachGraph(mobj);
             ID.networkEle = g_network.Nodes.EleID;    %Element IDs of the network graph
             ID.reachChannel = g_landward.Nodes.EleID; %Element IDs of the landward graph
             
@@ -422,6 +383,8 @@ classdef Reach < handle
                 obj(i,1).ReachEleID = idxReachEle;  
                 obj(i,1).ReachChannelID = ID.reachChannel(i);
             end
+            %returned as obj for use in setReach and saved to mobj.Inputs
+            %for use in setReachProps
             setClassObj(mobj,'Inputs','Reach',obj);
         end
             
@@ -435,16 +398,18 @@ classdef Reach < handle
                 %a reach as defined by REtypes property in Asmita
                 %NB this finds the nextElements that ARE reach elements
                 %and uses the negation of this set in idx
-                idnextE = find(ID.networkEle==ID.reachChannel(nextReach));
-                nextElements = [nextElements;successors(g_network,idnextE)]; 
-                
-                %remove elements that are not valid reach members
-                %including the reach channel element
-                nextChElements = validReachElements(obj,mobj,g_network,...
-                                             nextElements,'RCtypes');
-                nextRchElements = validReachElements(obj,mobj,g_network,...
-                                             nextElements,'REtypes');
-                nextReach = [nextReach;nextChElements;nextRchElements];  
+                for i=1:length(nextReach)
+                    idnextE = find(ID.networkEle==ID.reachChannel(nextReach(i)));
+                    nextElements = [nextElements;successors(g_network,idnextE)];  %#ok<AGROW>
+
+                    %remove elements that are not valid reach members
+                    %including the reach channel element
+                    nextChElements = validReachElements(obj,mobj,g_network,...
+                                                 nextElements,'RCtypes');
+                    nextRchElements = validReachElements(obj,mobj,g_network,...
+                                                 nextElements,'REtypes');
+                    nextReach = [nextReach;nextChElements;nextRchElements];   %#ok<AGROW>
+                end
             elseif ID.reachChannel(ii)==0
                 %the reach is an external element such as an ebb delta
             else
@@ -519,14 +484,14 @@ classdef Reach < handle
             end
         end
 %%
-        function setReachLength(obj,h_landward)
+        function setReachLength(obj,g_landward)
             %set the reach length of each element and cumulative length from mouth
             null = num2cell(zeros(1,length(obj)));  
             [obj.CumulativeLength] = null{:};  %reset cumulative length to zero
             rchChID = [obj(:).ReachChannelID]; %Element IDs of the reach channels          
            
             for i=1:length(rchChID)
-                downstreamids = predecessors(h_landward,i);
+                downstreamids = predecessors(g_landward,i);
                 cumlength = obj(i).ReachLength;
                 if ~isempty(downstreamids)
                     for k=1:length(downstreamids)
@@ -573,43 +538,6 @@ classdef Reach < handle
             
             WL.tr = (WL.hwl-WL.lwl);  %reach specific tidal range at time t
         end
-%%
-%         function setReachChannelProperties(obj,reachChannelID,reachEleID,...
-%                                               eletype,rchtype,h_network)
-%             %set channel based properties of reach (ReachEleID, 
-%             %ReachChannel and GraphIDsInReach)
-% 
-%             for i=1:length(reachChannelID) %uses graph ids and element ids
-%                 %recursively get all elements linked to a reach channel
-%                 idE = find(reachEleID==reachChannelID(i));
-%                 nextElements = successors(h_network,idE);
-%                 nextElements = nextElements(~strcmp(eletype(nextElements),'Channel'));
-%                 reachElements = nextElements;
-%                 while ~isempty(nextElements)
-%                     nr = length(nextElements);
-%                     aele = [];
-%                     for jr=1:nr
-%                         sucs = successors(h_network,nextElements(jr));
-%                         if ~isempty(sucs)
-%                             aele = [aele,sucs];  %#ok<AGROW>
-%                         end
-%                     end
-%                     nextElements = aele;
-%                     reachElements = [reachElements;nextElements];  %#ok<AGROW>
-%                 end
-% %                 idtype = find(ismatch(eletype,rchtype));
-% %                 idx = intersect(reachElements,idtype);
-% %                 reachElements = reachElements(idx);
-% %                 eletype(reachElements),
-%                 
-%                 %linked elements for each reach based on DispersionGraph ids
-%                 obj(i,1).EleIDsInReach = reachElements; 
-%                 %linked elements for each reach based on Element ID, EleID
-%                 idxReachEle = reachEleID(reachElements);
-%                 obj(i,1).ReachEleID = idxReachEle;  
-%                 obj(i,1).ReachChannelID = reachChannelID(i);
-%             end
-%         end
     %%
         function setCollectiveReachProperties(obj,mobj,WL)
             %set collective properties for each reach. The properties set
@@ -679,11 +607,11 @@ classdef Reach < handle
             HWprops.area = S(idc)+sum(S(idxReachEle));
         end
 %%
-        function setUpstreamCSA(obj,h_landward)
+        function setUpstreamCSA(obj,g_landward)
             %set path dependent upstream CSA (uses graph ids)
             rchChID = [obj(:).ReachChannelID]; %Element IDs of the reach channels
             for i=1:length(rchChID)
-                upstreamids = successors(h_landward,i);
+                upstreamids = successors(g_landward,i);
                 upCSA = 0;
                 if ~isempty(upstreamids)    
                     %sum the CSA of all the elements connected upstream
@@ -703,8 +631,9 @@ classdef Reach < handle
         function setRiverFlow(obj,mobj,g_flowpath)
             %set river flow velocity at upstream end of each element
             rchChID = [obj(:).ReachChannelID]; %Element IDs of the reach channels
-            riverDischarge = zeros(length(rchChID)-1,1);
+            
             if ~isempty(g_flowpath)
+                riverDischarge = zeros(length(rchChID)-1,1);
                 %river flows have been defined and at least one input is defined
                 flowpathID = g_flowpath.Nodes.EleID(1:end-1);
                 eletype = g_flowpath.Nodes.Type(1:end-1); %remove Rivers node                
@@ -718,24 +647,27 @@ classdef Reach < handle
                     end   
                 end
                 riverDischarge = riverDischarge(ich);
+                %now assign to reaches
+                riverflow = num2cell(riverDischarge./[obj(:).UpstreamCSA]');
+            else
+                riverflow = num2cell(zeros(1,length(rchChID)));
             end   
-            %now assign to reaches
-            riverflow = num2cell(riverDischarge./[obj(:).UpstreamCSA]');
+            
             [obj.RiverFlow] = riverflow{:};
         end
 %%
-        function setCumTidalPrism(obj,h_landward)
+        function setCumTidalPrism(obj,g_landward)
             %cumulative upstream tidal prism (including reach prism of element)
             %if channels have been added out of order need to find upstream order 
             rchChID = [obj(:).ReachChannelID]; %Element IDs of the reach channels
             II = ones(length(rchChID),1);
-            mouthids = find(logical(II-indegree(h_landward)));
+            mouthids = find(logical(II-indegree(g_landward)));
             for j = 1:length(mouthids)
-                reachOrder = dfsearch(h_landward,mouthids(j));            
+                reachOrder = dfsearch(g_landward,mouthids(j));            
                 nreach = length(reachOrder);
                 for i=1:nreach
                     idx = reachOrder(nreach+1-i);                
-                    upstreamids = successors(h_landward,idx);
+                    upstreamids = successors(g_landward,idx);
                     cumprism = obj(idx).ReachPrism;
                     if ~isempty(upstreamids)
                         for k=1:length(upstreamids)

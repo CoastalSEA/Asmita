@@ -49,10 +49,13 @@ classdef Element < muiPropertyUI
     properties (Transient)
         MovingVolume            %Volumes and areas during run time
         MovingSurfaceArea       %Moving values include water volume change
+        MovingDepth             %Element depth relative to moving surface
         FixedVolume             %and morphological change
         FixedSurfaceArea        %Fixed values only include morphological change
+        FixedDepth              %Element depth relative to fixed surface
         EqVolume                %Equilbrium volume calculated at run time
         EqSurfaceArea           %Equilbrium volume calculated at run time
+        EqDepth                 %Element equilibrium depth
         EqConcentration         %element specific equilbrium concentration
         EleConcentration        %actual concentration in element during run
         transVertExch           %vertical exchange during run including adjustments
@@ -279,18 +282,23 @@ classdef Element < muiPropertyUI
             obj = getClassObj(mobj,'Inputs','Element',msgtxt);
             if isempty(obj), return; end
             
+            initdepth = num2cell([obj(:).InitialVolume]./[obj(:).InitialSurfaceArea]); 
             null = num2cell(zeros(1,length(obj)));  
             unity = num2cell(ones(1,length(obj)));
             [obj.MovingVolume] = obj(:).InitialVolume;
             [obj.EqVolume] = obj(:).InitialVolume;
-            [obj.MovingSurfaceArea] = obj(:).InitialSurfaceArea;
             [obj.FixedVolume] = obj(:).InitialVolume;
+            [obj.MovingSurfaceArea] = obj(:).InitialSurfaceArea;            
             [obj.FixedSurfaceArea] = obj(:).InitialSurfaceArea;
+            [obj.MovingDepth] = initdepth{:};
+            [obj.EqDepth] = initdepth{:};
+            [obj.FixedDepth] = initdepth{:};
             [obj.transVertExch] = obj(:).VerticalExchange;
             [obj.BioProdVolume] =  null{:};
             [obj.transEleType] = obj(:).EleType;           
             [obj.eqScaling] = unity{:}; %initialise default values
             [obj.EleWLchange] = null{:};
+            
 
             setClassObj(mobj,'Inputs','Element',obj);
         end           
@@ -472,7 +480,7 @@ classdef Element < muiPropertyUI
                 prop = []; return;
             end
             stringtypes = {'EleType';'transEleType';'EleName'};
-            if any(strcmp(varname,stringtypes))
+            if any(strcmp(stringtypes,varname))
                 prop = {obj.(varname)}';
             else
                 prop = [obj.(varname)]';

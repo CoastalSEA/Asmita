@@ -72,9 +72,6 @@ classdef AsmitaModel < muiDataSet
 %             end            
 
             muicat = mobj.Cases;
-            %assign the run parameters to the model instance
-            setRunParam(obj,mobj); %this only saves the core set
-            setIncParam(obj,mobj); %add any additional Classes included in run
 %--------------------------------------------------------------------------
 % Model code 
 %--------------------------------------------------------------------------
@@ -92,6 +89,10 @@ classdef AsmitaModel < muiDataSet
             %iniatialise model setup 
             obj = InitialiseModel(obj,mobj,dsp);
             if isempty(obj), return; end
+            %assign the run parameters to the model instance (after
+            %InitialiseModel so that ReachID are assigned to Element object
+            setRunParam(obj,mobj); %this only saves the core set
+            setIncParam(obj,mobj); %add any additional Classes included in run
             
             msg = sprintf('ASMITA processing, please wait');
             hw = waitbar(0,msg);
@@ -143,31 +144,31 @@ classdef AsmitaModel < muiDataSet
             
             %report mass balance on run completion
             asmobj = getClassObj(mobj,'Inputs','ASM_model');
-            msg = sprintf('Sediment Balance:  %.1g\nWater Balance:  %.1g',...
+            msg = sprintf('Sediment Balance:  %.3f %%\nWater Balance:  %.3f %%',...
                                         asmobj.SedMbal,asmobj.WatMbal);
             if ~mobj.SupressPrompts  %supress prompts if true
                 msgbox(msg,'Run completed')
             end    
         end
 %%
-        function intialiseModelParameters(mobj)
+        function initialiseModelParameters(mobj)
             %initialise selected parameters that are used in model runs but
             %also for production of graphs and morphological response 
             
             %intitialise transient properties
-            Element.initialiseElements(mobj);
+            Element.initialiseElements(mobj); %used in setEqConcentration
             %initialise equilibrium concentration
             Element.setEqConcentration(mobj);           
             %initial water levels %can be called without initialising
             %AsmitaModel hence set a dummy model obj to initialise time
             obj.Time = 0;
             WaterLevels.setWaterLevels(mobj,obj);
-            %initialise dispersion Reach Graph
-            Estuary.initialiseDispersionGraph(mobj);
+            %initialise dispersion Reach Graph (calls Element.initialiseElements)
+            Estuary.initialiseDispersionGraph(mobj); 
             %initialise advection graphs (River and Drift)
             rncobj = getClassObj(mobj,'Inputs','RunConditions');
-            advobj = getClassObj(mobj,'Inputs','Advection');
-            if ~isempty(advobj) && rncobj.IncRiver
+            advobj = Advection.initialiseTransients(mobj);
+            if rncobj.IncRiver
                 advobj.RiverGraph = Advection.initialiseRiverGraph(mobj);
             end
             %
@@ -246,64 +247,6 @@ classdef AsmitaModel < muiDataSet
         end
     end
 %%
-    methods
-        function tabPlot(obj,src,mobj) %abstract class for muiDataSet
-            %generate plot for display on Q-Plot tab
-            dst = obj.Data.Dataset;
-            t = dst.RowNames;
-            if iscalendarduration(t)
-                t = time2num(t);
-            end
-            vm = dst.MovingVolume;
-            vf = dst.FixedVolume;
-            ve = dst.EqVolume;
-
-            ht = findobj(src,'Type','axes');
-            delete(ht);
-            ax = axes('Parent',src,'Tag','Regime');
-            
-            eleobj = getClassObj(mobj,'Inputs','Element');
-            n  = getEleProp(eleobj,'TransportCoeff');
-            idx = n>0;  %elements that are defined as water volumes
-            %total of all water volumens
-            vmw = sum(vm(:,idx),2);
-            vfw = sum(vf(:,idx),2);
-            vew = sum(ve(:,idx),2);
-            
-            %plot the water elements            
-            plot(t,vmw,'DisplayName','Moving')
-            hold on
-            plot(t,vfw,'DisplayName','Fixed')
-            plot(t,vew,'Color',mcolor('green'),'DisplayName','Equilibrium')
-            ylabel('Time (y)')
-            xlabel('Volume (m^3)')
-            title('Water volumes')
-            hold off
-            legend('Location','southeast')
-            
-            %plot the sediment elements if any
-            if any(n<0)
-                %totals for all sediment volums
-%                 vms = sum(vm(:,~idx),2);
-                vfs = sum(vf(:,~idx),2);
-                ves = sum(ve(:,~idx),2);
-                %
-                subplot(2,1,1,ax); %convert existing plot to a subplot
-                subplot(2,1,2)
-%                 plot(t,vms,'DisplayName','Moving')
-                hold on
-                plot(t,vfs,'Color',mcolor('orange'),'DisplayName','Fixed')
-                plot(t,ves,'Color',mcolor('green'),'DisplayName','Equilibrium')
-                ylabel('Time (y)')
-                xlabel('Volume (m^3)')
-                title('Sediment volumes')
-                hold off
-                legend('Location','southeast')
-                sgtitle(sprintf('Total change for %s',dst.Description))
-            end
-        end
-    end 
-%%    
     methods (Access = private)
         function obj = InitialiseModel(obj,mobj,dsp)
              %initialise ASMITA model and internal properties
@@ -313,28 +256,19 @@ classdef AsmitaModel < muiDataSet
              %initialise the ASM_model class
              ASM_model.setASM_model(mobj);
              %some initialisation is common to several functions
-             AsmitaModel.intialiseModelParameters(mobj);
+             AsmitaModel.initialiseModelParameters(mobj);
              
              rncobj = getClassObj(mobj,'Inputs','RunConditions');
              %initialise interventions even if not used (ie set to zero)
              Interventions.initialiseInterventions(mobj);
              %initialise Marsh concentration matrix if marsh included
              if rncobj.IncSaltmarsh
-                 ok = Saltmarsh.concOverMarsh(mobj);
+                ok = Saltmarsh.initialiseMarshDepthConc(mobj);
                  if ok<1 %error in concOverMarsh
                      obj = [];
                      return; 
                  end   
              end
-             
-             %initialise unadjusted equilibrium volumes
-%              ASM_model.asmitaEqFunctions(mobj); 
-%             called in asmitaEqScalingCoeffs
-             %initialise vertical exchanges corrected for erosion
-             %set initial value of DQ matrix
-%              ASM_model.setDQmatrix(mobj,rncobj.Adv2Inc);
-
-
              %initialise any river flow or drift equilibrium offset(eqCorV)
              %calls RuncConcitions.setAdvectionOffset and ASM_model.setDQmatrix
              Element.setEleAdvOffsets(mobj); 
@@ -347,11 +281,14 @@ classdef AsmitaModel < muiDataSet
              %initialise element concentrations
              Element.setEleConcentration(mobj);
              %check time step is small enough
-%              obj = CheckStability(obj,mobj);
+             obj = CheckStability(obj,mobj);
              if isempty(obj)
                  obj = [];
                  return; 
              end
+             %initialise mass balance
+             ASM_model.MassBalance(mobj,obj);
+             
              %write data for initial time step (t=0)
              PostTimeStep(obj,mobj,dsp); 
         end    
@@ -367,7 +304,6 @@ classdef AsmitaModel < muiDataSet
              rncobj = getClassObj(mobj,'Inputs','RunConditions');
              %update water levels
              WaterLevels.setWaterLevels(mobj,obj);
-%              Element.setEleWLchange(mobj); 
              %check whether there any forced changes due to interventions
              if rncobj.IncInterventions
                 Interventions.setAnnualChange(mobj,obj);
@@ -404,13 +340,11 @@ classdef AsmitaModel < muiDataSet
         function obj = PostTimeStep(obj,mobj,dsp)
             %store the results for each time step
             eleobj= getClassObj(mobj,'Inputs','Element'); 
-%             wlvobj= getClassObj(mobj,'Inputs','WaterLevels'); 
-            
+
             if obj.iStep==1 || rem(obj.iStep,obj.outInt)==0
                 vname = {dsp.Variables.Name};
                 idele = find(strcmp(vname,obj.outType{1}));%NB if dsp is changed
-%                 idrch = find(strcmp(vname,obj.outType{2}));%outTypw needs chekcing
-                jr = length(obj.StepTime)+1;
+                jr = length(obj.StepTime)+1;               %outType needs checking
                 obj.StepTime(jr,1) = obj.Time;
                 for i=1:length(vname)
                     %sorting depends on variable list in DSproperties
@@ -420,11 +354,7 @@ classdef AsmitaModel < muiDataSet
                     else             %reach properties
                         rchprop = Reach.getReachProp(mobj,vname{i});
                         obj.RunData{i}(jr,:) = rchprop;    
-%                     elseif i<idrch   %reach properties
-%                         rchprop = Reach.getReachProp(mobj,vname{i});
-%                         obj.RunData{i}(jr,:) = rchprop; %,sum(rchprop,2)];
-%                     else             %water level properties
-%                         obj.RunData{i}(jr,1) = wlvobj.(vname{i});
+
                     end
                 end
             end            
@@ -514,6 +444,7 @@ classdef AsmitaModel < muiDataSet
                 obj.RunParam.Advection = advobj;                
             end
         end
+        
 %%
         function dsp = modelDSproperties(~) 
             %define a dsproperties struct and add the model metadata
@@ -527,26 +458,28 @@ classdef AsmitaModel < muiDataSet
             % Also variable names in dsp.Variables must match Element 
             % properties for use in PostTimeStep.
             dsp.Variables = struct(...                      
-                'Name',{'MovingVolume','FixedVolume','EqVolume',...
+                'Name',{'MovingVolume','FixedVolume','EqVolume',...                           
+                           'MovingDepth','FixedDepth','EqDepth',...
                            'BioProdVolume','EleConcentration',...
-                           'MovingSurfaceArea','EleWLchange','ReachPrism',...
-                           'UpstreamPrism','UpstreamCSA','RiverFlow',...             
-                           'MWlevel','HWlevel','LWlevel','TidalRange'},...                           
+                           'EleWLchange','ReachPrism','UpstreamPrism',...
+                           'UpstreamCSA','RiverFlow','MWlevel',...             
+                           'HWlevel','LWlevel','TidalRange'},...                           
                 'Description',{'Moving Volume','Fixed Volume','Equilibrium Volume',...
-                           'Biological Production','Concentration',...
-                           'Surface Area','Water Level Change',...
-                           'Reach Prism','Tidal Prism',...
+                           'Moving Depth','Fixed Depth','Equilibrium Depth',...
+                           'Biological Production','Concentration',...                           
+                           'Water Level Change','Reach Prism','Tidal Prism',...
                            'Upstream CSA','River Flow','Mean Water Level',...
                            'High Water','Low Water','Tidal Range'},...
-                'Unit',{'m^3','m^3','m^3','m^3','ppm','m^2','m','m^3',...
+                'Unit',{'m^3','m^3','m^3','m','m','m','m^3','ppm','m','m^3',...
                            'm^3','m^2','m^3/s','mAD','mAD','mAD','m'},...
                 'Label',{'Volume (m^3)','Volume (m^3)','Volume (m^3)',...
-                           'Volume (m^3)','Concentration (ppm)',...
-                           'Surface area (m^2)','WL Change (m)','Volume (m^3)',...
-                           'Volume (m^3)','Cross-sectional area (m^2)',...
-                           'Discharge (m^3/s)','Elevation (mAD)',...
-                           'Elevation (mAD)','Elevation (mAD)','Range (m)'},...
-                'QCflag',repmat({'model'},1,15)); 
+                           'Depth (m)','Depth (m)','Depth (m)',...
+                           'Volume (m^3)','Concentration (ppm)',...                           
+                           'WL Change (m)','Volume (m^3)','Volume (m^3)',...
+                           'Cross-sectional area (m^2)','Discharge (m^3/s)',...
+                           'Elevation (mAD)','Elevation (mAD)',...
+                           'Elevation (mAD)','Range (m)'},...
+                'QCflag',repmat({'model'},1,17)); 
             dsp.Row = struct(...
                 'Name',{'Time'},...
                 'Description',{'Time'},...
@@ -561,5 +494,63 @@ classdef AsmitaModel < muiDataSet
                 'Label',{'Element Name'},...
                 'Format',{'-'});  
         end
-    end    
+    end   
+%%
+    methods
+        function tabPlot(obj,src,mobj) %abstract class for muiDataSet
+            %generate plot for display on Q-Plot tab
+            dst = obj.Data.Dataset;
+            t = dst.RowNames;
+            if iscalendarduration(t)
+                t = time2num(t);
+            end
+            vm = dst.MovingVolume;
+            vf = dst.FixedVolume;
+            ve = dst.EqVolume;
+
+            ht = findobj(src,'Type','axes');
+            delete(ht);
+            ax = axes('Parent',src,'Tag','Regime');
+            
+            eleobj = getClassObj(mobj,'Inputs','Element');
+            n  = getEleProp(eleobj,'TransportCoeff');
+            idx = n>0;  %elements that are defined as water volumes
+            %total of all water volumens
+            vmw = sum(vm(:,idx),2);
+            vfw = sum(vf(:,idx),2);
+            vew = sum(ve(:,idx),2);
+            
+            %plot the water elements            
+            plot(t,vmw,'DisplayName','Moving')
+            hold on
+            plot(t,vfw,'DisplayName','Fixed')
+            plot(t,vew,'Color',mcolor('green'),'DisplayName','Equilibrium')
+            xlabel('Time (y)')
+            ylabel('Volume (m^3)')
+            title(sprintf('Water volumes for %s',dst.Description))
+            hold off
+            legend('Location','southeast')
+            
+            %plot the sediment elements if any
+            if any(n<0)
+                %totals for all sediment volums
+                % vms = sum(vm(:,~idx),2);
+                vfs = sum(vf(:,~idx),2);
+                ves = sum(ve(:,~idx),2);
+                %
+                subplot(2,1,1,ax); %convert existing plot to a subplot
+                subplot(2,1,2)
+                % plot(t,vms,'DisplayName','Moving')
+                hold on
+                plot(t,vfs,'Color',mcolor('orange'),'DisplayName','Fixed')
+                plot(t,ves,'Color',mcolor('green'),'DisplayName','Equilibrium')
+                xlabel('Time (y)')
+                ylabel('Volume (m^3)')
+                title('Sediment volumes')
+                hold off
+                legend('Location','southeast')
+                sgtitle(sprintf('Total change for %s',dst.Description))
+            end
+        end
+    end 
 end

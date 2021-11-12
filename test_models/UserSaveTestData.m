@@ -5,14 +5,13 @@ function UserSaveTestData
 %as Scenario No.1 and read in Asmita Test to check the results
 
 %set up path to Asmita model and then call model
-    testPath = [pwd,'/'];
-    modelPath = '../';
-
-    addpath(pwd,modelPath);
-    clear testpath modelpath
+    aspath = 'D:\Work\Tools\MATLAB\MUImodels2\muiApps\Asmita\';
+    userPath = 'D:\Work\Tools\MATLAB\MUImodels2\muiApps\Asmita\test_models\muiASM TestData\';
+    testPath = 'D:\Work\Tools\MATLAB\MUImodels2\muiApps\Asmita\test_models\muiASM model files\';
+    addpath(aspath,testPath,userPath);
 
     listtext = {'HumberTest','Humber 3EM.mat';...
-                'AmelanderTest','Amelander 3EM.mat';...
+                'AmelanderTest','Amelander_cfFortran.mat';...
                 'VeniceTest','Venice 9EM.mat';...
                 'SevernTest','Severn 16EM.mat';...
                 'PaghamTest','Pagham 3EM.mat';...
@@ -34,11 +33,13 @@ function UserSaveTestData
     
     sobj = mobj;
     sfile = sprintf('%sData',listtext{selection,1});
-    save([testPath,sfile],'sobj');
+    save([userPath,sfile],'sobj');
     clear sobj
 
     %tidy up
     delete(mobj.mUI.Figure);
     delete(mobj);    %delete the class object
     clear mobj
+    rmpath(userPath,testPath)
+    clear aspath userPath testPath
 end

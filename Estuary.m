@@ -5,7 +5,7 @@ classdef Estuary < muiPropertyUI
 %   Estuary.m
 % PURPOSE
 %   Estuary defines various system properties such as connectivity of
-%   elements and reaches, disperison, advection and equilibirum
+%   elements and reaches, disperison, advection and equilibrium
 %   concentration
 % USAGE
 %   obj = Estuary.setParamInput(mobj); %mobj is a handle to Main UI
@@ -116,8 +116,7 @@ classdef Estuary < muiPropertyUI
                 userdata = 0;                
                 dispersionGraph = digraph(userdata);
                 nlabel = {'No Dispersion Defined'};
-            else
-                Element.initialiseElements(mobj);                 
+            else                 
                 Disp = obj.Dispersion;
                 ExtDisp = obj.ExternalDisp;
                 inoutxt = {'Sea';'Rivers'};
@@ -200,7 +199,7 @@ classdef Estuary < muiPropertyUI
                 return;
             end            
             %initialise transient model parameters
-            AsmitaModel.intialiseModelParameters(mobj)
+            AsmitaModel.initialiseModelParameters(mobj)
             %get required model properties
             y2s = mobj.Constants.y2s;
             eletype = getEleProp(eleobj,'transEleType');
@@ -253,8 +252,9 @@ classdef Estuary < muiPropertyUI
             tauM = 1/cEM/n_av*(vtot/wso/stot + vtot/delo)/y2s;  %fine
             
             %mask the external elements that are not linked to delta(s)
-            extypes = ~contains(mobj.GeoType(mobj.EXtypes),'Delta');            
-            iex = ismatch(eletype,mobj.GeoType(extypes)); %couuld replace with matches
+            exlist = mobj.GeoType(mobj.EXtypes);
+            extypes = ~contains(exlist,'Delta');            
+            iex = ismatch(eletype,exlist(extypes)); %could replace with matches
             slr_max(iex) = 0; slr_max_bio(iex) = 0; mT(iex) = 0;
             
             userData = [slr_max,slr_max_bio,mT];

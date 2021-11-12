@@ -36,7 +36,7 @@ function [depth,sedload] = interpdepthload(sm,cn,aws,qm0,dslr)
     conc = sm.MarshDepthConc.Concentration;
     %initial estimate of equilibrium depth
     depth = morris_eqdepth(sm,cn,qm0,dslr); 
-    if depth<=0, depth = 0.1; end %trap no depth over marsh
+    if depth<=0, depth = 0.1; end %trap no depth over marsh as initial guess
     nloop = 0;
     diff = 1;
     while nloop<=10 && abs(diff)>0.001

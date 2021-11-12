@@ -70,6 +70,7 @@ classdef WaterLevels < muiPropertyUI
         HW0                 %high water at start of time step (updates each step)
         LW0                 %low water at start of time step (updates each step)
         dtr0                %amplitude offset at start of run due to imposed cycles
+        dslr                %rate of sea level rise at time t (only changes if SLRrate is not constant)
     end    
 
 %%   
@@ -196,6 +197,8 @@ classdef WaterLevels < muiPropertyUI
                 %user has defined [ert,yr0,dslr0] see model_slr for details
                 dslrvec = obj.SLRrate; 
                 option = 2;  %exponential rate
+            elseif isnan(obj.SLRrate)
+                option = 3;  %allow user to define slr function
             else
                 dslrvec =  obj.SLRrate; 
                 option = 1;  %linear rate
@@ -204,7 +207,8 @@ classdef WaterLevels < muiPropertyUI
             realtime = startyr+mtime; %time in seconds from Julian 0            
             %time inputs to sealevelrise function are in years
             realyears = realtime/y2s; %convert to time in calender years
-            slr = sealevelrise(realyears,startyr/y2s,dslrvec,option);  %allow user to define slr function
+            [slr,obj.dslr] = sealevelrise(realyears,startyr/y2s,...
+                                                        dslrvec,option);  
             
             msl = z0+slr; 
             dtr = real(sum(amp.*exp(1i*(om1*realtime+om2)))); %change in tidal range at t

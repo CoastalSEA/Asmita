@@ -80,14 +80,14 @@ classdef Advection < handle
             preExtAdvIn = obj.ExternalAdvIn;
             
             %initial labels for table and graph, and setup input matrix
-            [qunits,tabletxt,h_flow,flowVar] = assignLabelData(AdvType);  
+            [qunits,tabletxt,g_flow,flowVar] = assignLabelData(AdvType);  
             
             %get River/Drift inputs - returns struct with 
             % InputEle - id of input element; 
             % okEle - logical flag if correct type of element; 
             % msg - cell array of messages for use in checkSourceInputs;
             % flow - input flows as array the size of River/Drift object array
-            src = getSourceProps(h_flow,eleobj,mobj);   
+            src = getSourceProps(g_flow,eleobj,mobj);   
             MatrixInpEle = src.InputEle+1;  %offset due to 'outside'
             userdata(nelp,MatrixInpEle) = src.flow;
                 
@@ -98,7 +98,7 @@ classdef Advection < handle
                             setmatrix(eleobj,prop,prompt,tabletxt,userdata);
 
             %check whether inputs have been changed and update
-            checkSourceInputs(obj,mobj,AdvType,flowVar,h_flow,src,preExtAdvIn);
+            checkSourceInputs(obj,mobj,AdvType,flowVar,g_flow,src,preExtAdvIn);
             
             %assign updated flow field to the specified flow type
             obj = setAdvectionProps(obj,AdvType);
@@ -108,20 +108,20 @@ classdef Advection < handle
             %--------------------------------------------------------------
             %nested function to initialise labels for table and graph
             %--------------------------------------------------------------
-            function [qunits,tabletxt,h_flow,flowVar] = ...
+            function [qunits,tabletxt,g_flow,flowVar] = ...
                                                  assignLabelData(AdvType)
                 %initialise labels for table and graph                
                 switch AdvType
                     case 'River'
                         if ~isempty(rivobj)
-                            h_flow = rivobj;
+                            g_flow = rivobj;
                             flowVar = 'RiverFlow';    
                         end
                         qunits = '(m3/s)';
                         tabletxt = {'0: Sea';'+: Rivers'};
                     case 'Drift'
                         if ~isempty(dftobj)
-                            h_flow = dftobj;
+                            g_flow = dftobj;
                             flowVar = 'DriftRate';
                             
                         end
@@ -129,14 +129,14 @@ classdef Advection < handle
                         tabletxt = {'>: Sink';'>: Source'};
                     otherwise
                         qunits = ''; tabletxt = {'',''};
-                        h_flow = []; flowVar = '';
+                        g_flow = []; flowVar = '';
                 end
             end
             %--------------------------------------------------------------
             %nested function to check for changes in source inputs
             %--------------------------------------------------------------
             function checkSourceInputs(obj,mobj,AdvType,flowVar,...
-                                                   h_flow,src,preExtAdvIn)                 
+                                                   g_flow,src,preExtAdvIn)                 
                 %check whether inputs have been changed and update
                 idx = diff([preExtAdvIn,obj.ExternalAdvIn(:,2)],1,2);
                 idinputs = find(idx~=0);
@@ -162,7 +162,7 @@ classdef Advection < handle
                     
                     for i=1:length(src.InputEle) 
                         %update existing sources
-                        h_flow(i).(flowVar) =  obj.ExternalAdvIn(src.InputEle(i),2);
+                        g_flow(i).(flowVar) =  obj.ExternalAdvIn(src.InputEle(i),2);
                     end
 
                 else                         %if no input source exist
@@ -258,7 +258,7 @@ classdef Advection < handle
                     %
                     rnpobj = getClassObj(mobj,'Inputs','RunProperties');
                     Advection.updateAdvectionGraphs(mobj,rnpobj.StartYear);
-                    obj  = getClassObj(mobj,'Inputs','Advection');
+%                     obj  = getClassObj(mobj,'Inputs','Advection');
                     driftGraph = obj.DriftGraph;
                 else
                     initialiseFlow(dftobj);
@@ -280,9 +280,8 @@ classdef Advection < handle
             elseif isempty(obj.RiverFlows)
                 nlabel = {'No river flows defined so there is no tidal pumping'};                
             else
-                %intitialise transient properties
-                AsmitaModel.intialiseModelParameters(mobj);
-                %Advection.setTidalPumping(mobj);     %initialise qtp                    
+                %intitialise transient properties - calls Advection.setTidalPumping
+                AsmitaModel.initialiseModelParameters(mobj);                 
                 if isempty(obj.TidalPumpingFlows) %if still not defined
                     msg = sprintf('Check parameters for tidal pumping have been defined');
                     nlabel = {msg};
@@ -304,6 +303,21 @@ classdef Advection < handle
 %--------------------------------------------------------------------------
 %       RUNTIME
 %--------------------------------------------------------------------------
+        function obj = initialiseTransients(mobj)
+            %initialise transient Advection properties at start of model run
+            obj = getClassObj(mobj,'Inputs','Advection');
+            obj.TidalPumpingFlows = []; %tidal pumping matrix, qtp (m3/s)
+            obj.TidalPumpingIn = 0;     %vector of tidal pumping flows into estuary
+            obj.TidalPumpingOut = 0;    %vector of tidal pumping flows out of estuary
+            obj.RiverGraph = [];        %handle to graph of river flows (advection)
+            obj.DriftGraph = [];        %handle to graph of drift flows (advection)
+            obj.QtpGraph = [];          %handle to graph of tidal pumping flows (advection)  
+
+            obj.InternalAdv = [];       %advection matrix, q (m3/s)
+            obj.ExternalAdvIn = 0;      %matrix of external flows into estuary
+            obj.ExternalAdvOut = 0;     %matrix of external flows out of estuary             
+        end
+%%
         function [Q,qIn,qOut] = getAdvectionFlow(mobj,AdvType)
             %get the advection properties as an element matrix
             AdvGraphName = strcat(AdvType,'Graph');     
@@ -395,7 +409,7 @@ classdef Advection < handle
             %--------------------------------------------------------------
             %nested function to construct the relevant flowgraph
             %--------------------------------------------------------------
-            function h_flowpath = getflowpath(obj,mobj,srcobj,tsyear)
+            function g_flowpath = getflowpath(obj,mobj,srcobj,tsyear)
                 %get relevant flowgraph (river or drift based on srcobj)
                 if isa(srcobj,'River')
                     GraphName = 'RiverGraph';
@@ -406,7 +420,7 @@ classdef Advection < handle
                 else
                     return;
                 end
-                h_flowpath = obj.(GraphName); %existing definition
+                g_flowpath = obj.(GraphName); %existing definition
                 j = zeros(length(srcobj),1); 
                 for is=1:length(srcobj) %find sources defined by a timeseries
                    j(is) = ~isempty(srcobj(is).(TSname)); 
@@ -424,13 +438,13 @@ classdef Advection < handle
                             end
                             %
                             if length(inFlow)>1 %drifts vary along path %   CHECK IF CONDITION
-                                h_flowpath = Advection.newDriftPath(h_flowpath,...
+                                g_flowpath = Advection.newDriftPath(g_flowpath,...
                                                         inFlow,inEleID);
                             else %source value dictates flow along path
                                 isbalance = true;   %ie update whole network                       
-                                h_flowpath = rescale_graph(h_flowpath,...
+                                g_flowpath = rescale_graph(g_flowpath,...
                                                         inFlow,isbalance);
-%                                 h_flowpath = newFlowPath(h_flowpath,...
+%                                 g_flowpath = newFlowPath(g_flowpath,...
 %                                                         inFlow,inEleID);  
                             end
                             %STILL NEEDS TESTING***************************
@@ -439,7 +453,7 @@ classdef Advection < handle
 %                             else     %source value dictates flow along path
 %                                 isbalance = true;   %ie update whole network
 %                             end                            
-%                             h_flowpath = rescale_graph(h_flowpath,...
+%                             g_flowpath = rescale_graph(g_flowpath,...
 %                                                         inFlow,isbalance);
                         end
                     end
@@ -447,34 +461,34 @@ classdef Advection < handle
             end
         end
             %--------------------------------------------------------------
-%             function h_flowpath = newFlowPath(h_flowpath,newInFlow,inEleID)
+%             function g_flowpath = newFlowPath(g_flowpath,newInFlow,inEleID)
 %                 %internal function to reassign new flows to flowgraph
 %                 %used for all river flows and drifts when source value 
 %                 %dictates flow along path
-%                 flowpathID = h_flowpath.Nodes.EleID;
+%                 flowpathID = g_flowpath.Nodes.EleID;
 %                 %find flow input
 %                 inid = find(flowpathID==inEleID);
-%                 newEdgeWeight = h_flowpath.Edges.Weight;
+%                 newEdgeWeight = g_flowpath.Edges.Weight;
 %                 %define source input as first link
-%                 %naming convention is *ID for elements and *id for h_flowpath index
+%                 %naming convention is *ID for elements and *id for g_flowpath index
 %                 %
 %                 %id that flow/drift is coming from (source) 
-%                 upstreamids = predecessors(h_flowpath,inid);
+%                 upstreamids = predecessors(g_flowpath,inid);
 %                 outid = upstreamids((flowpathID(upstreamids)==0));
-%                 ide = findedge(h_flowpath,outid,inid);
+%                 ide = findedge(g_flowpath,outid,inid);
 %                 newEdgeWeight(ide) = newInFlow;
 %                 while ~isempty(inid)
 %                     nextin = [];
 %                     cumOutFlow = zeros(length(inid),1);
 %                     for j = 1:length(inid) %handle branching
 %                         %handle flowpath input
-%                         ide = findedge(h_flowpath,outid,inid(j));
-%                         oldInFlow = h_flowpath.Edges.Weight(ide);                        
+%                         ide = findedge(g_flowpath,outid,inid(j));
+%                         oldInFlow = g_flowpath.Edges.Weight(ide);                        
 %                         %find other inputs to the same node.
 %                         %naming convention *Input = sum(*InFlow)
-%                         upstreamids = predecessors(h_flowpath,inid(j));
-%                         idf = findedge(h_flowpath,upstreamids,inid(j));
-%                         oldInput = sum(h_flowpath.Edges.Weight(idf)); %total input
+%                         upstreamids = predecessors(g_flowpath,inid(j));
+%                         idf = findedge(g_flowpath,upstreamids,inid(j));
+%                         oldInput = sum(g_flowpath.Edges.Weight(idf)); %total input
 %                         if length(ide)>1 %handle two new inputs (diverge/recvonverge case)
 %                             newInput = oldInput-sum(oldInFlow)+sum(newInFlow);
 %                         else
@@ -483,10 +497,10 @@ classdef Advection < handle
 %                         %find outflowing edges and update pro-rata based on
 %                         %previous flow distribution. Naming convention is
 %                         %*Output = sum(*OutFlow)
-%                         downstreamids = successors(h_flowpath,inid(j));
+%                         downstreamids = successors(g_flowpath,inid(j));
 %                         if ~isempty(downstreamids)
-%                             ido = findedge(h_flowpath,inid(j),downstreamids);
-%                             oldOutFlow = h_flowpath.Edges.Weight(ido);
+%                             ido = findedge(g_flowpath,inid(j),downstreamids);
+%                             oldOutFlow = g_flowpath.Edges.Weight(ido);
 %                             oldOutput = sum(oldOutFlow);
 %                             newOutFlow = zeros(length(downstreamids),1);
 %                             %weight allows drift to vary based on initial 
@@ -510,36 +524,36 @@ classdef Advection < handle
 %                         newInFlow = newOutFlow;
 %                     end                                       
 %                 end
-%                 h_flowpath.Edges.Weight = newEdgeWeight;
+%                 g_flowpath.Edges.Weight = newEdgeWeight;
 %             end
 %             %--------------------------------------------------------------
-        function h_flowpath = newDriftPath(h_flowpath,newDrift,inEleID)
+        function g_flowpath = newDriftPath(g_flowpath,newDrift,inEleID)
             %reassign new flows to flowgraph when there are multiple sources. 
             %newDrift - [nx1] vector of drifts to be updated
             %inEleID - [nx2] array of start and end node for each drift input
             %          [0,j] = input and [j,0] = output
             %mass balance is not checked because arbitrary inputs can be
             %specified for any edge.
-            flowpathID = h_flowpath.Nodes.EleID;
-            newEdgeWeight = h_flowpath.Edges.Weight;
+            flowpathID = g_flowpath.Nodes.EleID;
+            newEdgeWeight = g_flowpath.Edges.Weight;
             %find Edge for each dynamic drift input ans assign update
             for j=1:length(newDrift)
                 if inEleID(j,1)==0      %an input to node (j,2)                      
                     outID = find(flowpathID==inEleID(j,2));
-                    upstreamids = predecessors(h_flowpath,outID);
+                    upstreamids = predecessors(g_flowpath,outID);
                     inID = upstreamids((flowpathID(upstreamids)==0));
                 elseif inEleID(j,2)==0 %an output from node (j,1)
                     inID = find(flowpathID==inEleID(j,1));
-                    dnstreamids = successors(h_flowpath,inID);
+                    dnstreamids = successors(g_flowpath,inID);
                     outID = dnstreamids((flowpathID(dnstreamids)==0));
                 else                   %exchange between (j,1) and (j,2)
                     inID = find(flowpathID==inEleID(j,1));
                     outID = find(flowpathID==inEleID(j,2));
                 end
-                ide = findedge(h_flowpath,inID,outID);
+                ide = findedge(g_flowpath,inID,outID);
                 newEdgeWeight(ide) = newDrift(j);
             end
-            h_flowpath.Edges.Weight = newEdgeWeight;
+            g_flowpath.Edges.Weight = newEdgeWeight;
         end
 %%
         function setTidalPumping(mobj)
@@ -551,6 +565,7 @@ classdef Advection < handle
             rncobj = getClassObj(mobj,'Inputs','RunConditions');
             wlvobj = getClassObj(mobj,'Inputs','WaterLevels');
             estobj = getClassObj(mobj,'Inputs','Estuary');
+            rivobj = getClassObj(mobj,'Inputs','River');
             
             if ~rncobj.IncTidalPumping || ~isa(obj,'Advection')                
                 return;
@@ -562,91 +577,42 @@ classdef Advection < handle
                 end                
             end
 
-            %allocate fluxes to the correct postion in matrix
-            %to find correct node use a landward version of the DispersionGraph
-            %restricted to elements that define a reach
-            g_landward = Reach.getReachChannelIDs(mobj);
-            reachChannelIDs = g_landward.Nodes.EleID;
             %get reach based tidal pumping discharge
-            [qtp,qtp0] = Advection.getTidalPumpingDischarge(mobj,reachChannelIDs);   
-            
-            
-            h_landward = inverse_graph(obj.RiverGraph); 
-            FlowPathIDs = h_landward.Nodes.EleID;
-            EleType = h_landward.Nodes.Type;
-            EleName = h_landward.Nodes.Name;
-            %to access reach properties use the landward channel paths
-            %this simply crops the flowgraph to just the element types 
-            %included in RCtype (no 'outsides', deltas, etc)
-            rchtype = mobj.GeoType(mobj.RCtypes);
-            h_channels = type_sub_graph(h_landward,rchtype);
-            reachChannelIDs = h_channels.Nodes.EleID;
-            reachChannelName = h_channels.Nodes.Name;
-            
-            %get reach based tidal pumping discharge
-            [qtp,qtp0] = Advection.getTidalPumpingDischarge(mobj,reachChannelIDs);   
-            
-            %to assign the qtp flows use the edge nodes
-            flowNodes = h_landward.Edges.EndNodes;
-            flowWeight = h_landward.Edges.Weight;
-            qtpWeight = zeros(size(flowWeight));
-            qtpOuter = qtpWeight;
-            
-            %handle all the nodes linked to the outside
-            outerNodes = successors(h_landward,1);
-            edgeNodes = strcmp(flowNodes(:,1),'Sea');
-            outerEles = flowNodes(edgeNodes,2);
-            for i=1:length(outerNodes)
-                if strcmp(EleType(outerNodes(i)),'Delta')
-                    chFlowID = successors(h_landward,outerNodes(i));
-                else
-                    chFlowID = outerNodes(i);
-                end
-                chEleID = FlowPathIDs(chFlowID);
-                chRchID = reachChannelIDs==chEleID;  
-                qtpWeight(i) = qtp0(chRchID);
-                qtpOuter(i) = 1;
-                if strcmp(EleType(outerNodes(i)),'Delta')
-                    idx = strcmp(flowNodes(:,1),outerEles(i));                    
-                    qtpWeight(idx) = qtp0(chRchID);
-                    qtpOuter(idx) = 1;
-                end
-            end
+            [qtp,~] = Advection.getTidalPumpingDischarge(mobj);
+            %find the indices of the reaches that have a river input
+            rctype = mobj.GeoType(mobj.RCtypes);
+            idtype = obj.RiverGraph.Nodes.Type;
+            idt = ismatch(idtype,rctype);
+            idrch = obj.RiverGraph.Nodes.EleID(idt);
+            inputIDs = [rivobj(:).ChannelID]; %IDs of channels with river input
+            idx = ismember(idrch,inputIDs);
 
-            innerNodes = find(qtpOuter<1);
-            for i=1:length(innerNodes)
-                idx = innerNodes(i);
-                nodeName = flowNodes(innerNodes(i),1);
-                idf = find(strcmp(EleName,nodeName));
-                idr = find(strcmp(reachChannelName,nodeName));
-                branchIDs = successors(h_landward,idf);
-                if length(branchIDs)>1
-                    %handle branches based on river flows
-                    edgeidx = findedge(h_landward,idf,branchIDs);
-                    totalFlow = sum(flowWeight(edgeidx));
-                    inFlow = flowWeight(idx);
-                    %check whether this should be (1-ratio)********************
-                    qtpWeight(idx) = floor(qtp(idr)*inFlow/totalFlow);
-                else
-                    qtpWeight(idx) = qtp(idr);
-                end
-            end
+            %assign inputs to an exchange array [nx2]
+            nrchele = height(obj.RiverGraph.Nodes)-2;%number of reach elements
+            tpIn = zeros(nrchele,2);
+            tpIn(idx,2) = qtp(idx);
             
-            nele = size(obj.RiverFlows,1);
-            h_landward.Edges.Weight = qtpWeight;
-            [qtpFlows,qtpIn,qtpOut,~] = graph2matrix(h_landward,nele);
+            if any(qtp)>0
+                %rescale the river graph with inputs that are the upstream
+                %tidal pumping discharges, then invert the graph with mass
+                %balance applied to extract the tidal pumping graph. 
+                outgraph = rescale_graph(obj.RiverGraph,tpIn,true);
+                g_landward = inverse_graph(outgraph);
+                % figure; plot(g_landward,'EdgeLabel',g_landward.Edges.Weight);
 
-            %assign instance values to internal properties
-            obj.InternalAdv = qtpFlows;    
-            obj.ExternalAdvIn = qtpIn;      
-            obj.ExternalAdvOut = qtpOut;
-            obj.QtpGraph = h_landward;
-            %assign updated flow field to the tidal pumping properties
-            obj = setAdvectionProps(obj,'Qtp');
-            setClassObj(mobj,'Inputs','Advection',obj);
+                %assign instance values to internal properties
+                nele = size(obj.RiverFlows,1);
+                [qtpFlows,qtpIn,qtpOut,~] = graph2matrix(g_landward,nele);
+                obj.TidalPumpingIn = qtpIn;
+                obj.TidalPumpingOut = qtpOut;
+                obj.TidalPumpingFlows = qtpFlows;
+                obj.QtpGraph = g_landward;
+                %assign updated flow field to the tidal pumping properties
+                setClassObj(mobj,'Inputs','Advection',obj);
+            end
         end  
 %%
-        function [qtp,qtp0] = getTidalPumpingDischarge(mobj,rchChIDs)
+        function [qtp,qtp0] = getTidalPumpingDischarge(mobj)
             %compute tidal pumping for each reach with a river flow based on tide and river properties
             wlvobj  = getClassObj(mobj,'Inputs','WaterLevels');
             aM4  = wlvobj.M4amplitude; %amplitude of M4 tidal constituent (m)        
@@ -656,8 +622,6 @@ classdef Advection < handle
             Tp   = wlvobj.TidalPeriod; %tidal period (hrs)            
 
             eleobj = getClassObj(mobj,'Inputs','Element');
-            eletype = getEleProp(eleobj,'transEleType');
-%             irch = ismatch(eletype,mobj.GeoType(mobj.RCtypes)); %could replace with matches
             eLe = getEleProp(eleobj,'Length');
             ws = getEleProp(eleobj,'transVertExch');
             cero = getEleProp(eleobj,'SedMobility');
@@ -690,7 +654,9 @@ classdef Advection < handle
             %cumulative length from mouth, xi, to upstream end of element
             xi = Reach.getReachProp(mobj,'CumulativeLength');
             %area at upstream section based on average of adjacent elements
-            avCSA = Reach.getReachProp(mobj,'UpstreamCSA');
+            CSA = Reach.getReachProp(mobj,'ReachCSA');
+            upCSA = CSA.*exp(-eLe(idrch)/2/eLw);
+            dnCSA = CSA.*exp(eLe(idrch)/2/eLw);
             %derive river flow speed from river discharge and local(upstream)csa
             uriv = Reach.getReachProp(mobj,'RiverFlow');
             %
@@ -699,15 +665,16 @@ classdef Advection < handle
             % cero is defined as alpha' in the source paper and manual
             % compute tidal pumping flux per unit area. Re-write eqn.1 per unit area as:
             % tpump'=1.5*cero*sig*eLw*amp/Hav*(aef*kno*xi/Hav-M4M*sin(phM4)+0.25*sig*amp/ws)-uriv*(3/2.cero-1)
-            term1 = 3/2*cero(idrch)*U;
-            term2 = aef.*kno.*xi/Hav;
+            term1 = 3/2*cero(idrch).*U;
+            term2 = aef.*kno.*xi./Hav;
             term3 = M4M*sin(phM4*pi/180); 
             term4 = 0.25*sigma*amp./ws(idrch);
             term5 = uriv.*(3/2*cero(idrch)-1);
-            qtp = floor((term1.*(term2-term3+term4)-term5).*avCSA);
-            %area and tidal pumping at the mouth of each reach            
-            Am0 = avCSA.*exp(eLe(rchChIDs)/eLw);
-            qtp0 = floor((term1.*(0-term3+term4)-term5).*Am0); 
+            %tidal pumping at the upstream end of each reach 
+            qtp = floor((term1.*(term2-term3+term4)-term5).*upCSA);
+            %tidal pumping at the downstream end of each reach  
+            term2 = aef.*kno.*(xi-eLe(idrch))./Hav;
+            qtp0 = floor((term1.*(term2-term3+term4)-term5).*dnCSA); 
         end
 
 %%       
@@ -830,6 +797,8 @@ classdef Advection < handle
                     FlowOut = obj.TidalPumpingOut;
                     IntFlows = obj.TidalPumpingFlows;
             end
+            %create a matrix comprising the internal flows and any inputs
+            %and outputs, with dimensions [nele+2 x nele+2]
             userdata = zeros(size(IntFlows));
             userdata(end,2:end-1) = FlowIn;
             userdata(2:end-1,1) = FlowOut;
@@ -873,6 +842,7 @@ classdef Advection < handle
         function obj = setAdvectionType(obj,AdvType)
             %assign the specified advection field to the internal
             %advection properties
+            idin = 2; idout = 1;
             switch AdvType
                 case 'River'
                     FlowIn = obj.RiverIn;
@@ -886,10 +856,11 @@ classdef Advection < handle
                     FlowIn = obj.TidalPumpingIn;
                     FlowOut = obj.TidalPumpingOut;
                     IntFlows = obj.TidalPumpingFlows;
+                    idin = 1; idout = 2;
             end
             %assign to generic input. Only need the source in and sink out
-            obj.ExternalAdvIn = FlowIn(:,2);  %column 2 is the source input
-            obj.ExternalAdvOut = FlowOut(:,1);%column 1 is the sink output
+            obj.ExternalAdvIn = FlowIn(:,idin);  %column 2 is the source input
+            obj.ExternalAdvOut = FlowOut(:,idout);%column 1 is the sink output
             obj.InternalAdv = IntFlows; 
         end
         
