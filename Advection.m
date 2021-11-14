@@ -12,17 +12,17 @@ classdef Advection < handle
     %    
     properties               %user defined variables at start of run                      
         RiverFlows = []        %advection matrix, q (m3/s)
-        RiverIn = 0            %vector of external flows into estuary
-        RiverOut = 0           %vector of external flows out of estuary
+        RiverIn = 0            %array of external flows into estuary
+        RiverOut = 0           %array of external flows out of estuary
         DriftFlows = []        %matrix of littoral drift flows, qs (m3/s)
-        DriftIn = 0            %vector of littoral flows into system
-        DriftOut = 0           %vector of littoral flows out of system
+        DriftIn = 0            %array of littoral flows into system
+        DriftOut = 0           %array of littoral flows out of system
     end
     
     properties (Transient)  %properties that are time varying
         TidalPumpingFlows = [] %tidal pumping matrix, qtp (m3/s)
-        TidalPumpingIn = 0     %vector of tidal pumping flows into estuary
-        TidalPumpingOut = 0    %vector of tidal pumping flows out of estuary
+        TidalPumpingIn = 0     %array of tidal pumping flows into estuary
+        TidalPumpingOut = 0    %array of tidal pumping flows out of estuary
         RiverGraph             %handle to graph of river flows (advection)
         DriftGraph             %handle to graph of drift flows (advection)
         QtpGraph               %handle to graph of tidal pumping flows (advection)  
@@ -307,8 +307,8 @@ classdef Advection < handle
             %initialise transient Advection properties at start of model run
             obj = getClassObj(mobj,'Inputs','Advection');
             obj.TidalPumpingFlows = []; %tidal pumping matrix, qtp (m3/s)
-            obj.TidalPumpingIn = 0;     %vector of tidal pumping flows into estuary
-            obj.TidalPumpingOut = 0;    %vector of tidal pumping flows out of estuary
+            obj.TidalPumpingIn = 0;     %array of tidal pumping flows into estuary
+            obj.TidalPumpingOut = 0;    %array of tidal pumping flows out of estuary
             obj.RiverGraph = [];        %handle to graph of river flows (advection)
             obj.DriftGraph = [];        %handle to graph of drift flows (advection)
             obj.QtpGraph = [];          %handle to graph of tidal pumping flows (advection)  
@@ -430,103 +430,33 @@ classdef Advection < handle
                         if j(is)>0
                             %interpolate time series to get new input value
                             if isa(srcobj,'Drift') 
-                                [inFlow,inEleID] = Drift.getDriftTSprop(mobj,...
+                                [inflow,inEleID] = Drift.getDriftTSprop(mobj,...
                                                             is,tsyear);                                                
                             else
-                                [inFlow,~] = River.getRiverTSprop(mobj,...
+                                [inflow,inEleID] = River.getRiverTSprop(mobj,...
                                                             is,tsyear);
                             end
                             %
-                            if length(inFlow)>1 %drifts vary along path %   CHECK IF CONDITION
+                            if length(inflow)>1 %drifts vary along path %   CHECK IF CONDITION
                                 g_flowpath = Advection.newDriftPath(g_flowpath,...
-                                                        inFlow,inEleID);
+                                                        inflow,inEleID);
                             else %source value dictates flow along path
-                                isbalance = true;   %ie update whole network                       
-                                g_flowpath = rescale_graph(g_flowpath,...
-                                                        inFlow,isbalance);
-%                                 g_flowpath = newFlowPath(g_flowpath,...
-%                                                         inFlow,inEleID);  
+                                isbalance = true;   %ie update whole network 
+                                %get the matrix and exchages for the input graph
+                                [~,InFlow] = graph2matrix(g_flowpath);
+                                if any(InFlow(inEleID,2)~=inflow) 
+                                    %update if any input has changed
+                                    InFlow(inEleID,2) = inflow; %assigne changes to [nx2] input array
+                                    g_flowpath = rescale_graph(g_flowpath,...
+                                                        InFlow,isbalance);
+                                end
                             end
-                            %STILL NEEDS TESTING***************************
-%                             if length(inFlow)>1     %drifts vary along path %   CHECK 'IF' CONDITION
-%                                 isbalance = false;  %ie no mass balance
-%                             else     %source value dictates flow along path
-%                                 isbalance = true;   %ie update whole network
-%                             end                            
-%                             g_flowpath = rescale_graph(g_flowpath,...
-%                                                         inFlow,isbalance);
                         end
                     end
                 end 
             end
         end
-            %--------------------------------------------------------------
-%             function g_flowpath = newFlowPath(g_flowpath,newInFlow,inEleID)
-%                 %internal function to reassign new flows to flowgraph
-%                 %used for all river flows and drifts when source value 
-%                 %dictates flow along path
-%                 flowpathID = g_flowpath.Nodes.EleID;
-%                 %find flow input
-%                 inid = find(flowpathID==inEleID);
-%                 newEdgeWeight = g_flowpath.Edges.Weight;
-%                 %define source input as first link
-%                 %naming convention is *ID for elements and *id for g_flowpath index
-%                 %
-%                 %id that flow/drift is coming from (source) 
-%                 upstreamids = predecessors(g_flowpath,inid);
-%                 outid = upstreamids((flowpathID(upstreamids)==0));
-%                 ide = findedge(g_flowpath,outid,inid);
-%                 newEdgeWeight(ide) = newInFlow;
-%                 while ~isempty(inid)
-%                     nextin = [];
-%                     cumOutFlow = zeros(length(inid),1);
-%                     for j = 1:length(inid) %handle branching
-%                         %handle flowpath input
-%                         ide = findedge(g_flowpath,outid,inid(j));
-%                         oldInFlow = g_flowpath.Edges.Weight(ide);                        
-%                         %find other inputs to the same node.
-%                         %naming convention *Input = sum(*InFlow)
-%                         upstreamids = predecessors(g_flowpath,inid(j));
-%                         idf = findedge(g_flowpath,upstreamids,inid(j));
-%                         oldInput = sum(g_flowpath.Edges.Weight(idf)); %total input
-%                         if length(ide)>1 %handle two new inputs (diverge/recvonverge case)
-%                             newInput = oldInput-sum(oldInFlow)+sum(newInFlow);
-%                         else
-%                             newInput = oldInput-oldInFlow+newInFlow(j);
-%                         end
-%                         %find outflowing edges and update pro-rata based on
-%                         %previous flow distribution. Naming convention is
-%                         %*Output = sum(*OutFlow)
-%                         downstreamids = successors(g_flowpath,inid(j));
-%                         if ~isempty(downstreamids)
-%                             ido = findedge(g_flowpath,inid(j),downstreamids);
-%                             oldOutFlow = g_flowpath.Edges.Weight(ido);
-%                             oldOutput = sum(oldOutFlow);
-%                             newOutFlow = zeros(length(downstreamids),1);
-%                             %weight allows drift to vary based on initial 
-%                             %definition in advection matrix. Does not
-%                             %affect river flows because mass balance imposed
-%                             weight = oldOutput/oldInput; 
-%                             for i=1:length(downstreamids)
-%                                 newOutFlow(i) = oldOutFlow(i)/oldOutput*newInput*weight;
-%                                 newEdgeWeight(ido(i)) = newOutFlow(i);
-%                             end
-%                             nextin = [nextin,downstreamids]; %#ok<AGROW>
-%                             cumOutFlow(j) = sum(newOutFlow);
-%                         end
-%                     end
-%                     outid = inid(flowpathID(inid)~=0);
-%                     inid = unique(nextin); 
-%                     %handle special case of links that diverge and reconverge
-%                     if length(outid)>1 
-%                         newInFlow = cumOutFlow;
-%                     else
-%                         newInFlow = newOutFlow;
-%                     end                                       
-%                 end
-%                 g_flowpath.Edges.Weight = newEdgeWeight;
-%             end
-%             %--------------------------------------------------------------
+%%
         function g_flowpath = newDriftPath(g_flowpath,newDrift,inEleID)
             %reassign new flows to flowgraph when there are multiple sources. 
             %newDrift - [nx1] vector of drifts to be updated
@@ -578,19 +508,19 @@ classdef Advection < handle
             end
 
             %get reach based tidal pumping discharge
-            [qtp,~] = Advection.getTidalPumpingDischarge(mobj);
+            [qtp,qtp0] = Advection.getTidalPumpingDischarge(mobj);
             %find the indices of the reaches that have a river input
             rctype = mobj.GeoType(mobj.RCtypes);
             idtype = obj.RiverGraph.Nodes.Type;
             idt = ismatch(idtype,rctype);
             idrch = obj.RiverGraph.Nodes.EleID(idt);
             inputIDs = [rivobj(:).ChannelID]; %IDs of channels with river input
-            idx = ismember(idrch,inputIDs);
+            idr = ismember(idrch,inputIDs);   %river input Element ids in graph order
 
             %assign inputs to an exchange array [nx2]
             nrchele = height(obj.RiverGraph.Nodes)-2;%number of reach elements
-            tpIn = zeros(nrchele,2);
-            tpIn(idx,2) = qtp(idx);
+            tpIn = zeros(nrchele,2); %null input array [nx2] where n=number of reaches
+            tpIn(idr,2) = qtp(idr);  %qtp at the river inputs (ie upstream)
             
             if any(qtp)>0
                 %rescale the river graph with inputs that are the upstream
@@ -598,6 +528,25 @@ classdef Advection < handle
                 %balance applied to extract the tidal pumping graph. 
                 outgraph = rescale_graph(obj.RiverGraph,tpIn,true);
                 g_landward = inverse_graph(outgraph);
+                
+                %EXPERIMENTAL CODE - applies the reach downstream qtp0 at
+                %the seaward end (ie modifies the input/output - depending 
+                %on sign of qtp0 - without imposing continuity)
+                %This addition is needed for Venice to work.
+                idinodes = successors(g_landward,1);
+                ids = g_landward.Nodes.EleID(idinodes);
+                tpIn0 = zeros(nrchele,2);  
+                tpIn0(ids,1) = qtp0(ids);  %qtp0 at the sea (ie downstream)
+                %get the matrix and exchages for the input graph
+                [tpmatrix,~,tpOut0,nodetxt] = graph2matrix(g_landward);
+                %if any of the downstream fluxes are negative, re-assign as
+                %outer domain outflows rather than inflows
+                tpOut0(tpIn0(:,1)<0,1) =  -tpIn0(tpIn0(:,1)<0,1);          
+                tpIn0(tpIn0(:,1)<0,1) = 0;                
+                %update the exchange matrix with the new inputs
+                g_landward = matrix2graph(tpmatrix,tpIn0,tpOut0,nodetxt);
+                %END OF EXPERIMENTAL CODE 
+                
                 % figure; plot(g_landward,'EdgeLabel',g_landward.Edges.Weight);
 
                 %assign instance values to internal properties

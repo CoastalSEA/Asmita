@@ -179,18 +179,23 @@ classdef ASM_Plots < muiPlots
                                     strcmp({'Network'},obj.UIset.callTab)
                 caseDef = getRunParams(obj,mobj,1);
                 eleobj = caseDef.Element;
-                eleprop = getEleProp(eleobj,'EleName');
+                eleprop = getEleProp(eleobj,'EleName');  %use Element table
+                if obj.UIsel(1).dataset==2               %use Reach table  
+                    idr = unique(getEleProp(eleobj,'ReachID'));
+                    eleprop = eleprop(idr(idr>0));
+                end
                 obj.UIsel(1).dims(2).name = 'EleName';
                 %add selection of all elements to Y plot variable
                 obj.UIsel(1).dims(2).value =  eleprop;
                 obj.UIsel(1).xyz = [true false false];
                 obj.UIsel(2).xyz = [false true false];
                 %add additional dimension for the elements
-                obj.UIsel(3) = obj.UIsel(1);
+                obj.UIsel(3) = obj.UIsel(1);                
                 obj.UIsel(3).range = var2range([eleprop(1),eleprop(end)]);
                 obj.UIsel(3).property = 3;
                 obj.UIsel(2).xyz = [false false true];
             else
+                obj.UIsel(1).dims(2).name = 'EleName';
                 obj.UIsel(1).dims(2).value = {obj.UIsel(1).Element};
             end
             
@@ -266,10 +271,9 @@ classdef ASM_Plots < muiPlots
             ismidpt = true; %returns lengths at mid-point of each element
             [obj.Data.reachlength,g] = Reach.getReachLengths(caseDef,ismidpt);
             yele = obj.Data.Y;
-            yrch = Reach.getReachEleVar(g,yele);  %MAY NEED TO CALL FOR EACH TIMESTEP
-            if size(yele,2)~=length(yrch)
+            if size(yele,2)~=length(obj.Data.reachlength)
                 %change variable from element to reach values
-                obj.Data.Y = yrch;
+                obj.Data.Y = Reach.getReachEleVar(g,yele);
             end
             %
             if length(obj.Data.X)~=length(obj.Data.reachlength)
@@ -294,8 +298,9 @@ classdef ASM_Plots < muiPlots
             %use q for river flows and qs for drift
             caseDef = getRunParams(obj,mobj,1);
             numvar = size(obj.Data.Y,2);
-            numrch = length(unique([caseDef.Element(:).ReachID]));
             numele = length(caseDef.Element);
+            rchids = unique([caseDef.Element(:).ReachID]);
+            numrch = length(rchids(rchids>0));
             if numvar==numele
                 graphtype = 'Network';
             elseif numvar==numrch
@@ -304,12 +309,11 @@ classdef ASM_Plots < muiPlots
                 obj.Data.network = [];
                 return;
             end            
-            [obj.Data.network,graphtype] = Reach.getNetwork(caseDef,graphtype);
-            if strcmp(graphtype,'Reach')
-                %only pass the results for channel elements
-                idx = strcmp({caseDef.Element(:).EleType},'Channel');
-                obj.Data.Y = obj.Data.Y(:,idx);
-            end
+            [obj.Data.network,~] = Reach.getNetwork(caseDef,graphtype);
+%             if strcmp(graphtype,'Reach')
+%                 %only pass the results for channel elements
+%                 obj.Data.Y = obj.Data.Y(:,rchids(rchids>0));
+%             end
             %get node size
             obj.Data.nodesize = obj.UIset.Other;
         end  

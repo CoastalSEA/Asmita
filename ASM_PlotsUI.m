@@ -18,7 +18,7 @@ classdef ASM_PlotsUI < muiDataUI
         %names of tabs providing different data accces options
         TabOptions = {'Time','Distance','Network','2D','3D','2DT','3DT'}; 
         %selections that force a call to setVariableLists
-        updateSelections = {'Case','Variable'};
+        updateSelections = {'Case','Dataset','Variable'};
         %Additional variables for application------------------------------
         Tabs2Use         %number of tabs to include  (set in getPlotGui)     
     end  
@@ -110,19 +110,29 @@ classdef ASM_PlotsUI < muiDataUI
             sel_uic = S.Selections;
             caserec = sel_uic{strcmp(S.Order,'Case')}.Value;
             cobj = getCase(mobj.Cases,caserec);
-
+            dsnames = fieldnames(cobj.Data); %**
+            
             for i=1:length(sel_uic)                
                 switch sel_uic{i}.Tag
                     case 'Case'                        
                         sel_uic{i}.String = muicat.CaseDescription;
                         sel_uic{i}.UserData = sel_uic{i}.Value; %used to track changes
-                    case 'Variable' 
-                        ds = fieldnames(cobj.Data);
-                        sel_uic{i}.String = cobj.Data.(ds{1}).VariableDescriptions;
+                    case 'Dataset'
+                        sel_uic{i}.String = dsnames; %**
                         sel_uic{i}.UserData = sel_uic{i}.Value; %used to track changes
+                    case 'Variable' 
+%                         ds = fieldnames(cobj.Data);
+                        setval = sel_uic{2}.Value;  %current dataset selection
+                        dataset = dsnames{setval};
+                        sel_uic{i}.String = cobj.Data.(dataset).VariableDescriptions;
+                        sel_uic{i}.UserData = sel_uic{i}.Value; %used to track changes
+%                         sel_uic{i}.Value = 1;  
                     case 'Element'
-                        varval = sel_uic{2}.Value;  %current variable selection
-                        sel_uic{i}.String = setElementList(obj,cobj,varval);
+                        setval = sel_uic{2}.Value;  %current dataset selection
+                        dataset = dsnames{setval};
+%                         varval = sel_uic{3}.Value;  %current variable selection
+                        sel_uic{i}.String = cobj.Data.(dataset).Dimensions.EleName;
+%                         sel_uic{i}.String = setElementList(obj,cobj,varval,dataset);
                         sel_uic{i}.Value = 1;                            
                     case 'Type'
                         sel_uic{i}.String = S.Type;
@@ -133,18 +143,21 @@ classdef ASM_PlotsUI < muiDataUI
             obj.TabContent(itab).Selections = sel_uic;
         end
 %%
-    function elelist = setElementList(~,cobj,varval)
+    function elelist = setElementList(~,cobj,varval,dataset)
         %set the element list based on the current Variable selection
         eleobj = cobj.RunParam.Element; %values used in selected Case
-        fullist = [getEleProp(eleobj,'EleName');'All'];
-        varlist = cobj.Data.Dataset.VariableNames;
-        idele = find(strcmp(varlist,cobj.outType{1}));
-        if varval<idele
-            elelist = fullist;
-        else
-            idr = unique(getEleProp(eleobj,'ReachID'));
-            elelist = fullist(idr);
-        end
+% %         fullist = [getEleProp(eleobj,'EleName');'All'];
+        varlist = cobj.Data.(dataset).VariableNames;
+%         idele = find(strcmp(varlist,cobj.outType{1}));
+%         if varval<idele
+%             elelist = fullist;
+%         else
+%             idr = unique(getEleProp(eleobj,'ReachID'));
+%             ide = getEleProp(eleobj,'EleID');
+%             idl = [ismember(ide,idr);false];   %added false removes 'All'
+%             elelist = fullist(idl);
+%         end
+        elelist = getEleProp(eleobj,'EleName');
     end
 %%        
         function useSelection(obj,src,mobj)  
@@ -177,9 +190,9 @@ classdef ASM_PlotsUI < muiDataUI
             S.HeadText = sprintf('1 %s\n2 %s\n3 %s',txt1,txt2,txt3);  
             %Specification of uicontrol for each selection variable  
             %Use default lists except
-            S.Titles = {'Case','Variable','Element','Type'};  
-            S.Order = {'Case','Variable','Element','Type'};
-            
+            S.Titles = {'Case','Dataset','Variable','Element','Type'};  
+            S.Order = {'Case','Dataset','Variable','Element','Type'};
+            S.Style = {'popupmenu','popupmenu','popupmenu','popupmenu','popupmenu'};
             %Tab control button options
             S.TabButText = {'New','Add','Delete','Clear'}; %labels for tab button definition
             S.TabButPos = [0.1,0.14;0.3,0.14;0.5,0.14;0.7,0.14]; %default positions
@@ -206,9 +219,9 @@ classdef ASM_PlotsUI < muiDataUI
             txt3 = '';
             S.HeadText = sprintf('1 %s\n2 %s\n3 %s',txt1,txt2,txt3); 
             %Use default lists except
-            S.Titles = {'Case','Variable','Type'};   
-            S.Style = {'popupmenu','popupmenu','popupmenu'};
-            S.Order = {'Case','Variable','Type'};
+%             S.Titles = {'Case','Variable','Type'};   
+%             S.Style = {'popupmenu','popupmenu','popupmenu'};
+%             S.Order = {'Case','Variable','Type'};
             S.Type = {'line','bar','scatter','stem','stairs',...
                       'surf','contour','contourf','mesh','User'};
             %Tab control button options
@@ -236,9 +249,9 @@ classdef ASM_PlotsUI < muiDataUI
             txt3 = '';
             S.HeadText = sprintf('1 %s\n2 %s\n3 %s',txt1,txt2,txt3); 
             %Use default lists except
-            S.Titles = {'Case','Variable','Node size'};   
-            S.Style = {'popupmenu','popupmenu','slider'};
-            S.Order = {'Case','Variable','Other'};
+            S.Titles = {'Case','Dataset','Variable','Node size'};   
+            S.Style = {'popupmenu','popupmenu','popupmenu','slider'};
+            S.Order = {'Case','Dataset','Variable','Other'};
             
             %Tab control button options
             %Use defaults
@@ -268,9 +281,9 @@ classdef ASM_PlotsUI < muiDataUI
             
             %Specification of uicontrol for each selection variable  
             %Use default lists except
-            S.Titles = {'Case','Variable','Type'};   
-            S.Style = {'popupmenu','popupmenu','popupmenu'};
-            S.Order = {'Case','Variable','Type'};
+%             S.Titles = {'Case','Variable','Type'};   
+%             S.Style = {'popupmenu','popupmenu','popupmenu'};
+%             S.Order = {'Case','Variable','Type'};
             
             %Tab control button options
             S.TabButText = {'New','Add','Delete','Clear'}; %labels for tab button definition
@@ -310,11 +323,11 @@ classdef ASM_PlotsUI < muiDataUI
             txt2 = 'If the variable has more than 2 dimensions you will be prompted to select a sub-set';
             txt3 = 'Select dimensions to use for the X-Y axes';
             S.HeadText = sprintf('1 %s\n2 %s\n3 %s',txt1,txt2,txt3);
-            
+
             %Specification of uicontrol for each selection variable  
-            S.Titles = {'Case','Variable','Type'};   
-            S.Style = {'popupmenu','popupmenu','popupmenu'};
-            S.Order = {'Case','Variable','Type'};
+%             S.Titles = {'Case','Variable','Type'};   
+%             S.Style = {'popupmenu','popupmenu','popupmenu'};
+%             S.Order = {'Case','Variable','Type'};
             S.Type = {'surf','contour','contourf','contour3','mesh','User'}; 
             
             %Tab control button options - use defaults

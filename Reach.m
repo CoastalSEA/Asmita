@@ -29,10 +29,6 @@ classdef Reach < handle
     % CoastalSEA, (c) 2016
     %----------------------------------------------------------------------
     %  
-%     properties (Access=private, Transient)
-%         GraphIDsInReach     %Elements within a reach as defined in DispersionGraph
-%     end                     
-    
     properties (Transient)
         ReachChannelID      %Element ID of Elements that define each reach
         ReachEleID          %Elements within a reach using Element ID
@@ -321,9 +317,9 @@ classdef Reach < handle
             switch answer
                 case 'Network' %remove outside node
                     idc = find(~strcmp(dispGraph.Nodes.Type,'Sea'));             
-                case 'Reach'   %select only channel nodes
+                case 'Reach'   %select only reach nodes
                     idr = unique(getEleProp(eleobj,'ReachID'));
-                    idc = ismember(dispGraph.Nodes.EleID,idr); %remove Sea
+                    idc = ismember(dispGraph.Nodes.EleID,idr(idr>0));
             end  
             network = subgraph(dispGraph,idc); 
         end   
@@ -523,19 +519,19 @@ classdef Reach < handle
             if rncobj.IncDynHydraulics && isempty(cstobj)
                 warndlg('Cannot include hydraulics because not defined')
                 return
-            elseif rncobj.IncDynHydraulics                
-                cstwls = assignCSTproperties(cstobj,obj,g_flowpath); %may be better with g_landward
-                %returns struct with mwl, amp, hwl and lwl
-                cstmwl = cstwls.mwl;
+            elseif rncobj.IncDynHydraulics
+                %returns struct with mwl, amp, hwl and lwl (mwl includes MTLatMouth)
+                %adjust model results for any change in tidal amp and msl
+                afact = (wlvobj.HWaterLevel-wlvobj.MeanSeaLevel)/wlvobj.TidalAmp;
+                offset = wlvobj.MeanSeaLevel-wlvobj.MSL0;
+                Q = g_flowpath.Edges.Weight(1);   %assumes all the same - ie single river input
+                WL = assignCSTproperties(cstobj,obj,afact,offset,Q);
             else
-                cstmwl = 0;
+                %assign reach values if no hydraulics
+                WL.hwl(2:end) = wlvobj.HWaterLevel*damp(rchChID); %reach specific HW at time t
+                WL.lwl(2:end) = wlvobj.LWaterLevel*damp(rchChID); %reach specific LW at time t
+                WL.mwl(2:end) = wlvobj.MeanSeaLevel.*ones(size(rchChID));
             end
-            
-            %assigne reach values
-            WL.hwl(2:end) =wlvobj.HWaterLevel*damp(rchChID); %reach specific HW at time t
-            WL.lwl(2:end) = wlvobj.LWaterLevel*damp(rchChID);%reach specific LW at time t
-            WL.mwl(2:end) = (wlvobj.MeanSeaLevel+cstmwl)*ones(size(rchChID));
-            
             WL.tr = (WL.hwl-WL.lwl);  %reach specific tidal range at time t
         end
     %%

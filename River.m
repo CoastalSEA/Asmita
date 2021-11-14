@@ -214,7 +214,7 @@ classdef River < matlab.mixin.Copyable
             %function to access time dependent river property from other functions
             % idrv is the index of the river object
             % tsyear is the model time for which a river is required
-            obj  = getClassObj(mobj,'Inputs','River',msgtxt);  
+            obj  = getClassObj(mobj,'Inputs','River');  
             if isempty(obj) %no river defined
                 flow = 0; EleID = 0;
                 return;
@@ -297,7 +297,7 @@ classdef River < matlab.mixin.Copyable
             sp2 = subplot(2,1,2);
             for i=1:numtimeseries
                 eleid = obj(tsid(i)).ChannelID;
-                elename = inp.Element(eleid).EleName;
+                elename = eleobj(eleid).EleName;
                 legtxt = sprintf('Input to %s',char(elename));
                 tsvarnames = gettimeseriesnames(obj(tsid(i)).RiverTSC);
                 if length(tsvarnames)>1

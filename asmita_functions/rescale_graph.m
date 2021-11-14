@@ -22,6 +22,8 @@ function outgraph = rescale_graph(ingraph,exchIn,isbalance)
 % CoastalSEA (c) Oct 2021
 %--------------------------------------------------------------------------
 %
+    if nargin<3, isbalance = false; end
+    
     nele = size(exchIn,1);
     if size(exchIn,2)==1              %same as matrix2graph assumption
         %assume only the inner domain ingoing exchange has been provided        

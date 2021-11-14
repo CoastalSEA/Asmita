@@ -28,7 +28,8 @@ classdef AsmitaModel < muiDataSet
         RunSteps = 0  %number of time steps after checking stability
         delta = 0     %time step in seconds
         outInt = 0    %output interval adjusted for any change in time step
-        RunData = []; %array used to store output at each time step
+        EleData = []; %array used to store element output at each time step
+        RchData = []; %array used to store reach output at each time step
         StepTime      %time to be saved in years
         MinimumTimeStep = 0.04;  %value used (yrs) as minimum to prompt user
                                  %based on a sp-np cycle (14.6 days)
@@ -47,7 +48,9 @@ classdef AsmitaModel < muiDataSet
         function runModel(mobj)
             %function to run a simple 2D diffusion model
             obj = AsmitaModel;                           
-            dsp = modelDSproperties(obj);
+%             dsp = modelDSproperties(obj);
+            eledsp = elementDSproperties(obj);
+            rchdsp = reachDSproperties(obj);
             %check that the input data has been entered
             %isValidModel checks the InputHandles defined in ModelUI
             if ~isValidModel(mobj, metaclass(obj).Name)  
@@ -87,7 +90,7 @@ classdef AsmitaModel < muiDataSet
             obj.RunSteps = rnpobj.NumSteps;%may be overwritten in CheckStability
             
             %iniatialise model setup 
-            obj = InitialiseModel(obj,mobj,dsp);
+            obj = InitialiseModel(obj,mobj,eledsp,rchdsp);
             if isempty(obj), return; end
             %assign the run parameters to the model instance (after
             %InitialiseModel so that ReachID are assigned to Element object
@@ -100,7 +103,7 @@ classdef AsmitaModel < muiDataSet
             for jt = 1:obj.RunSteps
                 InitTimeStep(obj,mobj,jt)
                 RunTimeStep(obj,mobj)
-                PostTimeStep(obj,mobj,dsp);
+                PostTimeStep(obj,mobj,eledsp,rchdsp);
                 waitbar(jt/obj.RunSteps);
                 %to report time step during run use the following
                 msg = sprintf('ASMITA processing, step %d of %d',...
@@ -109,12 +112,12 @@ classdef AsmitaModel < muiDataSet
             end
             close(hw);
 
-            results = obj.RunData; 
+%             results = obj.RunData; 
             %now assign results to object properties  
             %code for datetime format
             modeldate = datetime(rnpobj.StartYear,1,1,0,0,0);
             modeltime = modeldate + seconds(obj.StepTime);
-            modeltime.Format = dsp.Row.Format;
+            modeltime.Format = eledsp.Row.Format;
             %code for duration format
             % modeltime = years(rnpobj.StartYear)+seconds(obj.StepTime);
             % modeltime.Format = dsp.Row.Format;
@@ -126,20 +129,34 @@ classdef AsmitaModel < muiDataSet
             
 %--------------------------------------------------------------------------
 % Assign model output to a dstable using the defined dsproperties meta-data
-%--------------------------------------------------------------------------                   
-            %each variable should be an array in the 'results' cell array
-            %if model returns single variable as array of doubles, use {results}
-            dst = dstable(results{:},'RowNames',modeltime,'DSproperties',dsp);
+%--------------------------------------------------------------------------  
+            %assign element data to a dstable
+            edst = dstable(obj.EleData{:},'RowNames',modeltime,'DSproperties',eledsp);
             eleobj = getClassObj(mobj,'Inputs','Element');
             elementname = getEleProp(eleobj,'EleName');
-            dst.Dimensions.EleName = [elementname;'All'];     %element names used in model run
+            edst.Dimensions.EleName = [elementname;'All'];     %element names used in model run
+                       
+            %assign metadata about model
+            edst.Source = metaclass(obj).Name;
+            edst.MetaData = 'Any additional information to be saved';
+            
+            %assign element data to a dstable
+            rdst = dstable(obj.RchData{:},'RowNames',modeltime,'DSproperties',rchdsp);
+            eleobj = getClassObj(mobj,'Inputs','Element');
+            idr = unique(getEleProp(eleobj,'ReachID'));
+            elementname = getEleProp(eleobj,'EleName');
+            rdst.Dimensions.EleName = elementname(idr(idr>0));     %reach names used in model run
+                       
+            %assign metadata about model
+            rdst.Source = metaclass(obj).Name;
+            rdst.MetaData = 'Any additional information to be saved';            
+            
+            
+            dst.Element = edst;  %struct of dstables - fieldnames define Datasets
+            dst.Reach = rdst;
 %--------------------------------------------------------------------------
 % Save results
-%--------------------------------------------------------------------------                        
-            %assign metadata about model
-            dst.Source = metaclass(obj).Name;
-            dst.MetaData = 'Any additional information to be saved';
-            %save results
+%--------------------------------------------------------------------------             
             setDataSetRecord(obj,muicat,dst,'model',[],mobj.SupressPrompts);
             
             %report mass balance on run completion
@@ -248,7 +265,7 @@ classdef AsmitaModel < muiDataSet
     end
 %%
     methods (Access = private)
-        function obj = InitialiseModel(obj,mobj,dsp)
+        function obj = InitialiseModel(obj,mobj,eledsp,rchdsp)
              %initialise ASMITA model and internal properties
              
              %NB the interplay between the following functions means that
@@ -290,7 +307,7 @@ classdef AsmitaModel < muiDataSet
              ASM_model.MassBalance(mobj,obj);
              
              %write data for initial time step (t=0)
-             PostTimeStep(obj,mobj,dsp); 
+             PostTimeStep(obj,mobj,eledsp,rchdsp); 
         end    
 %%
          function InitTimeStep(obj,mobj,jt)
@@ -337,26 +354,41 @@ classdef AsmitaModel < muiDataSet
             ASM_model.asmitaVolumeChange(mobj,obj)  
         end  
 %%
-        function obj = PostTimeStep(obj,mobj,dsp)
+        function obj = PostTimeStep(obj,mobj,eledsp,rchdsp)
             %store the results for each time step
             eleobj= getClassObj(mobj,'Inputs','Element'); 
 
             if obj.iStep==1 || rem(obj.iStep,obj.outInt)==0
-                vname = {dsp.Variables.Name};
-                idele = find(strcmp(vname,obj.outType{1}));%NB if dsp is changed
-                jr = length(obj.StepTime)+1;               %outType needs checking
+                jr = length(obj.StepTime)+1;
                 obj.StepTime(jr,1) = obj.Time;
+                vname = {eledsp.Variables.Name};           
                 for i=1:length(vname)
                     %sorting depends on variable list in DSproperties
-                    if i<idele       %element properties
-                        eleprop = getEleProp(eleobj,vname{i});
-                        obj.RunData{i}(jr,:) = [eleprop;sum(eleprop,1)];
-                    else             %reach properties
-                        rchprop = Reach.getReachProp(mobj,vname{i});
-                        obj.RunData{i}(jr,:) = rchprop;    
-
-                    end
+                    %element properties
+                    eleprop = getEleProp(eleobj,vname{i});
+                    obj.EleData{i}(jr,:) = [eleprop;sum(eleprop,1)];
                 end
+                
+                vname = {rchdsp.Variables.Name};
+                for j=1:length(vname)
+                    %reach properties
+                    rchprop = Reach.getReachProp(mobj,vname{j});
+                    obj.RchData{j}(jr,:) = rchprop;  
+                end
+                
+%                 vname = {dsp.Variables.Name};
+%                 idele = find(strcmp(vname,obj.outType{1}));%NB if dsp is changed
+%                                                            %outType needs checking                
+%                 for i=1:length(vname)
+%                     %sorting depends on variable list in DSproperties
+%                     if i<idele       %element properties
+%                         eleprop = getEleProp(eleobj,vname{i});
+%                         obj.RunData{i}(jr,:) = [eleprop;sum(eleprop,1)];
+%                     else             %reach properties
+%                         rchprop = Reach.getReachProp(mobj,vname{i});
+%                         obj.RunData{i}(jr,:) = rchprop;  
+%                     end
+%                 end
             end            
         end
 %%
@@ -446,7 +478,56 @@ classdef AsmitaModel < muiDataSet
         end
         
 %%
-        function dsp = modelDSproperties(~) 
+%         function dsp = modelDSproperties(~) 
+%             %define a dsproperties struct and add the model metadata
+%             dsp = struct('Variables',[],'Row',[],'Dimensions',[]); 
+%             %define each variable to be included in the data table and any
+%             %information about the dimensions. dstable Row and Dimensions can
+%             %accept most data types but the values in each vector must be unique
+%             
+%             %struct entries are cell arrays and can be column or row vectors
+%             %NB if number of variables changes, update the outType property
+%             % Also variable names in dsp.Variables must match Element 
+%             % properties for use in PostTimeStep.
+%             dsp.Variables = struct(...                      
+%                 'Name',{'MovingVolume','FixedVolume','EqVolume',...                           
+%                            'MovingDepth','FixedDepth','EqDepth',...
+%                            'BioProdVolume','EleConcentration',...
+%                            'EleWLchange','ReachPrism','UpstreamPrism',...
+%                            'UpstreamCSA','RiverFlow','MWlevel',...             
+%                            'HWlevel','LWlevel','TidalRange'},...                           
+%                 'Description',{'Moving Volume','Fixed Volume','Equilibrium Volume',...
+%                            'Moving Depth','Fixed Depth','Equilibrium Depth',...
+%                            'Biological Production','Concentration',...                           
+%                            'Water Level Change','Reach Prism','Tidal Prism',...
+%                            'Upstream CSA','River Flow','Mean Water Level',...
+%                            'High Water','Low Water','Tidal Range'},...
+%                 'Unit',{'m^3','m^3','m^3','m','m','m','m^3','ppm','m','m^3',...
+%                            'm^3','m^2','m^3/s','mAD','mAD','mAD','m'},...
+%                 'Label',{'Volume (m^3)','Volume (m^3)','Volume (m^3)',...
+%                            'Depth (m)','Depth (m)','Depth (m)',...
+%                            'Volume (m^3)','Concentration (ppm)',...                           
+%                            'WL Change (m)','Volume (m^3)','Volume (m^3)',...
+%                            'Cross-sectional area (m^2)','Discharge (m^3/s)',...
+%                            'Elevation (mAD)','Elevation (mAD)',...
+%                            'Elevation (mAD)','Range (m)'},...
+%                 'QCflag',repmat({'model'},1,17)); 
+%             dsp.Row = struct(...
+%                 'Name',{'Time'},...
+%                 'Description',{'Time'},...
+%                 'Unit',{'y'},...
+%                 'Label',{'Time (y)'},...
+%                 'Format',{'dd-MMM-yyyy hh:mm:ss'});   %'dd-MMM-yyyy hh:mm:ss'  or 'y'
+%             
+%             dsp.Dimensions = struct(...    
+%                 'Name',{'EleName'},...
+%                 'Description',{'Element Name'},...
+%                 'Unit',{'-'},...
+%                 'Label',{'Element Name'},...
+%                 'Format',{'-'});  
+%         end
+%%
+        function dsp = elementDSproperties(~) 
             %define a dsproperties struct and add the model metadata
             dsp = struct('Variables',[],'Row',[],'Dimensions',[]); 
             %define each variable to be included in the data table and any
@@ -461,25 +542,17 @@ classdef AsmitaModel < muiDataSet
                 'Name',{'MovingVolume','FixedVolume','EqVolume',...                           
                            'MovingDepth','FixedDepth','EqDepth',...
                            'BioProdVolume','EleConcentration',...
-                           'EleWLchange','ReachPrism','UpstreamPrism',...
-                           'UpstreamCSA','RiverFlow','MWlevel',...             
-                           'HWlevel','LWlevel','TidalRange'},...                           
+                           'EleWLchange'},...                           
                 'Description',{'Moving Volume','Fixed Volume','Equilibrium Volume',...
                            'Moving Depth','Fixed Depth','Equilibrium Depth',...
                            'Biological Production','Concentration',...                           
-                           'Water Level Change','Reach Prism','Tidal Prism',...
-                           'Upstream CSA','River Flow','Mean Water Level',...
-                           'High Water','Low Water','Tidal Range'},...
-                'Unit',{'m^3','m^3','m^3','m','m','m','m^3','ppm','m','m^3',...
-                           'm^3','m^2','m^3/s','mAD','mAD','mAD','m'},...
+                           'Water Level Change'},...
+                'Unit',{'m^3','m^3','m^3','m','m','m','m^3','ppm','m'},...
                 'Label',{'Volume (m^3)','Volume (m^3)','Volume (m^3)',...
                            'Depth (m)','Depth (m)','Depth (m)',...
                            'Volume (m^3)','Concentration (ppm)',...                           
-                           'WL Change (m)','Volume (m^3)','Volume (m^3)',...
-                           'Cross-sectional area (m^2)','Discharge (m^3/s)',...
-                           'Elevation (mAD)','Elevation (mAD)',...
-                           'Elevation (mAD)','Range (m)'},...
-                'QCflag',repmat({'model'},1,17)); 
+                           'WL Change (m)'},...
+                'QCflag',repmat({'model'},1,9)); 
             dsp.Row = struct(...
                 'Name',{'Time'},...
                 'Description',{'Time'},...
@@ -494,12 +567,52 @@ classdef AsmitaModel < muiDataSet
                 'Label',{'Element Name'},...
                 'Format',{'-'});  
         end
+%%
+        function dsp = reachDSproperties(~) 
+            %define a dsproperties struct and add the model metadata
+            dsp = struct('Variables',[],'Row',[],'Dimensions',[]); 
+            %define each variable to be included in the data table and any
+            %information about the dimensions. dstable Row and Dimensions can
+            %accept most data types but the values in each vector must be unique
+            
+            %struct entries are cell arrays and can be column or row vectors
+            %NB if number of variables changes, update the outType property
+            % Also variable names in dsp.Variables must match Element 
+            % properties for use in PostTimeStep.
+            dsp.Variables = struct(...                      
+                'Name',{'ReachPrism','UpstreamPrism',...
+                           'UpstreamCSA','RiverFlow','MWlevel',...             
+                           'HWlevel','LWlevel','TidalRange'},...                           
+                'Description',{'Reach Prism','Tidal Prism',...
+                           'Upstream CSA','River Flow','Mean Water Level',...
+                           'High Water','Low Water','Tidal Range'},...
+                'Unit',{'m^3','m^3','m^2','m/s','mAD','mAD','mAD','m'},...                           
+                'Label',{'Volume (m^3)','Volume (m^3)',...
+                           'Cross-sectional area (m^2)',...
+                           'River flow velocity (m/s)',...
+                           'Elevation (mAD)','Elevation (mAD)',...
+                           'Elevation (mAD)','Range (m)'},...
+                'QCflag',repmat({'model'},1,8)); 
+            dsp.Row = struct(...
+                'Name',{'Time'},...
+                'Description',{'Time'},...
+                'Unit',{'y'},...
+                'Label',{'Time (y)'},...
+                'Format',{'dd-MMM-yyyy hh:mm:ss'});   %'dd-MMM-yyyy hh:mm:ss'  or 'y'
+            
+            dsp.Dimensions = struct(...    
+                'Name',{'EleName'},...
+                'Description',{'Element Name'},...
+                'Unit',{'-'},...
+                'Label',{'Element Name'},...
+                'Format',{'-'});  
+        end       
     end   
 %%
     methods
         function tabPlot(obj,src,mobj) %abstract class for muiDataSet
             %generate plot for display on Q-Plot tab
-            dst = obj.Data.Dataset;
+            dst = obj.Data.Element;
             t = dst.RowNames;
             if iscalendarduration(t)
                 t = time2num(t);

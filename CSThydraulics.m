@@ -163,18 +163,23 @@ classdef CSThydraulics < muiPropertyUI
             cstPlot(obj,ax,Q(1))
         end
 %%
-        function wl = assignCSTproperties(obj,rchobj,flowpath)
+        function wl = assignCSTproperties(obj,rchobj,famp,omsl,Q)
             %assign the CSTmodel properties to Asmita model elements
-            flowpathID = flowpath.Nodes.EleID;     %needed to assign correctly?
-            [reachChID] = rchobj(:).ReachChannelID;%needed to assign correctly?
-            [reachLen] = rchobj(:).CumulativeLength;
-            Q = flowpath.Edges.Weight(1);   %assumes all the same!!!!!!! ie single river input
-            
+            % famp - factor for amplitude at mouth at time t relative to t=0
+            % omsl - offset for changes in msl at mouth (eg for slr) at time t relative to t=0
+            % Q - river discharge at time t
+            reachLen = [rchobj(:).CumulativeLength];
+            %assume constant amplitude at mouth to save running the model
+            %at each time step (could replace this with a call to cst_model)
             cst = interpCSTproperties(obj,Q);
-            mwl = interp1(cst.x,cst.z,[0,reachLen],'linear');
-            amp = interp1(cst.x,cst.a,[0,reachLen],'linear');
-            wl.mwl = mwl(2:end)-diff(mwl)/2;
-            wl.amp = amp(2:end)-diff(amp)/2;
+            mwl = interp1(cst.x,cst.z,reachLen,'linear');
+            amp = interp1(cst.x,cst.a,reachLen,'linear');
+            rchmwl = mwl(2:end)-diff(mwl)/2;
+            rchamp = amp(2:end)-diff(amp)/2;
+            %assume changes in amp and msl apply throughout
+            wl.mwl = [mwl(1),rchmwl]+omsl;
+            wl.amp = [amp(1),rchamp]*famp;
+            %resultant high and low water levels
             wl.hwl = wl.mwl+wl.amp;
             wl.lwl = wl.mwl-wl.amp;
         end
