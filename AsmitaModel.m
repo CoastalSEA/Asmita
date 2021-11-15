@@ -58,21 +58,21 @@ classdef AsmitaModel < muiDataSet
                 return;
             end
             %Check additional inputs and notify user what is included
-%             [message,ok] = AsmitaModel.CheckInput(mobj);
-%             if ~isempty(message)
-%                 if ~mobj.SupressPrompts  %supress prompts if true
-%                     button = questdlg(message,'Check','Continue', ...
-%                         'Quit','Continue');
-%                     if strcmp(button,'Quit') 
-%                         delete(obj);
-%                         return; 
-%                     end
-%                 end
-%                 if ok<1 
-%                     warndlg('Not enough components defined to run model');
-%                     return
-%                 end
-%             end            
+            [message,ok] = AsmitaModel.CheckInput(mobj);
+            if ~isempty(message)
+                if ~mobj.SupressPrompts  %supress prompts if true
+                    button = questdlg(message,'Check','Continue', ...
+                        'Quit','Continue');
+                    if strcmp(button,'Quit') 
+                        delete(obj);
+                        return; 
+                    end
+                end
+                if ok<1 
+                    warndlg('Not enough components defined to run model');
+                    return
+                end
+            end            
 
             muicat = mobj.Cases;
 %--------------------------------------------------------------------------
@@ -375,20 +375,6 @@ classdef AsmitaModel < muiDataSet
                     rchprop = Reach.getReachProp(mobj,vname{j});
                     obj.RchData{j}(jr,:) = rchprop;  
                 end
-                
-%                 vname = {dsp.Variables.Name};
-%                 idele = find(strcmp(vname,obj.outType{1}));%NB if dsp is changed
-%                                                            %outType needs checking                
-%                 for i=1:length(vname)
-%                     %sorting depends on variable list in DSproperties
-%                     if i<idele       %element properties
-%                         eleprop = getEleProp(eleobj,vname{i});
-%                         obj.RunData{i}(jr,:) = [eleprop;sum(eleprop,1)];
-%                     else             %reach properties
-%                         rchprop = Reach.getReachProp(mobj,vname{i});
-%                         obj.RunData{i}(jr,:) = rchprop;  
-%                     end
-%                 end
             end            
         end
 %%
@@ -443,7 +429,7 @@ classdef AsmitaModel < muiDataSet
         function setIncParam(obj,mobj)
             %add any additional muiProperty Classes included in run to be
             %saved to RunParam property. 'Element','Estuary','WaterLevels',
-            %'RunProperties','RunConditions','EqCoeffProps' classses are 
+            %'RunProperties','RunConditions','EqCoeffParams' classses are 
             %included by default
             rncobj = getClassObj(mobj,'Inputs','RunConditions');
             if rncobj.IncInterventions
@@ -477,55 +463,6 @@ classdef AsmitaModel < muiDataSet
             end
         end
         
-%%
-%         function dsp = modelDSproperties(~) 
-%             %define a dsproperties struct and add the model metadata
-%             dsp = struct('Variables',[],'Row',[],'Dimensions',[]); 
-%             %define each variable to be included in the data table and any
-%             %information about the dimensions. dstable Row and Dimensions can
-%             %accept most data types but the values in each vector must be unique
-%             
-%             %struct entries are cell arrays and can be column or row vectors
-%             %NB if number of variables changes, update the outType property
-%             % Also variable names in dsp.Variables must match Element 
-%             % properties for use in PostTimeStep.
-%             dsp.Variables = struct(...                      
-%                 'Name',{'MovingVolume','FixedVolume','EqVolume',...                           
-%                            'MovingDepth','FixedDepth','EqDepth',...
-%                            'BioProdVolume','EleConcentration',...
-%                            'EleWLchange','ReachPrism','UpstreamPrism',...
-%                            'UpstreamCSA','RiverFlow','MWlevel',...             
-%                            'HWlevel','LWlevel','TidalRange'},...                           
-%                 'Description',{'Moving Volume','Fixed Volume','Equilibrium Volume',...
-%                            'Moving Depth','Fixed Depth','Equilibrium Depth',...
-%                            'Biological Production','Concentration',...                           
-%                            'Water Level Change','Reach Prism','Tidal Prism',...
-%                            'Upstream CSA','River Flow','Mean Water Level',...
-%                            'High Water','Low Water','Tidal Range'},...
-%                 'Unit',{'m^3','m^3','m^3','m','m','m','m^3','ppm','m','m^3',...
-%                            'm^3','m^2','m^3/s','mAD','mAD','mAD','m'},...
-%                 'Label',{'Volume (m^3)','Volume (m^3)','Volume (m^3)',...
-%                            'Depth (m)','Depth (m)','Depth (m)',...
-%                            'Volume (m^3)','Concentration (ppm)',...                           
-%                            'WL Change (m)','Volume (m^3)','Volume (m^3)',...
-%                            'Cross-sectional area (m^2)','Discharge (m^3/s)',...
-%                            'Elevation (mAD)','Elevation (mAD)',...
-%                            'Elevation (mAD)','Range (m)'},...
-%                 'QCflag',repmat({'model'},1,17)); 
-%             dsp.Row = struct(...
-%                 'Name',{'Time'},...
-%                 'Description',{'Time'},...
-%                 'Unit',{'y'},...
-%                 'Label',{'Time (y)'},...
-%                 'Format',{'dd-MMM-yyyy hh:mm:ss'});   %'dd-MMM-yyyy hh:mm:ss'  or 'y'
-%             
-%             dsp.Dimensions = struct(...    
-%                 'Name',{'EleName'},...
-%                 'Description',{'Element Name'},...
-%                 'Unit',{'-'},...
-%                 'Label',{'Element Name'},...
-%                 'Format',{'-'});  
-%         end
 %%
         function dsp = elementDSproperties(~) 
             %define a dsproperties struct and add the model metadata

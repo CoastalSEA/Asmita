@@ -1,0 +1,91 @@
+<deployment-project plugin="plugin.apptool" plugin-version="1.0">
+  <configuration build-checksum="1076219863" file="D:\Work\Tools\MATLAB\MUImodels2\muiApps\Asmita\Asmita.prj" location="D:\Work\Tools\MATLAB\MUImodels2\muiApps\Asmita" name="Asmita" target="target.mlapps" target-name="Package App">
+    <param.appname>Asmita</param.appname>
+    <param.authnamewatermark>Ian Townend</param.authnamewatermark>
+    <param.email>i.townend@soton.ac.uk</param.email>
+    <param.company>University of Southampton</param.company>
+    <param.icon>${PROJECT_ROOT}\Asmita_resources\icon_24.png</param.icon>
+    <param.icons>
+      <file>${PROJECT_ROOT}\Asmita_resources\icon_48.png</file>
+      <file>${PROJECT_ROOT}\Asmita_resources\icon_24.png</file>
+      <file>${PROJECT_ROOT}\Asmita_resources\icon_16.png</file>
+    </param.icons>
+    <param.summary>ASMITA is used to examine long-term morphological change in tidal inlets and estuaries</param.summary>
+    <param.description>ASMITA stands for Aggregated Scale Morphological Interaction between Tidal basin and Adjacent coast. 
+The model is used to examine long-tern morphological change in tidal inlets and estuaries. Rather than schematise a grid of the real-world bathymetry, the model uses elements that represent geomorphological components of the system such as channels, tidal flats, deltas, saltmarshes, etc. As such the model address changes to the sediment volumes in the estuary over long time scales (decades, centuries and aeons).</param.description>
+    <param.screenshot>${PROJECT_ROOT}\Asmita_logo.jpg</param.screenshot>
+    <param.version>1.0</param.version>
+    <param.products.name>
+      <item>MATLAB</item>
+    </param.products.name>
+    <param.products.id>
+      <item>1</item>
+    </param.products.id>
+    <param.products.version>
+      <item>9.9</item>
+    </param.products.version>
+    <param.platforms />
+    <param.output>${PROJECT_ROOT}</param.output>
+    <param.guid>471fc7ce-db4a-474b-b7be-14d29f4c1dd3</param.guid>
+    <unset>
+      <param.version />
+      <param.platforms />
+      <param.output />
+    </unset>
+    <fileset.main>
+      <file>${PROJECT_ROOT}\Asmita.m</file>
+    </fileset.main>
+    <fileset.depfun>
+      <file>${PROJECT_ROOT}\Advection.m</file>
+      <file>${PROJECT_ROOT}\ASM_model.m</file>
+      <file>${PROJECT_ROOT}\ASM_Plots.m</file>
+      <file>${PROJECT_ROOT}\ASM_PlotsUI.m</file>
+      <file>${PROJECT_ROOT}\ASMinterface.m</file>
+      <file>${PROJECT_ROOT}\AsmitaModel.m</file>
+      <file>${PROJECT_ROOT}\CSThydraulics.m</file>
+      <file>${PROJECT_ROOT}\Drift.m</file>
+      <file>${PROJECT_ROOT}\Element.m</file>
+      <file>${PROJECT_ROOT}\EqCoeffParams.m</file>
+      <file>${PROJECT_ROOT}\Estuary.m</file>
+      <file>${PROJECT_ROOT}\Interventions.m</file>
+      <file>${PROJECT_ROOT}\Reach.m</file>
+      <file>${PROJECT_ROOT}\River.m</file>
+      <file>${PROJECT_ROOT}\RunConditions.m</file>
+      <file>${PROJECT_ROOT}\RunProperties.m</file>
+      <file>${PROJECT_ROOT}\Saltmarsh.m</file>
+      <file>${PROJECT_ROOT}\WaterLevels.m</file>
+    </fileset.depfun>
+    <fileset.resources>
+      <file>${PROJECT_ROOT}\asmita_functions</file>
+      <file>${PROJECT_ROOT}\Asmita_logo.jpg</file>
+      <file>${PROJECT_ROOT}\doc</file>
+      <file>${PROJECT_ROOT}\example</file>
+      <file>${PROJECT_ROOT}\help</file>
+      <file>${PROJECT_ROOT}\info.xml</file>
+    </fileset.resources>
+    <fileset.package />
+    <build-deliverables>
+      <file location="D:\Work\Tools\MATLAB\MUImodels2\muiApps" name="Asmita" optional="false">D:\Work\Tools\MATLAB\MUImodels2\muiApps\Asmita</file>
+    </build-deliverables>
+    <workflow />
+    <matlab>
+      <root>C:\Program Files\MATLAB\R2020b</root>
+      <toolboxes />
+    </matlab>
+    <platform>
+      <unix>false</unix>
+      <mac>false</mac>
+      <windows>true</windows>
+      <win2k>false</win2k>
+      <winxp>false</winxp>
+      <vista>false</vista>
+      <linux>false</linux>
+      <solaris>false</solaris>
+      <osver>10.0</osver>
+      <os32>false</os32>
+      <os64>true</os64>
+      <arch>win64</arch>
+      <matlab>true</matlab>
+    </platform>
+  </configuration>
+</deployment-project>

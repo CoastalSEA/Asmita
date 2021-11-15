@@ -121,18 +121,14 @@ classdef ASM_PlotsUI < muiDataUI
                         sel_uic{i}.String = dsnames; %**
                         sel_uic{i}.UserData = sel_uic{i}.Value; %used to track changes
                     case 'Variable' 
-%                         ds = fieldnames(cobj.Data);
                         setval = sel_uic{2}.Value;  %current dataset selection
                         dataset = dsnames{setval};
                         sel_uic{i}.String = cobj.Data.(dataset).VariableDescriptions;
                         sel_uic{i}.UserData = sel_uic{i}.Value; %used to track changes
-%                         sel_uic{i}.Value = 1;  
                     case 'Element'
                         setval = sel_uic{2}.Value;  %current dataset selection
                         dataset = dsnames{setval};
-%                         varval = sel_uic{3}.Value;  %current variable selection
                         sel_uic{i}.String = cobj.Data.(dataset).Dimensions.EleName;
-%                         sel_uic{i}.String = setElementList(obj,cobj,varval,dataset);
                         sel_uic{i}.Value = 1;                            
                     case 'Type'
                         sel_uic{i}.String = S.Type;
@@ -142,30 +138,12 @@ classdef ASM_PlotsUI < muiDataUI
             end        
             obj.TabContent(itab).Selections = sel_uic;
         end
-%%
-    function elelist = setElementList(~,cobj,varval,dataset)
-        %set the element list based on the current Variable selection
-        eleobj = cobj.RunParam.Element; %values used in selected Case
-% %         fullist = [getEleProp(eleobj,'EleName');'All'];
-        varlist = cobj.Data.(dataset).VariableNames;
-%         idele = find(strcmp(varlist,cobj.outType{1}));
-%         if varval<idele
-%             elelist = fullist;
-%         else
-%             idr = unique(getEleProp(eleobj,'ReachID'));
-%             ide = getEleProp(eleobj,'EleID');
-%             idl = [ismember(ide,idr);false];   %added false removes 'All'
-%             elelist = fullist(idl);
-%         end
-        elelist = getEleProp(eleobj,'EleName');
-    end
 %%        
         function useSelection(obj,src,mobj)  
             %make use of the selection made to create a plot of selected type
             %Abstract function required by muiDataUI
             if strcmp(src.String,'Save')   %save animation to file
                 saveAnimation(obj,src,mobj);
-%             elseif ismember(obj.UIset.callTab,{'Timeseries','Profiles'})
             else
                 %some tabs use sub-selections of Cases and/or Variables
                 %however muiDataUI already checks for subselection and adjusts
@@ -184,9 +162,9 @@ classdef ASM_PlotsUI < muiDataUI
             itab = strcmp(obj.Tabs2Use,src.Tag);
             S = obj.TabContent(itab);
             S.HeadPos = [0.86,0.1];    %header vertical position and height
-            txt1 = 'For a timeseries plot (line, bar, etc) select Case, Element and Variable';
-            txt2 = 'Assign to the Var button and adjust the variable range, if required';
-            txt3 = 'Select the Type of plot and then use the New, Add or Delete buttons to continue';
+            txt1 = 'For a Timeseries plot (line, bar, etc) select Case, Dataset, Variable and Element';
+            txt2 = 'Assign to the Var button and adjust the variable range, and scaling, if required';
+            txt3 = 'Select the Type of plot and then use the New, Add or Delete button to continue';
             S.HeadText = sprintf('1 %s\n2 %s\n3 %s',txt1,txt2,txt3);  
             %Specification of uicontrol for each selection variable  
             %Use default lists except
@@ -214,14 +192,11 @@ classdef ASM_PlotsUI < muiDataUI
             itab = strcmp(obj.Tabs2Use,src.Tag);
             S = obj.TabContent(itab);
             S.HeadPos = [0.86,0.1];    %header vertical position and height
-            txt1 = 'For XY distance plots, select  Case, Dataset and Variable and assign to the ''Var 1'' button';
-            txt2 = 'For XT-Z distance plots, assign case selection to the ''Var 1'' button and Time to the ''Var 2'' button';
-            txt3 = '';
+            txt1 = 'For an animated Distance plot, select Case, Dataset, and Variable';
+            txt2 = 'Assign to the Var button and adjust the variable range, and scaling, if required';
+            txt3 = 'Select the Type of plot (eg bar or stem) and then use the Select button to continue';
             S.HeadText = sprintf('1 %s\n2 %s\n3 %s',txt1,txt2,txt3); 
             %Use default lists except
-%             S.Titles = {'Case','Variable','Type'};   
-%             S.Style = {'popupmenu','popupmenu','popupmenu'};
-%             S.Order = {'Case','Variable','Type'};
             S.Type = {'line','bar','scatter','stem','stairs',...
                       'surf','contour','contourf','mesh','User'};
             %Tab control button options
@@ -244,9 +219,9 @@ classdef ASM_PlotsUI < muiDataUI
             itab = strcmp(obj.Tabs2Use,src.Tag);
             S = obj.TabContent(itab);
             S.HeadPos = [0.86,0.1];    %header vertical position and height
-            txt1 = 'For XY distance plots, select  Case, Dataset and Variable and assign to the ''Var 1'' button';
-            txt2 = 'For XT-Z distance plots, assign case selection to the ''Var 1'' button and Time to the ''Var 2'' button';
-            txt3 = '';
+            txt1 = 'For an animated Network plot, select Case, Dataset, and Variable';
+            txt2 = 'Assign to the Var button and adjust the variable range, and scaling, if required';
+            txt3 = 'Select the Node size to use for Element display and then use the Select button to continue';
             S.HeadText = sprintf('1 %s\n2 %s\n3 %s',txt1,txt2,txt3); 
             %Use default lists except
             S.Titles = {'Case','Dataset','Variable','Node size'};   
@@ -275,15 +250,12 @@ classdef ASM_PlotsUI < muiDataUI
             S = obj.TabContent(itab);
             S.HeadPos = [0.86,0.1];    %header vertical position and height
             txt1 = 'For a cartesian plot (line, bar, etc) select variable and dimension to use for X and Y axes';
-            txt2 = '';
-            txt3 = 'Use the XY button to swap the X and Y variables without needing to reassign them';
+            txt2 = 'Assign variable or dimension to Var & X buttons and adjust ranges, and scaling, if required';
+            txt3 = 'Use the XY button to swap the X and Y variables without needing to re-assign them';
             S.HeadText = sprintf('1 %s\n2 %s\n3 %s',txt1,txt2,txt3);
             
             %Specification of uicontrol for each selection variable  
             %Use default lists except
-%             S.Titles = {'Case','Variable','Type'};   
-%             S.Style = {'popupmenu','popupmenu','popupmenu'};
-%             S.Order = {'Case','Variable','Type'};
             
             %Tab control button options
             S.TabButText = {'New','Add','Delete','Clear'}; %labels for tab button definition
@@ -321,13 +293,10 @@ classdef ASM_PlotsUI < muiDataUI
             S.HeadPos = [0.86,0.1];    %header vertical position and height
             txt1 = 'For a contour or surface plot, select a variable with at least 2 dimensions';
             txt2 = 'If the variable has more than 2 dimensions you will be prompted to select a sub-set';
-            txt3 = 'Select dimensions to use for the X-Y axes';
+            txt3 = 'Select dimensions to use for the X-Y axes (dimensions must be consistent with variable selected)';
             S.HeadText = sprintf('1 %s\n2 %s\n3 %s',txt1,txt2,txt3);
 
             %Specification of uicontrol for each selection variable  
-%             S.Titles = {'Case','Variable','Type'};   
-%             S.Style = {'popupmenu','popupmenu','popupmenu'};
-%             S.Order = {'Case','Variable','Type'};
             S.Type = {'surf','contour','contourf','contour3','mesh','User'}; 
             
             %Tab control button options - use defaults

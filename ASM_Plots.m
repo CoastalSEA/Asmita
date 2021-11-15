@@ -94,7 +94,6 @@ classdef ASM_Plots < muiPlots
                 %add the digraph data for the selected case
                 obj = getNetworkData(obj,mobj);
             elseif strcmp({'Distance'},obj.UIset.callTab)
-%                 obj = getDistanceData(obj,mobj);
                 obj = setDistancePlotType(obj,mobj);
             else
                 if contains(obj.UIset.callTab,{'2D','2DT','3D','3DT'})
@@ -104,19 +103,7 @@ classdef ASM_Plots < muiPlots
                 isvalid = checkdimensions(obj);
                 if ~isvalid, return; end
             end
-            
-            %handle selection of 'All' elements
-%             if any(strcmp({'2D','2DT','3D','3DT'},obj.UIset.callTab))
-%                 for i=1:length(obj.UIsel)
-%                     if strcmp(legformat(i).text,'All')  %selected All elements
-%                         xyz = obj.Order;
-%                         if obj.UIsel(i).property==1        %and this is the plot variable
-%                             obj.Data.(xyz{i}) = sum(obj.Data.(xyz{i}),2);
-%                         end
-%                     end
-%                 end
-%             end
-            
+
             if ~isempty(obj.UIset.Type) && strcmp(obj.UIset.Type.String,'User')
                 user_plot(obj,mobj);  %pass control to user function
             else
@@ -198,20 +185,6 @@ classdef ASM_Plots < muiPlots
                 obj.UIsel(1).dims(2).name = 'EleName';
                 obj.UIsel(1).dims(2).value = {obj.UIsel(1).Element};
             end
-            
-            %for distance plots allow user to choose element or distance 
-            %if there are enough channel elements
-%             if strcmp({'Distance'},obj.UIset.callTab)
-%                 caseDef = getRunParams(obj,mobj,1);
-%                 rctype = mobj.GeoType(mobj.RCtypes);
-%                 ide = ismatch({caseDef.Element(:).EleType},rctype);               
-%                 idt = find(strcmp(obj.UIset.typeList,obj.UIset.Type.String));
-%                 idsurf = find(strcmp(obj.UIset.typeList,'surf'));
-%                 if sum(ide)>2 && idt<idsurf
-%                     %require more than 2 reaches for a distance plot
-%                     obj = setDistancePlotType(obj,mobj);
-%                 end
-%             end
         end
 %%
         function obj = setAxisTicks(obj)
@@ -310,10 +283,6 @@ classdef ASM_Plots < muiPlots
                 return;
             end            
             [obj.Data.network,~] = Reach.getNetwork(caseDef,graphtype);
-%             if strcmp(graphtype,'Reach')
-%                 %only pass the results for channel elements
-%                 obj.Data.Y = obj.Data.Y(:,rchids(rchids>0));
-%             end
             %get node size
             obj.Data.nodesize = obj.UIset.Other;
         end  

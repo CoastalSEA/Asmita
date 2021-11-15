@@ -1,22 +1,33 @@
-function [alpha,beta,eqtype] = UserPrismCoeffs(UserSelection)
-    % Parameters to define volume-prism relationships of the form:
-    % volume = alpha*prism^beta.
-    % eqtype flags whether to use prism (1) or tidal range (0)
-    % UserSelection is selected from list using:
-    % Setup>Run parameters>Equilibirum Coefficients
-    % The list is defined in property UserEqCoeffOptions of RunProps
-    %
-    % Nov 2016: default list extended to include Flood/Ebb delta and Delta flat
-    %
-    %---------------------------------------------------------------------
-    % AUTHOR
-    % Ian Townend
-    %
-    % COPYRIGHT
-    % CoastalSEA, (c) 2016
-    %----------------------------------------------------------------------
-    %  
-    
+function [alpha,beta,eqtype] = userprismcoeffs(UserSelection)
+%
+%-------function help------------------------------------------------------
+% NAME
+%   userprismcoeffs.m
+% PURPOSE
+%   Parameters to define volume-prism relationships of the form:
+%   volume = alpha*prism^beta or volume = alpha*tidal range^beta
+% USAGE
+%   [alpha,beta,eqtype] = userprismcoeffs(UserSelection)
+% INPUTS
+%   UserDelection - 
+% OUTPUTS
+%   The 3 outputs return structs containing values for each element type
+%   alpha - scale parameter for prism relationship
+%   beta - shape paraemter for prism relationship
+%   eqtype - flags whether to use prism (1) or tidal range (0)
+% NOTES
+%   Setting the scale parameter, beta, to 0, has the effect of applying a
+%   constant value defined by alpha.
+%   The Element Types are as defined by the GeoTypes property in the Asmita
+%   class.
+% SEE ALSO
+%   EqCoeffParams class in Asmita handles the selection of a parameter set
+%
+% Author: Ian Townend
+% CoastalSEA (c) Oct 2021
+%--------------------------------------------------------------------------
+%
+
     %define default structs and then overwrite with case specific values
     alpha = struct('Channel',1,'Tidalflat',1,'Saltmarsh',1,...
                    'Storage',1,'FloodDelta',1,'EbbDelta',1,'DeltaFlat',1);

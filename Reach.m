@@ -36,9 +36,12 @@ classdef Reach < handle
         LWvolume            %total volume to low water (usually just channel)
         HWarea              %total plan area of reach at high water
         LWarea              %total plan area of reach at low water
-        HWlevel             %elevation of HW in reach
-        LWlevel             %elevation of LW in reach
-        MWlevel             %elevation of MWL in reach
+        HWlevel             %elevation of HW in reach at time t
+        LWlevel             %elevation of LW in reach at time t
+        MWlevel             %elevation of MWL in reach at time t
+        dHWlevel            %change in elevation of HW in reach at time t
+        dLWlevel            %change in elevation of LW in reach at time t
+        dMWlevel            %change elevation of MWL in reach at time t
         TidalRange          %tidal range in reach (for use in output only)
         ReachPrism          %volume between high and low water in reach
         UpstreamPrism       %volume between high and low water of current 
@@ -316,7 +319,7 @@ classdef Reach < handle
 
             switch answer
                 case 'Network' %remove outside node
-                    idc = find(~strcmp(dispGraph.Nodes.Type,'Sea'));             
+                    idc = find(~strcmp(dispGraph.Nodes.Type,''));             
                 case 'Reach'   %select only reach nodes
                     idr = unique(getEleProp(eleobj,'ReachID'));
                     idc = ismember(dispGraph.Nodes.EleID,idr(idr>0));
@@ -561,6 +564,9 @@ classdef Reach < handle
                 end
                 
                 %assign water level properties to each reach
+                obj(idr,1).dHWlevel = WL.hwl(idr)-obj(idr,1).HWlevel;
+                obj(idr,1).dMWlevel = WL.mwl(idr)-obj(idr,1).MWlevel;
+                obj(idr,1).dLWlevel = WL.lwl(idr)-obj(idr,1).LWlevel;
                 obj(idr,1).HWlevel = WL.hwl(idr);
                 obj(idr,1).MWlevel = WL.mwl(idr); 
                 obj(idr,1).LWlevel = WL.lwl(idr);

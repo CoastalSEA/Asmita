@@ -65,13 +65,13 @@ classdef Asmita < muiModelUI
             %obj.ModelInputs.<model classname> = {'Param_class1',Param_class2',etc}
             obj.ModelInputs.CSThydraulics = {'Estuary','WaterLevels'};
             obj.ModelInputs.AsmitaModel = {'Element','Estuary','WaterLevels',...
-                              'RunProperties','RunConditions','EqCoeffProps'};
+                              'RunProperties','RunConditions','EqCoeffParams'};
             %tabs to include in DataUIs for plotting and statistical analysis
             %select which of the options are needed and delete the rest
             %Plot options: '2D','3D','4D','2DT','3DT','4DT' amended in ASM_PLotUI
             obj.DataUItabs.Plot = {'Time','Distance','Network','2D','3D'}; 
             %Statistics options: 'General','Timeseries','Taylor','Intervals'
-            obj.DataUItabs.Stats = {'General','Timeseries','Taylor','Intervals'};  
+            obj.DataUItabs.Stats = {'General','Taylor'};  
             
             modelLogo = 'Asmita_logo.jpg';  %default splash figure - edit to alternative
             initialiseUI(obj,modelLogo); %initialise menus and tabs  
@@ -206,15 +206,15 @@ classdef Asmita < muiModelUI
             subtabs.Tides(1,:)   = {' Network ',@(src,evt)setgraph(obj,src,evt)};
             subtabs.Tides(2,:)   = {' Water Levels ',@obj.setAsmitaTabs};
             subtabs.Tides(3,:)   = {' Hydraulics ',@obj.setAsmitaTabs};
-            subtabs.Tides(4,:)   = {' Tidal Pumping ',@obj.setAsmitaTabs};
+            subtabs.Tides(4,:)   = {' TP Discharge ',@obj.setAsmitaTabs};
+            subtabs.Tides(5,:) = {' TP Network ',@(src,evt)setgraph(obj,src,evt)};
             
             tabs.Flows   = {'  Flows  ',''};
             subtabs.Flows(1,:) = {' Rivers ',@(src,evt)setgraph(obj,src,evt)};
-            subtabs.Flows(2,:) = {' Drift ',@(src,evt)setgraph(obj,src,evt)};
-            subtabs.Flows(3,:) = {'Tidal Pumping',@(src,evt)setgraph(obj,src,evt)};
-            subtabs.Flows(4,:) = {'Input Summary',@(src,evt)Advection.inputSummary(obj,src,evt)};
-            subtabs.Flows(5,:) = {'River Input',@(src,evt)River.TSplot(obj,src,evt)};
-            subtabs.Flows(6,:) = {'Drift Input',@(src,evt)Drift.TSplot(obj,src,evt)};
+            subtabs.Flows(2,:) = {' Drift ',@(src,evt)setgraph(obj,src,evt)};            
+            subtabs.Flows(3,:) = {' Input Summary ',@(src,evt)Advection.inputSummary(obj,src,evt)};
+            subtabs.Flows(4,:) = {' River Input ',@(src,evt)River.TSplot(obj,src,evt)};
+            subtabs.Flows(5,:) = {' Drift Input ',@(src,evt)Drift.TSplot(obj,src,evt)};
             
             tabs.Response = {' Response ',@(src,evt)Estuary.Response(obj,src,evt)};
             tabs.Plot   = {'  Q-Plot  ',@obj.getTabData};
@@ -238,7 +238,7 @@ classdef Asmita < muiModelUI
                 'Saltmarsh','Saltmarsh',[0.95,0.54],{165,120},'Saltmarsh parameters:';...
                 'RunProperties','Run Parameters',[0.90,0.48],{180,60},'Run time parameters:';...
                 'RunConditions','Run Parameters',[0.55,0.48],{180,60},'Run conditions (true or false):';...
-                'EqCoeffProps','Run Parameters',[0.98,0.95],{180,60},'Equilibrium coefficients:'};
+                'EqCoeffParams','Run Parameters',[0.98,0.95],{180,60},'Equilibrium coefficients:'};
         end    
  %%
         function setTabAction(obj,src,cobj)
@@ -268,7 +268,7 @@ classdef Asmita < muiModelUI
                 case 'Hydraulics'
                     msgtxt = 'Additional hydraulic parameters have not been defined';
                     cobj = getClassObj(obj,'Inputs','CSThydraulics',msgtxt);
-                case 'Tidal Pumping'
+                case 'TP Discharge'
                     msgtxt = 'River parameters have not been defined';
                     cobj = getClassObj(obj,'Inputs','River',msgtxt);
             end
@@ -411,9 +411,9 @@ classdef Asmita < muiModelUI
                 case 'Conditions'
                     RunConditions.setInput(obj);   
                 case 'Equilibrium Coefficients'
-                    EqCoeffProps.setInput(obj);
+                    EqCoeffParams.setInput(obj);
                 case 'Edit Eq. Coefficients list'                    
-                    EqCoeffProps.editList(obj);
+                    EqCoeffParams.editList(obj);
                     tabname = [];
             end
             %
@@ -473,7 +473,7 @@ classdef Asmita < muiModelUI
         function asmitaInputStruct(obj)
             %define struct to be used as handles for input data classes
             obj.Inputs = struct('WaterLevels',[],'Estuary',[],'Element',[],...
-             'RunProperties',[],'RunConditions',[],'EqCoeffProps',[],...
+             'RunProperties',[],'RunConditions',[],'EqCoeffParams',[],...
              'River',[],'Drift',[],'Saltmarsh',[],'Interventions',[],...
              'Reach',[],'Advection',[],'CSThydraulics',[]);
         end

@@ -67,8 +67,7 @@ classdef WaterLevels < muiPropertyUI
         LWaterLevel         %Low Water Level at time t
         dHWchange           %change over a time step at high water
         dLWchange           %change over a time step at low water
-        HW0                 %high water at start of time step (updates each step)
-        LW0                 %low water at start of time step (updates each step)
+        dMWchange           %change over a time steo at mean water level (slr only)
         dtr0                %amplitude offset at start of run due to imposed cycles
         dslr                %rate of sea level rise at time t (only changes if SLRrate is not constant)
     end    
@@ -147,8 +146,8 @@ classdef WaterLevels < muiPropertyUI
             %startyr is the start year of the simulation in seconds
             tr = obj.TidalRange;
             trfc = obj.LWtoHWratio;
-            obj.HW0 = obj.MSL0 + tr/(1+trfc);
-            obj.LW0 = obj.MSL0 - tr*trfc/(1+trfc);
+            obj.HWaterLevel = obj.MSL0 + tr/(1+trfc);
+            obj.LWaterLevel = obj.MSL0 - tr*trfc/(1+trfc);
             %tidal range amplitude offset at start of run due to imposed cycles
             obj.dtr0 = 0;
             if obj.CycleAmp(1)>0
@@ -184,9 +183,13 @@ classdef WaterLevels < muiPropertyUI
             om2 = obj.AngularPhase;
             z0 = obj.MSL0;   
             %
-            if mtime==0 || isempty(obj.HW0)
+            if mtime==0 || isempty(obj.HWaterLevel)
                 initialWL(obj,startyr);
             end
+            %water levels from previous time step (t-1)
+            HWm1 = obj.HWaterLevel;   
+            LWm1 = obj.LWaterLevel;
+            MWm1 = obj.MeanSeaLevel;
             %
             if obj.SLRrate<0 
                 %user has only defined the exponential rate, ert
@@ -217,11 +220,9 @@ classdef WaterLevels < muiPropertyUI
             obj.HWaterLevel = msl-obj.dtr0 + (tr+dtr)/(1+trfc); %0.5tr if trfc=1           
             obj.LWaterLevel = msl-obj.dtr0 - (tr+dtr)*trfc/(1+trfc);
             %difference with old water levels
-            obj.dHWchange = obj.HWaterLevel-obj.HW0;
-            obj.dLWchange = obj.LWaterLevel-obj.LW0;  
-            %update old water levels to new values
-            obj.HW0 = obj.HWaterLevel;   
-            obj.LW0 = obj.LWaterLevel;
+            obj.dHWchange = obj.HWaterLevel-HWm1;
+            obj.dLWchange = obj.LWaterLevel-LWm1;  
+            obj.dMWchange = obj.MeanSeaLevel-MWm1;            
         end
 %%
         function tabPlot(obj,src,mobj)

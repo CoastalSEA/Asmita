@@ -372,38 +372,46 @@ classdef Element < muiPropertyUI
         function setEleWLchange(mobj)
             %assign change in high and low water levels at some instant
             obj = getClassObj(mobj,'Inputs','Element');
-            wlvobj = getClassObj(mobj,'Inputs','WaterLevels');
-            dHW = wlvobj.dHWchange;  %includes changes due to slr and any
-            dLW = wlvobj.dLWchange;  %imposed cycles (ntc etc)
-            dampHW = [obj(:).TidalDamping]; dampLW = dampHW; %prescribed damping
-            nele = length(obj);
-            eletype = getEleProp(obj,'transEleType');
             %get the Reach element water levels which may have been
-            %modified if dynamic hydraulics are being included
+            %modified if dynamic hydraulics are being included or the user
+            %has specified along channel damping
             rncobj = getClassObj(mobj,'Inputs','RunConditions');
             if rncobj.IncDynHydraulics
                 %CSThydraulics computes water levels using the WaterLevels
-                %TidalAmp property and the river discharge at time t. To
-                %avoid running the model for each time step to reflect
-                %changes in mean tidel level and tidal amplitude at the 
-                %mouth (included in dHW and dLW), assume that along channel 
-                %variation due to changes in discharge are simply a damping 
-                %factor based on the initial amplitude at the mouth. This
-                %replaces any user defined damping.
-                rchHW = Reach.getReachEleProp(mobj,'HWlevel');
-                rchLW = Reach.getReachEleProp(mobj,'LWlevel');
-                dampHW = rchHW/wlvobj.TidalAmp;
-                dampLW = rchLW/wlvobj.TidalAmp;
+                %TidalAmp property and a range of river discharges. This 
+                %defines a lookup table to obtain the water levels for the
+                %dicharge at time, t. CSThydraulics.assignCSTproperties
+                %interpolates for each reach element using the dicharge at 
+                %time, t, and corrects for any changes in tidal amplitude 
+                %and mean sea level at time, t. This is called in 
+                %Reach.setHighLowWater which assigns the results for hw, 
+                %lw, mwl and tidal range in Reach.setCollectiveProperties.
+                %The values at the mouth should be the same as the time
+                %step properties in wlvobj.HWaterLevel, etc.
+                % water level values derived from CSTmodel
+                dHW = Reach.getReachEleProp(mobj,'dHWlevel');
+                dLW = Reach.getReachEleProp(mobj,'dLWlevel');
+            else
+                %apply user defined along channel tidal amplitude damping
+                wlvobj = getClassObj(mobj,'Inputs','WaterLevels');
+                dHW = wlvobj.dHWchange;  %includes changes due to slr and any
+                dLW = wlvobj.dLWchange;  %imposed cycles (ntc etc)
+                dMW = wlvobj.dMWchange;  %changes due to slr only
+                ampdamp = [obj(:).TidalDamping]; %prescribed amplitude damping
+                dHW = (dHW-dMW)*ampdamp+dMW; %apply damping to amplitude only
+                dLW = (dLW-dMW)*ampdamp+dMW;
             end
 
             LWtypes = mobj.GeoType(mobj.LWtypes);   
-            %
+            %assign the water levels to each element based on LWtypes as
+            %defined in Asmita class property.
+            nele = length(obj);
+            eletype = getEleProp(obj,'transEleType');
             for i=1:nele
-%                 if contains(eletype(i),'Delta') || contains(eletype(i),'Channel')
                 if any(ismatch(LWtypes,eletype(i)))     
-                    obj(i).EleWLchange = dLW*dampLW(i);
+                    obj(i).EleWLchange = dLW(i);
                 else
-                    obj(i).EleWLchange = dHW*dampHW(i);
+                    obj(i).EleWLchange = dHW(i);
                 end
             end
             setClassObj(mobj,'Inputs','Element',obj);

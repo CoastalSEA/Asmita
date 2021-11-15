@@ -108,13 +108,13 @@ function asm = asm_oo2mui()
                     if rnc.DriftOffset, rnc.IncDrift = true; end
                     asm.Inputs.RunConditions = rnc;
                     
-                    %now update EqCoeffProps
-                    eqp = EqCoeffProps.setInput(asm,false);
+                    %now update EqCoeffParams
+                    eqp = EqCoeffParams.setInput(asm,false);
                     sameprops = {'alpha','beta','eqtype'};
                     for j= 1:length(sameprops)
                         eqp.(sameprops{j}) = old.(sameprops{j});
                     end
-                    asm.Inputs.EqCoeffProps = eqp;
+                    asm.Inputs.EqCoeffParams = eqp;
                     
                 case 'h_est'
                     old = inp.h_est;

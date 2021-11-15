@@ -48,7 +48,7 @@ classdef ASM_model < ASMinterface
         function asmitaEqFunctions(mobj)
             %function to define the equilibrium volume for a given prism
             eleobj = getClassObj(mobj,'Inputs','Element');
-            ecpobj = getClassObj(mobj,'Inputs','EqCoeffProps');
+            ecpobj = getClassObj(mobj,'Inputs','EqCoeffParams');
 
             etypalpha = ecpobj.alpha;
             etypbeta = ecpobj.beta;

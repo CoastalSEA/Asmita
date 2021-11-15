@@ -1,24 +1,21 @@
-classdef EqCoeffProps < muiPropertyUI                
+classdef EqCoeffParams < muiPropertyUI                
 %
 %-------class help---------------------------------------------------------
 % NAME
-%   EqCoeffProps.m
+%   EqCoeffParams.m
 % PURPOSE
 %   Class for setting the selected equilibrium coefficients
 % USAGE
-%   obj = EqCoeffProps.setInput(mobj); %mobj is a handle to Main UI
+%   obj = EqCoeffParams.setInput(mobj); %mobj is a handle to Main UI
+% NOTES
+%   table displays element types x 3 properties
 % SEE ALSO
-%   inherits muiPropertyUI
+%   inherits muiPropertyUI uses definitions in userprismcoeffs function
 %
 % Author: Ian Townend
 % CoastalSEA (c) Jan 2021
 %--------------------------------------------------------------------------
 %      
-
-%cannot use muiProperties because array is n-elements x 3 properties
-%Strip eqcoeffs out of old RunProps
-
-
     properties (Hidden)
         %abstract properties in muiPropertyUI to define input parameters
         PropertyLabels = {'Alpha','Beta','EqType'};
@@ -27,19 +24,19 @@ classdef EqCoeffProps < muiPropertyUI
         %list of options used in UserEqPrismCoeffs
         UserEqCoeffOptions ={'Default','Generic','Venice','Amelander','Pagham'};
         UserEqCoeffSelection %selection used in UserEqPrismCoeffs (list defined in AsmitaModel)
-        SupressPrompts = false %flag for unit testing to supress user promts
+        SupressPrompts = false %flag for unit testing to supress user prompts
     end
     
     properties
-        alpha                %scale coefficients for equilibrium prism relationship
-        beta                 %shape coefficients for equilibrium prism relationship
-        eqtype               %use tidal prism or tidal range to determine equilibrium 
+        alpha     %scale coefficients for equilibrium prism relationship
+        beta      %shape coefficients for equilibrium prism relationship
+        eqtype    %use tidal prism or tidal range to determine equilibrium 
     end    
     
 
 %%   
     methods (Access={?muiPropertyUI,?muiModelUI})
-        function obj = EqCoeffProps(mobj)          
+        function obj = EqCoeffParams(mobj)          
             %constructor code:            
             %values defined in UI function setTabProperties used to assign
             %the tabname and position on tab for the data to be displayed
@@ -50,8 +47,8 @@ classdef EqCoeffProps < muiPropertyUI
     methods (Static)  
         function obj = setInput(mobj,editflag)
             %gui for user to set Parameter Input values
-            classname = 'EqCoeffProps'; 
-            obj = EqCoeffProps.setClassObj(mobj,classname);
+            classname = 'EqCoeffParams'; 
+            obj = EqCoeffParams.setClassObj(mobj,classname);
             %use muiPropertyUI function to generate UI
             if nargin<2 || editflag
                 selections = obj.UserEqCoeffOptions;
@@ -59,15 +56,15 @@ classdef EqCoeffProps < muiPropertyUI
                     'SelectionMode','single','ListString',selections);
                 if isempty(h_dlg), return; end
                 obj.UserEqCoeffSelection = selections{h_dlg};
-                [obj.alpha,obj.beta,obj.eqtype] = UserPrismCoeffs(selections{h_dlg});
+                [obj.alpha,obj.beta,obj.eqtype] = userprismcoeffs(selections{h_dlg});
             end
             mobj.Inputs.(classname) = obj;
         end 
 %%
         function obj = editList(mobj)            
             %create table to input or edit equlibrium coefficients list
-            classname = 'EqCoeffProps'; 
-            obj = EqCoeffProps.setClassObj(mobj,classname);
+            classname = 'EqCoeffParams'; 
+            obj = EqCoeffParams.setClassObj(mobj,classname);
             userdata = obj.UserEqCoeffOptions';
             oldtable = table(userdata,'VariableNames',{'EqCoeff_Options'});
                                     
@@ -130,7 +127,7 @@ classdef EqCoeffProps < muiPropertyUI
                             isa(mobj.Inputs.(classname),classname)
                 obj = mobj.Inputs.(classname);  
             else
-                obj = EqCoeffProps(mobj);    
+                obj = EqCoeffParams(mobj);    
             end
         end
     end

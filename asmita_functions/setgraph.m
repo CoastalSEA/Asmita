@@ -40,9 +40,11 @@ function setgraph(mobj,src,~)
         case 'Drift'
             axtag = 'axDrift';
             [g,nlabel] = Advection.initialiseDriftGraph(mobj);  
-        case 'Tidal Pumping'
+        case 'TP Network'
             axtag = 'axTidalPump';
             [g,nlabel] = Advection.initialiseQtpGraph(mobj); 
+        otherwise
+            return;
     end
 
     %plot resulting graph on tab
