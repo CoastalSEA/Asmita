@@ -7,7 +7,7 @@ function [exmatrix,exchIn,exchOut,nodetxt] = graph2matrix(flowgraph,nele)
 %   extract the exchange matrix and vectors of external exchanges from
 %   a directed graph with labels defined in nodetxt
 % USAGE
-%   [exmatrix,exchIn,exchOut,nodetxt] = graph2matrix(flowgraph)
+%   [exmatrix,exchIn,exchOut,nodetxt] = graph2matrix(flowgraph,nele)
 % INPUTS
 %   flowgraph - handle to digraph object for the network
 %   nele - number of nodes required in the matrix being returned (optional)

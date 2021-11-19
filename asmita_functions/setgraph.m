@@ -47,8 +47,22 @@ function setgraph(mobj,src,~)
             return;
     end
 
+    %get element type to set the node colour
+    elabel = g.Edges.Weight;  %magnitude of exchanges
+    if isempty(g.Nodes)
+        ntype = 0;
+    else
+        eletype = g.Nodes.Type;   %type of element
+        ntype = zeros(size(eletype));
+        for i=1:length(eletype)
+            nt = find(strcmp(mobj.GeoType,eletype{i}));
+            if ~isempty(nt)
+                ntype(i) = nt;
+            end
+        end
+    end
+    
     %plot resulting graph on tab
-    elabel = g.Edges.Weight;            
     h_ax = findobj('Tag',axtag);
     if isempty(h_ax)
         h_ax = axes('Parent',src,'Tag',axtag,'Color','none', ...
@@ -58,9 +72,10 @@ function setgraph(mobj,src,~)
             'NextPlot','replacechildren');    
     end
     %LWidths = 5*elabel/max(elabel);
-    plot(g,'Parent',h_ax,'EdgeLabel',elabel,'NodeLabel',nlabel);
+    hg = plot(g,'Parent',h_ax,'EdgeLabel',elabel,'NodeLabel',nlabel);
         %'LineWidth',LWidths,
-
+    hg.NodeCData = ntype;
+    
     hpan = findobj(src,'Style','pushbutton');
     if isempty(hpan)
         uicontrol('Parent',src, ...

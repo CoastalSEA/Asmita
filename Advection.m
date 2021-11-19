@@ -328,10 +328,27 @@ classdef Advection < handle
                 Q = 0; qIn = 0; qOut = 0;
                 return;
             end
+            
+            %check whether river or drift use timeseries
+            isdynamic = false;
+            switch AdvType
+                case 'Drift'
+                    if rncobj.IncDrift
+                        %only include time series if drift is to be included
+                        isdynamic = rncobj.IncDriftTS;
+                    end
+                case 'River'
+                    if rncobj.IncRiver
+                        %only include time series if river is to be included
+                        isdynamic = rncobj.IncRiverTS;
+                    end    
+            end
+            
             %get flow properties using graph if dynamic or properties if not
-            if rncobj.IncDynamicElements
+            nele = length(getClassObj(mobj,'Inputs','Element'));
+            if rncobj.IncDynamicElements || isdynamic
                 AdvGraph = obj.(AdvGraphName);
-                [q,exchIn,exchOut] = graph2matrix(AdvGraph);
+                [q,exchIn,exchOut] = graph2matrix(AdvGraph,nele);
                 qIn = exchIn(:,2);
                 qOut = exchOut(:,1);
             else 
@@ -342,12 +359,13 @@ classdef Advection < handle
             end
             
             if strcmp(AdvType,'Drift')
+                %convert drfit rates from m3/yr to concentration equivalent
+                %flow rate
                 [q,qIn,qOut] = Advection.getDriftFlow(mobj,q,qIn,qOut);
             end
             
             %set up flow matrix
-            Q = -q;
-            nele = length(getClassObj(mobj,'Inputs','Element'));
+            Q = -q;            
             for j=1:nele
                 Q(j,j) = sum(q(j,:))+qOut(j);
             end
@@ -369,7 +387,7 @@ classdef Advection < handle
             [Qtp,qtpIn,~] = Advection.getAdvectionFlow(mobj,'Qtp');
             %convert drifts to flow rates in m3/s
             qsIn = QSIn./cE/y2s;
-            dqIn = dExt+kCeI.*qIn+qtpIn+qsIn;
+            dqIn = dExt+(kCeI.*qIn)+qtpIn+qsIn;
             Qs = diag(1./cE)*QS/y2s;
             DQ = D+Q+Qtp+Qs;
             tol = cES/100; diff = 1; count = 0; conc0 = cES;

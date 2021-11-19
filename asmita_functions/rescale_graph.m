@@ -7,7 +7,7 @@ function outgraph = rescale_graph(ingraph,exchIn,isbalance)
 %   rescale the exchanges in a network based on the inputs defined in the
 %   exchIn vector
 % USAGE
-%   outgraph = rescale_graph(ingraph,exchIn)
+%   outgraph = rescale_graph(ingraph,exchIn,isbalance)
 % INPUTS
 %   ingraph - an existing network graph that is to be rescaled
 %   exchIn - 2xn array of the exchanges with or from the outside.

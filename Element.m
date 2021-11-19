@@ -145,7 +145,7 @@ classdef Element < muiPropertyUI
                 [idx, ok] = listdlg('Name','Element Properties',...
                 'PromptString','Select element','SelectionMode','single',...
                 'ListString',eleList);
-                if ok==0, return; end   %Use cancel to quit loop
+                if ok==0, continue; end   %Use cancel to quit loop
                 %use muiPropertyUI function to generate UI
                 lobj = editProperties(obj(idx));
                 obj(idx) = lobj;

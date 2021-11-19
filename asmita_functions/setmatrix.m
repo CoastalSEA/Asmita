@@ -7,7 +7,7 @@ function [exmatrix,exchIn,exchOut,flowgraph] = setmatrix(eleobj,figtitle,...
 % PURPOSE
 %   generate UI to edit dispersion or advection matrix 
 % USAGE
-%   [exmatrix,exchIn,exchOut] = setmatrix(obj,figtitle,promptxt,inoutxt,inpmatrix)
+%   [exmatrix,exchIn,exchOut] = setmatrix(eleobj,figtitle,promptxt,inoutxt,inpmatrix)
 % INPUT
 %   eleobj - instance of Element class - used to define ID and name
 %   figtitle - title of the UI figure

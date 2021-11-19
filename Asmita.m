@@ -166,8 +166,10 @@ classdef Asmita < muiModelUI
 
             % submenu for Run Properties data
             menu.Setup(9).List = {'Time Step','Conditions',...
-                'Equilibrium Coefficients','Edit Eq. Coefficients list'};
-            menu.Setup(9).Callback = repmat({@obj.runProps},[1,4]);
+                'Select Eq. Coefficients','Edit Eq. Coefficients',...
+                'Edit Eq. Coefficients List'};
+            menu.Setup(9).Callback = repmat({@obj.runProps},[1,5]);
+            menu.Setup(9).Separator = {'off','off','on','off','on'};
             
             %% Run menu ---------------------------------------------------
             menu.Run(1).List = {'Check Input','Run Model','Derive Output'};
@@ -236,9 +238,9 @@ classdef Asmita < muiModelUI
                 'CSThydraulics','System',[0.55,0.52],{170,100},'Additional parameters:';...
                 'Element','Elements',[0.95,0.95],{180,60},'Element parameters:';...
                 'Saltmarsh','Saltmarsh',[0.95,0.54],{165,120},'Saltmarsh parameters:';...
-                'RunProperties','Run Parameters',[0.90,0.48],{180,60},'Run time parameters:';...
-                'RunConditions','Run Parameters',[0.55,0.48],{180,60},'Run conditions (true or false):';...
-                'EqCoeffParams','Run Parameters',[0.98,0.95],{180,60},'Equilibrium coefficients:'};
+                'RunProperties','Run Parameters',[0.92,0.48],{180,60},'Run time parameters:';...
+                'RunConditions','Run Parameters',[0.60,0.48],{180,60},'Run conditions (true or false):';...
+                'EqCoeffParams','Run Parameters',[0.92,0.96],{180,60},'Equilibrium coefficients:'};
         end    
  %%
         function setTabAction(obj,src,cobj)
@@ -410,13 +412,15 @@ classdef Asmita < muiModelUI
                     RunProperties.setInput(obj);                    
                 case 'Conditions'
                     RunConditions.setInput(obj);   
-                case 'Equilibrium Coefficients'
+                case 'Select Eq. Coefficients'
                     EqCoeffParams.setInput(obj);
-                case 'Edit Eq. Coefficients list'                    
+                case 'Edit Eq. Coefficients'  
+                    EqCoeffParams.editParams(obj);
+                case 'Edit Eq. Coefficients List'
                     EqCoeffParams.editList(obj);
                     tabname = [];
             end
-            %
+            %                
             tabUpdate(obj,tabname);
         end
         %% Run menu -------------------------------------------------------

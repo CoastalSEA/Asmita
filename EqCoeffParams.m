@@ -48,7 +48,10 @@ classdef EqCoeffParams < muiPropertyUI
         function obj = setInput(mobj,editflag)
             %gui for user to set Parameter Input values
             classname = 'EqCoeffParams'; 
-            obj = EqCoeffParams.setClassObj(mobj,classname);
+            obj = getClassObj(mobj,'Inputs',classname);
+            if isempty(obj)
+                obj = EqCoeffParams(mobj);  
+            end
             %use muiPropertyUI function to generate UI
             if nargin<2 || editflag
                 selections = obj.UserEqCoeffOptions;
@@ -58,13 +61,54 @@ classdef EqCoeffParams < muiPropertyUI
                 obj.UserEqCoeffSelection = selections{h_dlg};
                 [obj.alpha,obj.beta,obj.eqtype] = userprismcoeffs(selections{h_dlg});
             end
-            mobj.Inputs.(classname) = obj;
+            setClassObj(mobj,'Inputs',classname,obj);
         end 
+%%
+        function editParams(mobj)
+            %edit the selected parameters by element type
+            classname = 'EqCoeffParams'; 
+            obj = getClassObj(mobj,'Inputs',classname);
+            if isempty(obj)
+                obj = EqCoeffParams(mobj);  
+            end
+            %
+            if isempty(obj.alpha)
+                obj.UserEqCoeffSelection = obj.UserEqCoeffOptions{1};
+                [obj.alpha,obj.beta,obj.eqtype] = userprismcoeffs(obj.UserEqCoeffSelection);
+            end
+            %find code to select element by type
+            typeList = fieldnames(obj.alpha);
+            ok = 1;
+            while ok>0
+                [idx, ok] = listdlg('Name','EqCoeffs',...
+                'PromptString','Select element type','SelectionMode','single',...
+                'ListString',typeList);
+                if ok==0, continue; end   %Use cancel to quit loop
+                
+                %edit values of selected Element Type
+                prompt = {'Alpha','Beta','EqType'};
+                title = 'EqCoeffs';
+                numlines = 1;
+                defaultvalues = {num2str(obj.alpha.(typeList{idx})),...
+                                 num2str(obj.beta.(typeList{idx})),...
+                                 num2str(obj.eqtype.(typeList{idx}))};                                                 
+                %use updated properties to call inpudlg and return new values
+                useInp=inputdlg(prompt,title,numlines,defaultvalues);
+                if isempty(useInp), continue; end %user cancelled
+                obj.alpha.(typeList{idx}) = str2double(useInp{1});
+                obj.beta.(typeList{idx}) = str2double(useInp{2});
+                obj.eqtype.(typeList{idx}) = str2double(useInp{3});
+            end
+            setClassObj(mobj,'Inputs',classname,obj);
+        end
 %%
         function obj = editList(mobj)            
             %create table to input or edit equlibrium coefficients list
             classname = 'EqCoeffParams'; 
-            obj = EqCoeffParams.setClassObj(mobj,classname);
+            obj = getClassObj(mobj,'Inputs',classname);
+            if isempty(obj)
+                obj = EqCoeffParams(mobj);  
+            end
             userdata = obj.UserEqCoeffOptions';
             oldtable = table(userdata,'VariableNames',{'EqCoeff_Options'});
                                     
@@ -74,7 +118,7 @@ classdef EqCoeffParams < muiPropertyUI
             newtable = tablefigureUI(title,header,oldtable,true,but);
             if isempty(newtable), return; end  %user cancelled  
             obj.UserEqCoeffOptions =  newtable.EqCoeff_Options;
-            mobj.Inputs.(classname) = obj;
+            setClassObj(mobj,'Inputs',classname,obj);
         end           
     end
 %%        
@@ -82,12 +126,14 @@ classdef EqCoeffParams < muiPropertyUI
         
     methods
         function displayProperties(obj,src)
-            %table for equilibirum coefficient selection alpha and beta.
+            %table for equilibrium coefficient selection alpha and beta.
             %called by muiModelUI.InputTabSummary and overloads super class
             %muiPropertyUI method.
             if isempty(obj.UserEqCoeffSelection)
                 obj.UserEqCoeffSelection = 'Not set';
             end
+            
+            tabpos = obj.TabDisplay.Position;
             if isstruct(obj.alpha)                
                 rownames = fieldnames(obj.alpha);
                 colnames = {'Type','Alpha','Beta','EqType'};
@@ -106,29 +152,29 @@ classdef EqCoeffParams < muiPropertyUI
                     'ColumnWidth', {80 60 55 45}, ...
                     'Data',userdata, ...
                     'Units','normalized');
-                Table.Position(3:4)=Table.Extent(3:4);
-                Table.Position(2)=0.9-Table.Extent(4);
-                Table.Position(1)=0.95-Table.Extent(3);
+                Table.Position(3:4) = Table.Extent(3:4);
+                Table.Position(2) = tabpos(1)-Table.Extent(4);
+                Table.Position(1) = tabpos(2)-Table.Extent(3);
             end
             helptxt = sprintf('Equilibrium Coefficients using: %s',obj.UserEqCoeffSelection);
             uicontrol('Parent',src,...
                     'Style','text','String', helptxt,...                    
                     'HorizontalAlignment', 'left',...
-                    'Units','normalized', 'Position', [0.55 0.9 0.4 0.05],...
+                    'Units','normalized', 'Position',[0.52 tabpos(1) 0.4 0.04],...
                     'Tag','RPtext');
         end  
      
     end
 %%
-    methods (Static, Access=private)
-        function obj = setClassObj(mobj,classname)
-            %check if class exists and if not call constructor                
-            if isfield(mobj.Inputs,classname) && ...
-                            isa(mobj.Inputs.(classname),classname)
-                obj = mobj.Inputs.(classname);  
-            else
-                obj = EqCoeffParams(mobj);    
-            end
-        end
-    end
+%     methods (Static, Access=private)
+%         function obj = setClassObj(mobj,classname)
+%             %check if class exists and if not call constructor                
+%             if isfield(mobj.Inputs,classname) && ...
+%                             isa(mobj.Inputs.(classname),classname)
+%                 obj = mobj.Inputs.(classname);  
+%             else
+%                 obj = EqCoeffParams(mobj);    
+%             end
+%         end
+%     end
 end

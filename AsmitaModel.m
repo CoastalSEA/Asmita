@@ -207,8 +207,8 @@ classdef AsmitaModel < muiDataSet
         function [message,ok] = CheckInput(mobj)
             %Check which inputs are to be included and return message
             %called at run time and as check from main menu
-            message={};  ok=1;
-            imes=1;
+            message = {};  ok=1;
+            imes = 1;
             minclasses = mobj.ModelInputs.AsmitaModel;
             msg = 'Core inputs: ';
             for i=1:length(minclasses)
@@ -217,7 +217,7 @@ classdef AsmitaModel < muiDataSet
             message{imes} = sprintf('%s are defined\n',msg(1:end-2));  %removes final comma
             
             %check dispersion has been set and that advection balances (if set) 
-            estobj= getClassObj(mobj,'Inputs','Estuary');            
+            estobj = getClassObj(mobj,'Inputs','Estuary');            
             if isempty(estobj.Dispersion)
                 imes = imes+1;
                 message{imes} = 'Dispersion has not beed defined';                
@@ -392,7 +392,7 @@ classdef AsmitaModel < muiDataSet
              %Estimate concentration in each element
              cnc = getEleProp(eleobj,'EleConcentration');
              check_dt = diag(DQ).*cnc;
-             check_dt = min(vm./check_dt)/10;  %the factor of 10 ensures that
+             check_dt = min(vm./check_dt)/2;  %the factor of 2 ensures that
                         %dt is substantially less than the stability limit
                        
              obj.RunSteps = rnpobj.NumSteps;                      

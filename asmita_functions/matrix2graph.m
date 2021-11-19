@@ -7,7 +7,7 @@ function flowgraph = matrix2graph(exmatrix,exchIn,exchOut,nodetxt,namemsg)
 %   use an exchange matrix and a vector of external exchanges to construct
 %   a directed graph with labels defined in nodetxt
 % USAGE
-%   flowgraph = matrix2graph(exmatrix,exchange,nodetxt,namemsg)
+%   flowgraph = matrix2graph(exmatrix,exchIn,exchOut,nodetxt,namemsg)
 % INPUTS
 %   exmatrix - [nxn] matrix that defines the exchanges within the network
 %   exchIn  - 2xn array of the exchanges with or from the outside, or [].

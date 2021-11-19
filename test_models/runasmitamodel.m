@@ -1,4 +1,4 @@
-function actSolution = runasmitamodel(testModel,isoldmodel)
+function [actSolution,varlist,ele] = runasmitamodel(testModel,isoldmodel)
     %initialise Asmita, load selected test model and get results            
     mobj = Asmita(true);
     testPath = [pwd,'\muiASM model files\'];
@@ -16,7 +16,8 @@ function actSolution = runasmitamodel(testModel,isoldmodel)
         nint = ntot:ntot:ncol;
         actSolution(:,nint) = [];
     end
-    
+    varlist = dst.VariableNames;
+    ele = dst.Dimensions.EleName;
     %tidy up
     delete(mobj.mUI.Figure);
     delete(mobj);    %delete the class object 
