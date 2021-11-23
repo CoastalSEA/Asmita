@@ -6,15 +6,17 @@ function [actSolution,varlist,ele] = runasmitamodel(testModel,isoldmodel)
     %run model
     AsmitaModel.runModel(mobj);
     useCase = length(mobj.Cases.DataSets.AsmitaModel);
-    dst = getDataset(mobj.Cases,useCase,1);
-    %first 6 properties for all time steps, all elements 
-    actSolution = dst.DataTable{:,1:6};
+    dst = getDataset(mobj.Cases,useCase,1);    
     %need to remove totals column from each variable
     if isoldmodel
+        %first 3 properties for all time steps, all elements 
+        actSolution = dst.DataTable{:,1:3};
         ncol = size(actSolution,2);
-        ntot = ncol/6;
+        ntot = ncol/3;
         nint = ntot:ntot:ncol;
         actSolution(:,nint) = [];
+    else
+        actSolution = dst.DataTable{:,:};
     end
     varlist = dst.VariableNames;
     ele = dst.Dimensions.EleName;

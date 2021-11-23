@@ -38,7 +38,7 @@ classdef RunConditions < muiPropertyUI
         IncInterventions = false %flag to include user defined interventions
         IncRiver = false        %flag to include river advections
         RiverOffset = false     %flag to correct equilbirium values for river flow
-        IncDRiverTS = false     %flag to include river time series inputs
+        IncRiverTS = false     %flag to include river time series inputs
         IncDrift = false        %flag to include drift advections
         DriftOffset = false     %flag to correct equilbirium values for drift
         IncDriftTS = false      %flag to include drift time series inputs

@@ -47,9 +47,9 @@ classdef Reach < handle
         UpstreamPrism       %volume between high and low water of current 
                             %reach and all reaches upstream of current reach
         ReachLength         %length of reach (m)
-        CumulativeLength    %distance to upstream end of element from mouth (excl.delta)
-        ReachCSA            %cross-sectional area of reach (m2)
-        UpstreamCSA         %cross-sectional area of upstream end of reach at mtl
+        CumulativeLength    %distance to upstream end of element from mouth (excl.delta) (m)
+        ReachCSA            %cross-sectional area of reach at mtl (m2)
+        UpstreamCSA         %cross-sectional area of upstream end of reach at mtl (m2)
         RiverFlow           %Velocity at upstream end of reach based on river discharge and CSA
     end
     
@@ -269,7 +269,7 @@ classdef Reach < handle
         
 %%
         function CumVar = getCumUpstreamReachVar(g_landward,ReachVar,Eflag)
-            %set path dependent parameters (uses graph ids) cumulative value 
+            %get path dependent parameters (uses graph ids) cumulative value 
             %of ReachVar variable in upstream direction. ReachVar can be an 
             %Element array if Eflag is true    
             if nargin<3, Eflag = false; end %assumes ReachVar input
@@ -554,6 +554,7 @@ classdef Reach < handle
                     obj(idr,1).HWvolume = HWprops.volume;
                     obj(idr,1).HWarea = HWprops.area;
                     obj(idr,1).ReachPrism = lobj.HWvolume-lobj.LWvolume;
+                    %reach average CSA at mtl
                     obj(idr,1).ReachCSA = (lobj.ReachPrism/2 + ...
                                         lobj.LWvolume)./lobj.ReachLength;                                       
                 else                       %null values for external reach
@@ -610,7 +611,10 @@ classdef Reach < handle
         end
 %%
         function setUpstreamCSA(obj,g_landward)
-            %set path dependent upstream CSA (uses graph ids)
+            %set path dependent upstream CSA at mtl (uses graph ids)
+            %NB: this uses the reach average CSAs so that the model runs 
+            %without the need to define the estuary convergence length, 
+            %which is used for the tidal pumping estimates of CSA.
             rchChID = [obj(:).ReachChannelID]; %Element IDs of the reach channels
             for i=1:length(rchChID)
                 upstreamids = successors(g_landward,i);
@@ -624,7 +628,7 @@ classdef Reach < handle
                 %handle end reach for external elements
                 if rchChID(i)>0  %reach element
                     obj(i,1).UpstreamCSA = (obj(i).ReachCSA+upCSA)/2;
-                else             %Sea/external reach
+                else             %Sea/external reach - rchChID=0
                     obj(i,1).UpstreamCSA = upCSA; %assign CSA of first reach 
                 end                               %element to Sea reach
             end

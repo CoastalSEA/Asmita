@@ -44,7 +44,7 @@ classdef AsmitaTest <  matlab.unittest.TestCase
                 useCase = length(lobj.Cases.DataSets.AsmitaModel);
                 dst = getDataset(lobj.Cases,useCase,1);
                 %first 6 properties for all time steps, all elements 
-                expSolution = dst.DataTable{:,1:6};
+                expSolution = dst.DataTable{:,:};
                 isoldmodel = false;
             else
                 %original test data set file format
@@ -56,6 +56,9 @@ classdef AsmitaTest <  matlab.unittest.TestCase
                                                                 isoldmodel);
             
             if isoldmodel
+                %new model introduces dept variable so only use the first 3
+                %variables for volumes (moving, fixed , equilibirum)
+                expSolution = expSolution(:,:,1:3);
                 expSolution = reshape(expSolution,size(actSolution));
             end
             

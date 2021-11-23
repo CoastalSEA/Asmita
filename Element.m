@@ -424,7 +424,7 @@ classdef Element < muiPropertyUI
             rncobj = getClassObj(mobj,'Inputs','RunConditions');
             
             vm0 = getEleProp(obj,'InitialVolume');
-            ASM_model.asmitaEqFunctions(mobj);
+%             ASM_model.asmitaEqFunctions(mobj);
             ve = getEleProp(obj,'EqVolume');
             if rncobj.ScaleValues
                 scale = num2cell(vm0./ve);
@@ -445,12 +445,14 @@ classdef Element < muiPropertyUI
             RunConditions.setAdvectionOffset(mobj);
             rncobj = getClassObj(mobj,'Inputs','RunConditions');
             %calculate the offset if required    
-            ASM_model.setDQmatrix(mobj,rncobj.Adv2Offset);
+            
             if strcmp(rncobj.Adv2Offset,'none')
                 eqCorV =  ones(nele,1);
             else
+                ASM_model.setDQmatrix(mobj,rncobj.Adv2Offset);
                 [B,dd] = ASM_model.BddMatrices(mobj);
                 eqCorV = (B\dd).^(1./n);
+                
             end
             %now assign offset to elements 
             assignum = num2cell(eqCorV);
@@ -458,7 +460,7 @@ classdef Element < muiPropertyUI
 
             setClassObj(mobj,'Inputs','Element',obj);
             
-            %reset DQ matrix to full value with all advections
+            %set if 'none' or reset DQ matrix to full value with all advections
             ASM_model.setDQmatrix(mobj,rncobj.Adv2Inc);
         end     
 %%

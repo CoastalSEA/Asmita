@@ -84,10 +84,10 @@ classdef Drift < matlab.mixin.Copyable
             %if empty initialise array for number of elements
             if isempty(advobj.DriftFlows)
                 nele = length(eletype);
-                advobj.DriftIn = zeros(nele,1);
+                advobj.DriftIn = zeros(nele,2);
             end
             rele = [eleobj(:).EleID]==usenum(1);
-            advobj.DriftIn(rele) = usenum(2);
+            advobj.DriftIn(rele,2) = usenum(2);
             
             setClassObj(mobj,'Inputs','Advection',advobj); 
             getdialog({'Drift ADDED';

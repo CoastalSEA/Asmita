@@ -23,9 +23,9 @@ function setgraph(mobj,src,~)
 %--------------------------------------------------------------------------
 %
     %update the Network or Flow tabs with directed graphs of network
-    estobj = getClassObj(mobj,'Inputs','Element');
+    eleobj = getClassObj(mobj,'Inputs','Element');
     advobj = getClassObj(mobj,'Inputs','Advection');
-    if isempty(estobj) && isempty(advobj)
+    if isempty(eleobj) && isempty(advobj)
         cla(src.Children);
         return
     end
@@ -39,10 +39,19 @@ function setgraph(mobj,src,~)
             [g,nlabel] = Advection.initialiseRiverGraph(mobj);
         case 'Drift'
             axtag = 'axDrift';
-            [g,nlabel] = Advection.initialiseDriftGraph(mobj);  
+            [g,nlabel] = Advection.initialiseDriftGraph(mobj); 
+            %convert from drift rate to equivalent flow rate
+            nele = length(eleobj);
+            [q,exchIn,exchOut,nodetxt] = graph2matrix(g,nele);
+            qIn = exchIn(:,2);
+            qOut = exchOut(:,1);
+            Element.setEqConcentration(mobj);
+            [q,qIn,qOut] = getDriftFlow(advobj,mobj,q,qIn,qOut);
+            equivFlow = matrix2graph(q,qIn,qOut,nodetxt);
         case 'TP Network'
             axtag = 'axTidalPump';
             [g,nlabel] = Advection.initialiseQtpGraph(mobj); 
+            
         otherwise
             return;
     end
@@ -76,19 +85,36 @@ function setgraph(mobj,src,~)
         %'LineWidth',LWidths,
     hg.NodeCData = ntype;
     
-    hpan = findobj(src,'Style','pushbutton');
+    hpan = findobj(src,'Style','pushbutton','Tag','panbut');
     if isempty(hpan)
         uicontrol('Parent',src, ...
             'Style', 'pushbutton', 'String', 'Pan',...
             'TooltipString','When active, right click for zoom menu',...
             'Units','normalized', ...
             'Position', [0.02 0.94 0.06 0.05], ...
-            'Callback', @(src,evtdat)panButton(h_ax,src,evtdat));    
+            'Callback', @(src,evtdat)panButton(h_ax,src,evtdat),...
+            'Tag','panbutxt');    
         uicontrol('Parent',src, ...
             'Style', 'pushbutton', 'String', 'Off',...
             'Units','normalized', ...
             'Position', [0.08 0.94 0.06 0.05], ...
-            'Callback', 'zoom(gcbf,''off'');pan(gcbf,''off'')'); 
+            'Callback', 'zoom(gcbf,''off'');pan(gcbf,''off'')', ...
+            'Tag','panbut'); 
+    end
+    %
+    if strcmp(src.Tag,'Drift') 
+        hdrift = findobj(src,'Style','pushbutton','Tag','drift');
+        h_ax.UserData = equivFlow.Edges.Weight;
+        if isempty(hdrift)
+            uicontrol('Parent',src, ...
+                'Style', 'pushbutton', 'String', 'Qs',...
+                'Units','normalized', ...
+                'Position', [0.92 0.94 0.06 0.05], ...
+                'Callback', @(src,evtdat)driftSwitch(h_ax,src,evtdat), ...
+                'Tag','drift'); 
+        else
+            hdrift.String = 'Qs';
+        end
     end
 end 
 %%
@@ -102,4 +128,17 @@ function panButton(h_ax,~,~)
     hPan.UIContextMenu = hCM;
     pan('on')
 end
-        
+%%
+function driftSwitch(h_ax,src,~)
+    %switch between drift rate and equivalent flow rate
+    hg = findobj(h_ax,'Type','GraphPlot');
+    
+    if strcmp(src.String,'Qs')
+        src.String = 'Fs';        
+    else
+        src.String = 'Qs';
+    end
+    temp = hg.EdgeLabel;
+    hg.EdgeLabel = h_ax.UserData;
+    h_ax.UserData = temp;
+end

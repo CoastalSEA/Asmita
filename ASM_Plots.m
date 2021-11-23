@@ -60,6 +60,11 @@ classdef ASM_Plots < muiPlots
             obj.UIsel = gobj.UIselection;
             obj.UIset = gobj.UIsettings;
             
+            %get the current slider value if a distance snap shot plot
+            if strcmp(obj.UIset.callTab,'Distance') && ~obj.UIset.Animate
+                obj.UIset.RunTime = gobj.TabContent(2).Selections{4}.Value;
+            end
+            
             %set the variable order for selected plot type
             obj.Order = obj.Plot.Order.(obj.UIset.callTab);            
             
@@ -72,7 +77,7 @@ classdef ASM_Plots < muiPlots
                 case 'Time'
                     obj = addSelection(obj,mobj);                   
                     legformat.text = {obj.UIsel(1).Element};
-                case {'Distance','Network'}     
+                case {'Distance','Network'}    
                     obj = addSelection(obj,mobj);  
                     legformat.idx = [1 0 1]; %reset to use just case and variable
                 case {'2D','2DT'}
@@ -156,10 +161,15 @@ classdef ASM_Plots < muiPlots
             obj.UIsel(2).variable = 1;
             obj.UIsel(2).property = 2;
             %could add sub-selection of time here if required
-            trange = obj.UIsel(1).dims(1).value;
+            
+            trange = obj.UIsel(1).dims(1).value;            
             obj.UIsel(2).range = trange;
             obj.UIsel(2).desc = 'Time';  
             obj.UIsel(2).dims = struct('name','','value',[]); 
+            if ~obj.UIset.Animate
+                runtime = datetime(1,1,1,0,0,0)+years(obj.UIset.RunTime);
+                obj.UIsel(1).dims(1).value = runtime;
+            end
             
             %assign Element selection to dimension property
             if strcmp({'Distance'},obj.UIset.callTab) || ...
@@ -218,15 +228,18 @@ classdef ASM_Plots < muiPlots
                 obj.Data.Y = obj.Data.T;
                 obj.AxisLabels.Y = obj.AxisLabels.T;
                 obj.Data = rmfield(obj.Data,{'T'});
-                new3Dplot(obj)
-                adjustAxisTicks(obj,gca);  %adjust tick labels  if defined
-            else
+                new3Dplot(obj);                
+            elseif obj.UIset.Animate
                 %plot selected lines/points type as an animation 
                 if ~isdatetime(obj.Data.T)
                     obj.Data.T = round(obj.Data.T*10)/10;
                 end
                 newAnimation(obj);
+            else
+                %plot single snap shot 
+                new2Dplot(obj);
             end
+            adjustAxisTicks(obj,gca);  %adjust tick labels  if defined
         end
 %%
         function obj = setDistancePlotType(obj,mobj)

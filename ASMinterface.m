@@ -77,8 +77,8 @@ classdef ASMinterface < handle
             % volumes hence use sign(n) rather than n>0 
             dvm = sign(n).*sm.*dwl;  
             %
-            % elenames = getEleProp(eleobj,'EleName');
-            % table(dwl,dvf,dvb,dvm,ve,vm,sm,Gam,dd,B,'RowNames',elenames)
+            elenames = getEleProp(eleobj,'EleName');
+%             table(dwl,conc,dvf,dvb,dvm,ve,vm,sm,Gam,dd,B,'RowNames',elenames)
             %
             vm = vm + dvm + dvf - dvb; %total change (moving surface)
             vf = vf + dvf - dvb;       %morphological change (fixed surface)

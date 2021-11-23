@@ -87,10 +87,10 @@ classdef River < matlab.mixin.Copyable
             %if empty initialise array for number of elements
             if isempty(advobj.RiverFlows)
                 nele = length(eletype);
-                advobj.RiverIn = zeros(nele,1);
+                advobj.RiverIn = zeros(nele,2);
             end
             rele = [eleobj(:).EleID]==usenum(1);
-            advobj.RiverIn(rele) = usenum(2);
+            advobj.RiverIn(rele,2) = usenum(2);
             
             setClassObj(mobj,'Inputs','Advection',advobj);
             getdialog({'River ADDED';

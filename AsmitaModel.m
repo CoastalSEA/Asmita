@@ -287,8 +287,10 @@ classdef AsmitaModel < muiDataSet
                  end   
              end
              %initialise any river flow or drift equilibrium offset(eqCorV)
-             %calls RuncConcitions.setAdvectionOffset and ASM_model.setDQmatrix
-             Element.setEleAdvOffsets(mobj); 
+             %calls RunConditions.setAdvectionOffset and ASM_model.setDQmatrix
+             Element.setEleAdvOffsets(mobj);  %DQmatrix set even if no offset
+             %initialise unadjusted equilibirum volumes
+             ASM_model.asmitaEqFunctions(mobj);
              %initialise any scaling to initial conditions (kVp)
              Element.setEqScalingCoeffs(mobj);
              %initialise equilibrium conditions

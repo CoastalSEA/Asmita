@@ -101,8 +101,7 @@ classdef Advection < handle
             checkSourceInputs(obj,mobj,AdvType,flowVar,g_flow,src,preExtAdvIn);
             
             %assign updated flow field to the specified flow type
-            obj = setAdvectionProps(obj,AdvType);
-%             obj = setAdvectionGraph(obj,mobj,AdvType);    
+            obj = setAdvectionProps(obj,AdvType);   
             setClassObj(mobj,'Inputs','Advection',obj);
             
             %--------------------------------------------------------------
@@ -255,10 +254,8 @@ classdef Advection < handle
                 if sum(j)>0  %update if timeseries input
                     obj.DriftGraph = driftGraph; %update the model instance
                     setClassObj(mobj,'Inputs','Advection',obj);
-                    %
                     rnpobj = getClassObj(mobj,'Inputs','RunProperties');
                     Advection.updateAdvectionGraphs(mobj,rnpobj.StartYear);
-%                     obj  = getClassObj(mobj,'Inputs','Advection');
                     driftGraph = obj.DriftGraph;
                 else
                     initialiseFlow(dftobj);
@@ -361,48 +358,13 @@ classdef Advection < handle
             if strcmp(AdvType,'Drift')
                 %convert drfit rates from m3/yr to concentration equivalent
                 %flow rate
-                [q,qIn,qOut] = Advection.getDriftFlow(mobj,q,qIn,qOut);
+                [q,qIn,qOut] = getDriftFlow(obj,mobj,q,qIn,qOut);
             end
             
             %set up flow matrix
-            Q = -q;            
-            for j=1:nele
-                Q(j,j) = sum(q(j,:))+qOut(j);
-            end
-            % Use transpose of Q to match exchanges against concentrations
-            Q = Q'; 
+            Q = advMatrix(obj,q,qOut,nele);
         end 
-        
-%%
-        function [Qs,qsIn,qsOut] = getDriftFlow(mobj,QS,QSIn,QSOut)            
-            %adjust littoral drift rates to equivalent flow rates
-            eleobj = getClassObj(mobj,'Inputs','Element');
-            estobj = getClassObj(mobj,'Inputs','Estuary');
-            cE = getEleProp(eleobj,'EqConcentration');
-            kCeI = River.getRiverProp(mobj,'tsRiverConc')./cE; 
-            y2s = mobj.Constants.y2s;
-            cES = estobj.EqConcCoarse;
-            [D,dExt] = Estuary.getDispersion(mobj);
-            [Q,qIn,~] = Advection.getAdvectionFlow(mobj,'River');
-            [Qtp,qtpIn,~] = Advection.getAdvectionFlow(mobj,'Qtp');
-            %convert drifts to flow rates in m3/s
-            qsIn = QSIn./cE/y2s;
-            dqIn = dExt+(kCeI.*qIn)+qtpIn+qsIn;
-            Qs = diag(1./cE)*QS/y2s;
-            DQ = D+Q+Qtp+Qs;
-            tol = cES/100; diff = 1; count = 0; conc0 = cES;
-            while diff>tol && count<10  
-                %iterate to find Qs based on convergence of concentration
-                conc = ASM_model.asmitaConcentrations(mobj,DQ,dqIn);
-                qsOut = QSOut./conc/y2s;
-                Qs = diag(1./conc)*QS/y2s;
-                DQ = D+Q+Qtp+Qs;
-                diff = sum(abs(conc0-conc).*(qsOut~=0));
-                conc0 = conc;
-                count = count+1;
-            end
-        end
-        
+   
 %% 
         function updateAdvectionGraphs(mobj,tsyear)
             %initialise and update dynamic graphs based on modified conditions (if any)            
@@ -513,7 +475,6 @@ classdef Advection < handle
             rncobj = getClassObj(mobj,'Inputs','RunConditions');
             wlvobj = getClassObj(mobj,'Inputs','WaterLevels');
             estobj = getClassObj(mobj,'Inputs','Estuary');
-            rivobj = getClassObj(mobj,'Inputs','River');
             
             if ~rncobj.IncTidalPumping || ~isa(obj,'Advection')                
                 return;
@@ -527,46 +488,9 @@ classdef Advection < handle
 
             %get reach based tidal pumping discharge
             [qtp,qtp0] = Advection.getTidalPumpingDischarge(mobj);
-            %find the indices of the reaches that have a river input
-            rctype = mobj.GeoType(mobj.RCtypes);
-            idtype = obj.RiverGraph.Nodes.Type;
-            idt = ismatch(idtype,rctype);
-            idrch = obj.RiverGraph.Nodes.EleID(idt);
-            inputIDs = [rivobj(:).ChannelID]; %IDs of channels with river input
-            idr = ismember(idrch,inputIDs);   %river input Element ids in graph order
 
-            %assign inputs to an exchange array [nx2]
-            nrchele = height(obj.RiverGraph.Nodes)-2;%number of reach elements
-            tpIn = zeros(nrchele,2); %null input array [nx2] where n=number of reaches
-            tpIn(idr,2) = qtp(idr);  %qtp at the river inputs (ie upstream)
-            
-            if any(qtp)>0
-                %rescale the river graph with inputs that are the upstream
-                %tidal pumping discharges, then invert the graph with mass
-                %balance applied to extract the tidal pumping graph. 
-                outgraph = rescale_graph(obj.RiverGraph,tpIn,true);
-                g_landward = inverse_graph(outgraph);
-                
-                %EXPERIMENTAL CODE - applies the reach downstream qtp0 at
-                %the seaward end (ie modifies the input/output - depending 
-                %on sign of qtp0 - without imposing continuity)
-                %This addition is needed for Venice to work.
-                idinodes = successors(g_landward,1);
-                ids = g_landward.Nodes.EleID(idinodes);
-                tpIn0 = zeros(nrchele,2);  
-                tpIn0(ids,1) = qtp0(ids);  %qtp0 at the sea (ie downstream)
-                %get the matrix and exchages for the input graph
-                [tpmatrix,~,tpOut0,nodetxt] = graph2matrix(g_landward);
-                %if any of the downstream fluxes are negative, re-assign as
-                %outer domain outflows rather than inflows
-                tpOut0(tpIn0(:,1)<0,1) =  -tpIn0(tpIn0(:,1)<0,1);          
-                tpIn0(tpIn0(:,1)<0,1) = 0;                
-                %update the exchange matrix with the new inputs
-                g_landward = matrix2graph(tpmatrix,tpIn0,tpOut0,nodetxt);
-                %END OF EXPERIMENTAL CODE 
-                
-                % figure; plot(g_landward,'EdgeLabel',g_landward.Edges.Weight);
-
+            if any(qtp>0)
+                g_landward = tidalpumpingGraph(obj,mobj,qtp,qtp0);
                 %assign instance values to internal properties
                 nele = size(obj.RiverFlows,1);
                 [qtpFlows,qtpIn,qtpOut,~] = graph2matrix(g_landward,nele);
@@ -595,6 +519,7 @@ classdef Advection < handle
             
             estobj = getClassObj(mobj,'Inputs','Estuary');
             eLw  = estobj.WidthELength;%estuary width e-folding length (m)
+            eLa  = estobj.AreaELength; %estuary area e-folding length (m)
             
             idrch = Reach.getReachProp(mobj,'ReachChannelID');
             Hhw = Reach.getReachProp(mobj,'HWvolume')./... %depth at high water (m)
@@ -621,9 +546,14 @@ classdef Advection < handle
             %cumulative length from mouth, xi, to upstream end of element
             xi = Reach.getReachProp(mobj,'CumulativeLength');
             %area at upstream section based on average of adjacent elements
-            CSA = Reach.getReachProp(mobj,'ReachCSA');
-            upCSA = CSA.*exp(-eLe(idrch)/2/eLw);
-            dnCSA = CSA.*exp(eLe(idrch)/2/eLw);
+            upCSA = Reach.getReachProp(mobj,'UpstreamCSA'); %best validation in Severn case
+            dnCSA = upCSA.*exp(eLe(idrch)/eLa);             %but sensitive to eLa and eLw in U
+            %alternative basis for area - smoother description of CSA but
+            %delays increase in conc to much further upstream in Severn case
+            % CSA = Reach.getReachProp(mobj,'ReachCSA');
+            % upCSA = CSA.*exp(-eLe(idrch)/2/eLa);
+            % dnCSA = CSA.*exp(eLe(idrch)/2/eLa);
+
             %derive river flow speed from river discharge and local(upstream)csa
             uriv = Reach.getReachProp(mobj,'RiverFlow');
             %
@@ -641,7 +571,8 @@ classdef Advection < handle
             qtp = floor((term1.*(term2-term3+term4)-term5).*upCSA);
             %tidal pumping at the downstream end of each reach  
             term2 = aef.*kno.*(xi-eLe(idrch))./Hav;
-            qtp0 = floor((term1.*(term2-term3+term4)-term5).*dnCSA); 
+            term5 = [term5(1);term5(1:end-1)]; %offset to get downstream velocity      
+            qtp0 = floor((term1.*(term2-term3+term4)-term5).*dnCSA); %only mouth values used in tidalpumpingGraph
         end
 
 %%       
@@ -727,7 +658,42 @@ classdef Advection < handle
                 obj.InternalAdv(:,idx) = [];
             end
         end
-        
+
+%%
+        function [qs,qsIn,qsOut] = getDriftFlow(obj,mobj,QS,QSIn,QSOut)            
+            %adjust littoral drift rates to equivalent flow rates
+            eleobj = getClassObj(mobj,'Inputs','Element');
+            estobj = getClassObj(mobj,'Inputs','Estuary');
+            cE = getEleProp(eleobj,'EqConcentration');
+            nele = length(eleobj);
+            kCeI = River.getRiverProp(mobj,'tsRiverConc')./cE; 
+            y2s = mobj.Constants.y2s;
+            cES = estobj.EqConcCoarse;
+            [D,dExt] = Estuary.getDispersion(mobj);
+            [Q,qIn,~] = Advection.getAdvectionFlow(mobj,'River');
+            [Qtp,qtpIn,~] = Advection.getAdvectionFlow(mobj,'Qtp');
+            %convert drifts to flow rates in m3/s
+            qsIn = QSIn./cE/y2s;
+            qsOut = QSOut./cE/y2s;
+            dqIn = dExt+(kCeI.*qIn)+qtpIn+qsIn;
+            qs = diag(1./cE)*QS/y2s;
+            Qs = advMatrix(obj,qs,qsOut,nele);
+            DQ = D+Q+Qtp+Qs;
+            
+            tol = cES/100; diff = 1; count = 0; conc0 = cES;
+            while diff>tol && count<10  
+                %iterate to find Qs based on convergence of concentration
+                conc = ASM_model.asmitaConcentrations(mobj,DQ,dqIn);
+                qsOut = QSOut./conc/y2s;
+                qs = diag(1./conc)*QS/y2s;
+                Qs = advMatrix(obj,qs,qsOut,nele);
+                DQ = D+Q+Qtp+Qs;
+                diff = sum(abs(conc0-conc).*(qsOut~=0));
+                conc0 = conc;
+                count = count+1;
+            end
+        end
+ 
 %%
         function ok = checkMassBalance(obj,AdvType)
             %check mass balance of advective flows
@@ -830,7 +796,7 @@ classdef Advection < handle
             obj.ExternalAdvOut = FlowOut(:,idout);%column 1 is the sink output
             obj.InternalAdv = IntFlows; 
         end
-        
+       
 %%
         function clearAdvection(obj,AdvType)
             %clear advection properties based on AdvType
@@ -853,7 +819,87 @@ classdef Advection < handle
             end
              setClassObj(mobj,'Inputs','Advection',obj);
         end
+        
+%%
+        function Q = advMatrix(~,q,qOut,nele)
+            %set up advection flow matrix
+            Q = -q;            
+            for j=1:nele
+                Q(j,j) = sum(q(j,:))+qOut(j);
+            end
+            % Use transpose of Q to match exchanges against concentrations
+            Q = Q';
+        end
 
+%%
+        function g_landward = tidalpumpingGraph(obj,mobj,qtp,qtp0)
+            %extract the tidal pumping graph based on the tp discharges at the start
+            %and end of each reach
+            extype = mobj.GeoType(mobj.EXtypes);
+            %invert the RiverGraph to get a landward version
+            g_landward = inverse_graph(obj.RiverGraph);
+            RchIDs = g_landward.Nodes.EleID;
+            RchType = g_landward.Nodes.Type;
+            RchName = g_landward.Nodes.Name;
+            %to assign the qtp flows use the edge weights
+            flowNodes = g_landward.Edges.EndNodes;
+            flowWeight = g_landward.Edges.Weight;
+            qtpWeight = zeros(size(flowWeight));
+            
+            
+            
+            isexternal = ismatch(RchType,extype);
+            if any(isexternal)
+                qtp = [qtp;0]; qtp0 = [0;qtp0];
+            end
+            %handle all the nodes linked to the outside
+            outerNodes = successors(g_landward,1);            
+            for i=1:length(outerNodes)  
+                isextnode = strcmp(RchType(outerNodes(i)),extype);
+                if any(isextnode)
+                    %outerNode i is an external element type. Find what it
+                    %links to in the network
+                    chFlowID = successors(g_landward,outerNodes(i));                   
+                else
+                    %outerNode is a reach element linked to the outside
+                    chFlowID = outerNodes(i);
+                end
+                chRchID = RchIDs(chFlowID);
+                %need to remove external elements to get correct ID
+%                 RchIDs(i) = [];
+%                 innerRchs = RchIDs(2:end-1);
+%                 chRchID = innerRchs==chRchID;
+                qtpWeight(i) = qtp0(chRchID); %input to reaches from outside
+            end
+            
+            innerNodes = find(qtpWeight==0);
+            for i=1:length(innerNodes)  
+                idx = innerNodes(i);      %iterate over list of innerNodes
+                nodeName = flowNodes(innerNodes(i),1);
+                idf = find(strcmp(RchName,nodeName));  %id of node i within full graph
+                idr = find(strcmp(RchName(2:end-1),nodeName)); %Element Id (no offset)
+                branchIDs = successors(g_landward,idf); %upstream branches connected to node i 
+                if length(branchIDs)>1
+                    %handle branches based on river flows
+                    edgeidx = findedge(g_landward,idf,branchIDs);
+                    totalFlow = sum(flowWeight(edgeidx)); %total in flow from connected branches
+                    inFlow = flowWeight(idx); %in flow from ith branch 
+                    qtpWeight(idx) = floor(qtp(idr)*inFlow/totalFlow);
+                else
+                    preBranchIDs = inedges(g_landward,idf);
+                    if qtpWeight(preBranchIDs)<qtp(idr)
+                        %trap branch with flow increaseing upstream - set 
+                        %to downstream value
+                        qtpWeight(idx) = sum(qtpWeight(preBranchIDs));
+                    else
+                        %direct connection
+                        qtpWeight(idx) = qtp(idr);
+                    end
+                end                
+            end
+            
+            g_landward.Edges.Weight = qtpWeight;
+        end
 %%
         function ok = checkAdvMassBalance(obj)
             %checks mass balance of properties loaded into internal

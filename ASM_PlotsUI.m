@@ -129,7 +129,13 @@ classdef ASM_PlotsUI < muiDataUI
                         setval = sel_uic{2}.Value;  %current dataset selection
                         dataset = dsnames{setval};
                         sel_uic{i}.String = cobj.Data.(dataset).Dimensions.EleName;
-                        sel_uic{i}.Value = 1;                            
+                        sel_uic{i}.Value = 1;   
+                    case 'RunTime'
+                        runtime = cobj.Data.(dataset).RowNames;
+                        setTimeSlider(obj,src,runtime);
+                        sel_uic{i}.Min = year(runtime(1));
+                        sel_uic{i}.Max = year(runtime(end));
+                        sel_uic{i}.Value = year(runtime(1));
                     case 'Type'
                         sel_uic{i}.String = S.Type;
                     otherwise
@@ -137,6 +143,16 @@ classdef ASM_PlotsUI < muiDataUI
                 end
             end        
             obj.TabContent(itab).Selections = sel_uic;
+        end
+%%
+        function setTimeSlider(~,src,runtime)
+            %set the end markers and current value text for the slider
+            htxt = findobj(src,'Tag','SLstart');
+            htxt.String = year(runtime(1));
+            htxt = findobj(src,'Tag','SLend');
+            htxt.String = year(runtime(end));
+            htxt = findobj(src,'Tag','RunTimevalue');
+            htxt.String = year(runtime(1));
         end
 %%        
         function useSelection(obj,src,mobj)  
@@ -191,14 +207,20 @@ classdef ASM_PlotsUI < muiDataUI
             %overload defaults defined in muiDataUI.defaultTabContent
             itab = strcmp(obj.Tabs2Use,src.Tag);
             S = obj.TabContent(itab);
-            S.HeadPos = [0.86,0.1];    %header vertical position and height
-            txt1 = 'For an animated Distance plot, select Case, Dataset, and Variable';
-            txt2 = 'Assign to the Var button and adjust the variable range, and scaling, if required';
-            txt3 = 'Select the Type of plot (eg bar or stem) and then use the Select button to continue';
-            S.HeadText = sprintf('1 %s\n2 %s\n3 %s',txt1,txt2,txt3); 
-            %Use default lists except
+            S.HeadPos = [0.86,0.12];    %header vertical position and height
+            txt1 = 'Select Case, Dataset, and Variable,adjust range and scaling, and assign to the Var button ';
+            txt2 = 'For snap shot plot select Run Time. For animation change Ti button to Mv';
+            txt3 = 'For X-T surface plot select surface Type, otherwise use line type (eg bar or stem)';
+            txt4 = 'Use the Select button to generate plot selection';
+            S.HeadText = sprintf('1 %s\n2 %s\n3 %s\n4 %s',txt1,txt2,txt3,txt4); 
+            %Use default lists except   For an animated Distance plot, 
+            S.Titles = {'Case','Dataset','Variable','Run Time','Type'};  
+            S.Order = {'Case','Dataset','Variable','RunTime','Type'};
+            S.Style = {'popupmenu','popupmenu','popupmenu','slider','popupmenu'};
+            %distance plot can generate single line plot, animataion of 
+            %line plot, or surface plot
             S.Type = {'line','bar','scatter','stem','stairs',...
-                      'surf','contour','contourf','mesh','User'};
+                      'surf','contour','contourf','mesh','User'}; 
             %Tab control button options
             %Use defaults
             
@@ -207,7 +229,19 @@ classdef ASM_PlotsUI < muiDataUI
             S.XYZmxvar = 0;                          %maximum number of dimensions per selection
             S.XYZpanel = [0.04,0.18,0.91,0.15];      %position for XYZ button panel
             S.XYZlabels = {'Var'};                   %default button labels
-            %Action button specifications - use default
+            %Action button specifications
+            S.ActButNames = {'Refresh','Animate'}; %names assigned selection struct
+            S.ActButText = {char(174),'Ti'};     %labels for additional action buttons
+            % Negative values in ActButPos indicate that a
+            % button is alligned with a selection option numbered in the 
+            % order given by S.Titles
+            S.ActButPos = [0.86,-1;0.895,0.22];%positions for action buttons   
+            % action button callback function names
+            S.ActButCall = {'@(src,evt)updateCaseList(obj,src,evt,mobj)',...
+                            '@(src,evt)setAnimate(src,evt)'};
+            % tool tips for buttons             
+            S.ActButTip = {'Refresh data list',...
+                           'Snap shot. Press to use animate'};  
             
             obj.TabContent(itab) = S;                %update object
         end
