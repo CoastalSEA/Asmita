@@ -73,7 +73,7 @@ classdef ASM_model < ASMinterface
             for i=1:length(eleobj)
                 alpha = etypalpha.(eletype{i});
                 beta = etypbeta.(eletype{i});
-                isTReq = logical(eqType.(eletype{i}));
+                isTReq = ~logical(eqType.(eletype{i})); %switch to true if tidal range equilbrium
                 eleobj(i).EqSurfaceArea = EqSA(i);
                 switch eletype{i}
                     case 'Saltmarsh'
@@ -83,7 +83,7 @@ classdef ASM_model < ASMinterface
                             eleobj(i).EqVolume = alpha*prism(i)^beta;
                         end
                     otherwise
-                        if ~isTReq %appplies to any element type (eg tidalflat)
+                        if isTReq %appplies to any element type (eg tidalflat)
                             eleobj(i).EqVolume = alpha*(HWL(i)-LWL(i))^beta;
                         else
                             eleobj(i).EqVolume = alpha*prism(i)^beta;
