@@ -44,12 +44,7 @@ function [exmatrix,exchIn,exchOut,nodetxt] = graph2matrix(flowgraph,nele)
     nodetxt.nid = flowgraph.Nodes.EleID;
     nodetxt.ntype = flowgraph.Nodes.Type;
     nodetxt.nname = flowgraph.Nodes.Name;
-    
-%     if nargin>1 && ~isempty(nele)    %user has specified the network size
-%         nn = nele;
-%     else
-%         nn = numnodes(flowgraph);    %use the flowgraph to determine size
-%     end
+
     nn = numnodes(flowgraph);        %use the flowgraph to determine size
     [s,t] = findedge(flowgraph);
     spmatrix = sparse(s,t,flowgraph.Edges.Weight,nn,nn);
@@ -80,18 +75,18 @@ function [exmatrix,exchIn,exchOut,nodetxt] = graph2matrix(flowgraph,nele)
         exchOut = fullmatrix(idx,~idx);  %exchanges out of the network
     end
 
-    
     matrixsze = size(exmatrix,1);
     %if the matrix is a subset of the network expand to full matrix
     %based on the number of elements required equal to nele
     if nargin>1 && ~isempty(nele) && nele>matrixsze
+        idxx = nodetxt.nid>0;  %update idx in case inner or outer have been added
         %initialise arrays
         exmatrix = zeros(nele,nele);                     %null matrix
         exchIn = zeros(nele,2); exchOut = exchIn;        %null vectors
         newid = zeros(nele,1); newtype = repmat({''},nele,1); newname = newtype;
         %assign values based on node ID stored in nodetxt.nid
-        nids = nodetxt.nid(idx);
-        exmatrix(nids,nids) = fullmatrix(idx,idx);
+        nids = nodetxt.nid(idxx); %use updated idx
+        exmatrix(nids,nids) = fullmatrix(idx,idx); %us original consistent with matrix dimensions
         exchIn(nids,:) = fullmatrix(~idx,idx)';
         exchOut(nids,:) = fullmatrix(idx,~idx);
         %update nodetext to the new array dimension

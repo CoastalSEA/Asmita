@@ -276,6 +276,7 @@ classdef Interventions < matlab.mixin.Copyable
         function [idx,legtxt,ok] = selectInterventionSet(obj,mobj)
             %determine which elements have interventions defined and allow
             %user to select from subset
+            idx = []; legtxt = ''; ok = 0;
             eleobj = getClassObj(mobj,'Inputs','Element');
             count = 0;
             intid = [];
@@ -289,14 +290,14 @@ classdef Interventions < matlab.mixin.Copyable
             end
             %select element to use
             if isempty(intid)
-                    warndlg('No intervention values defined')
-                    idx = []; legtxt = ''; ok = 0;
+                    warndlg('No intervention values defined')                    
                     return;
             elseif length(intid)>1
                 [select, ok] = listdlg('Name','Interventions', ...
                     'PromptString','Select Element with Interventions', ...
                     'SelectionMode','single', ...
-                    'ListString',elename);    
+                    'ListString',elename);   
+                if ok==0, return; end
             else
                 select = 1; ok = 1;
             end 
@@ -311,10 +312,10 @@ classdef Interventions < matlab.mixin.Copyable
             vmax = max(Vol); smax = max(Surf);
             axes('Parent',src);            
             s1 = subplot(2,1,1); 
-            if length(Vol)<3
+            if length(Vol)<5
                 bar(tim,Vol,'DisplayName',legtxt);
             else
-                plot(tim,Vol,'DisplayName',legtxt);
+                stairs(tim,Vol,'DisplayName',legtxt);
             end
             title(legtxt);
             ylabel('Volume change (m^3)');
@@ -325,10 +326,10 @@ classdef Interventions < matlab.mixin.Copyable
             end
             %
             s2 =  subplot(2,1,2);
-            if length(Vol)<3
+            if length(Vol)<5
                 bar(tim,Vol,'DisplayName',legtxt);
             else
-                plot(tim,Surf,'DisplayName',legtxt);
+                stairs(tim,Surf,'DisplayName',legtxt);
             end
             xlabel('Year');
             ylabel('Area change (m^2)');

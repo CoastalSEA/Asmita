@@ -64,7 +64,7 @@ classdef AsmitaTest <  matlab.unittest.TestCase
             
             %diagnostic plots             
             %Failure listing column subscript can be used to select jj
-            jj = 6; 
+            jj = 1; 
             figure('Name','UnitTest','Tag','PlotFig');            
             plot(1:size(actSolution,1),actSolution(:,jj),...
                                 1:size(actSolution,1),expSolution(:,jj));                            

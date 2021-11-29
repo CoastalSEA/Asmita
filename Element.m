@@ -130,6 +130,7 @@ classdef Element < muiPropertyUI
                 userdata = [{obj.EleType}',{obj.EleName}',num2cell([obj.Erodible]')];                           
             end
             obj = eleTable(obj,mobj,userdata);
+            
             setClassObj(mobj,'Inputs','Element',obj);
         end
 %%
@@ -564,7 +565,7 @@ classdef Element < muiPropertyUI
             if isempty(newtable), return; end  %user cancelled  
             var = newtable{:,1};           [obj.EleType] = var{:};            
             var = newtable{:,2};           [obj.EleName] = var{:};            
-            var = num2cell(newtable{:,3}); [obj.Erodible] = var{:};            
+            var = num2cell(newtable{:,3}); [obj.Erodible] = var{:};      
         end     
     end      
 end

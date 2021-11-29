@@ -59,17 +59,12 @@ classdef ASM_Plots < muiPlots
 
             obj.UIsel = gobj.UIselection;
             obj.UIset = gobj.UIsettings;
-            
-            %get the current slider value if a distance snap shot plot
-            if strcmp(obj.UIset.callTab,'Distance') && ~obj.UIset.Animate
-                obj.UIset.RunTime = gobj.TabContent(2).Selections{4}.Value;
-            end
-            
+
             %set the variable order for selected plot type
             obj.Order = obj.Plot.Order.(obj.UIset.callTab);            
             
             %modify the legend text to include case and variable only
-            legformat.idx = [0 1 0];
+            legformat.idx = [0 1 0];  %format as Case(Element)Variable
             legformat.text = {};
             
             dtype = 'array';
@@ -77,9 +72,16 @@ classdef ASM_Plots < muiPlots
                 case 'Time'
                     obj = addSelection(obj,mobj);                   
                     legformat.text = {obj.UIsel(1).Element};
-                case {'Distance','Network'}    
-                    obj = addSelection(obj,mobj);  
-                    legformat.idx = [1 0 1]; %reset to use just case and variable
+                case {'Distance','Network'}
+                    if strcmp(obj.UIset.callTab,'Distance') && isSnapShot(obj,2)
+                        %get the current slider value if a distance snap shot plot
+                        obj.UIset.RunTime = gobj.TabContent(2).Selections{4}.Value;
+                        %format as Case(Time)Variable
+                        legformat.text = {num2str(obj.UIset.RunTime,'%.1f')};
+                    else
+                        legformat.idx = [1 0 1]; %format as Case(Variable)
+                    end
+                    obj = addSelection(obj,mobj);                        
                 case {'2D','2DT'}
                     legformat = repmat(legformat,1,2);
                     legformat(1).text = obj.UIsel(1).dims(2).value;
@@ -160,20 +162,21 @@ classdef ASM_Plots < muiPlots
             %define time as an input
             obj.UIsel(2).variable = 1;
             obj.UIsel(2).property = 2;
-            %could add sub-selection of time here if required
             
+            %assign time if subselection required using RowNames assigned
+            %to obj.UIset.RunTime in getPlot above
             trange = obj.UIsel(1).dims(1).value;            
             obj.UIsel(2).range = trange;
             obj.UIsel(2).desc = 'Time';  
             obj.UIsel(2).dims = struct('name','','value',[]); 
-            if ~obj.UIset.Animate
-                runtime = datetime(1,1,1,0,0,0)+years(obj.UIset.RunTime);
-                obj.UIsel(1).dims(1).value = runtime;
+            if strcmp(obj.UIset.callTab,'Distance') && isSnapShot(obj,2)
+                runtime = datetime(0,1,1)+years(obj.UIset.RunTime);
+                obj.UIsel(1).dims(1).value = runtime;  
             end
             
             %assign Element selection to dimension property
-            if strcmp({'Distance'},obj.UIset.callTab) || ...
-                                    strcmp({'Network'},obj.UIset.callTab)
+            if strcmp(obj.UIset.callTab,'Distance') || ...
+                                      strcmp(obj.UIset.callTab,'Network')
                 caseDef = getRunParams(obj,mobj,1);
                 eleobj = caseDef.Element;
                 eleprop = getEleProp(eleobj,'EleName');  %use Element table
@@ -220,9 +223,7 @@ classdef ASM_Plots < muiPlots
             obj.UIset.callTab = '2DT'; %use default tab name in muiPlots
             obj = setAxisTicks(obj);
             %generate an animation of plot type is a line/point type
-            idx = find(strcmp(obj.UIset.typeList,obj.UIset.Type.String));
-            idsurf = find(strcmp(obj.UIset.typeList,'surf'));
-            if idx>=idsurf
+            if ~isSnapShot(obj,1)
                 %convert from animation to 3D assignment
                 obj.Data.('Z') = obj.Data.Y; 
                 obj.Data.Y = obj.Data.T;
@@ -236,8 +237,19 @@ classdef ASM_Plots < muiPlots
                 end
                 newAnimation(obj);
             else
-                %plot single snap shot 
-                new2Dplot(obj);
+                %plot single snap shot
+                switch obj.UIset.callButton %and Tab Button used
+                    case 'Add'              %add variable to 2D plot
+                        if strcmp(obj.UIset.Type,'bar')
+                            addBarplot(obj);
+                        else
+                            add2Dplot(obj);
+                        end
+                    case 'Delete'           %delete variable from 2D plot
+                        del2Dplot(obj);
+                    otherwise               %create new 2D plot
+                        new2Dplot(obj);
+                end
             end
             adjustAxisTicks(obj,gca);  %adjust tick labels  if defined
         end
@@ -255,16 +267,17 @@ classdef ASM_Plots < muiPlots
             %get the distance for each reach and associated variable values
             caseDef = getRunParams(obj,mobj,1);
             ismidpt = true; %returns lengths at mid-point of each element
-            [obj.Data.reachlength,g] = Reach.getReachLengths(caseDef,ismidpt);
+            [reachlength,g] = Reach.getReachLengths(caseDef,ismidpt);
             yele = obj.Data.Y;
-            if size(yele,2)~=length(obj.Data.reachlength)
+            if size(yele,2)~=length(reachlength)
                 %change variable from element to reach values
                 obj.Data.Y = Reach.getReachEleVar(g,yele);
             end
             %
-            if length(obj.Data.X)~=length(obj.Data.reachlength)
-                obj.Data.X  = obj.Data.reachlength;
-            end
+            %if length(obj.Data.X)~=length(reachlength) %not sure what this
+            %obj.Data.X  = reachlength;                 %is meant to trap????
+            %end   
+            obj.Data.X  = reachlength;
             obj.Title = replace(obj.Title,'Element Name','Distance');
             obj.AxisLabels.X = 'Distance (m)';
         end
@@ -299,6 +312,21 @@ classdef ASM_Plots < muiPlots
             %get node size
             obj.Data.nodesize = obj.UIset.Other;
         end  
+%%
+        function isn = isSnapShot(obj,option)
+            %if a snap shot has been selected return true
+            %option 1 - tests for a surface plot type
+            %option 2 - tests fo a snap shot at point in time
+            idx = find(strcmp(obj.UIset.typeList,obj.UIset.Type.String));
+            idsurf = find(strcmp(obj.UIset.typeList,'surf'));
+            %line plot type selected;
+            isn = idx<idsurf;
+            if option==2
+                %snap shot selected
+                issnap = isfield(obj.UIset,'Animate') && ~obj.UIset.Animate;  
+                isn = isn && issnap;
+            end
+        end
     end
 %%
 %--------------------------------------------------------------------------

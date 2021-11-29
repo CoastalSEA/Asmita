@@ -4,8 +4,8 @@ function UserUnitTesting()
     %set up path to Asmita and then call model
     aspath = 'D:\Work\Tools\MATLAB\MUImodels2\muiApps\Asmita\';
     testpath = 'D:\Work\Tools\MATLAB\MUImodels2\muiApps\Asmita\test_models';
-    datapath = 'D:\Work\Tools\MATLAB\MUImodels2\muiApps\Asmita\test_models\AsmitaOO Data files';
-%     datapath = 'D:\Work\Tools\MATLAB\MUImodels2\muiApps\Asmita\test_models\muiASM TestData';
+%     datapath = 'D:\Work\Tools\MATLAB\MUImodels2\muiApps\Asmita\test_models\AsmitaOO Data files';
+    datapath = 'D:\Work\Tools\MATLAB\MUImodels2\muiApps\Asmita\test_models\muiASM TestData';
     modelpath = 'D:\Work\Tools\MATLAB\MUImodels2\muiApps\Asmita\test_models\muiASM model files';
     addpath(aspath,testpath,datapath,modelpath);
     

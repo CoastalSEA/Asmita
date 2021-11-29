@@ -32,8 +32,8 @@ classdef Asmita < muiModelUI
         %connectivity within the model
         LWtypes = [1,5,7,9]; %GeoTypes that vary with low water
         EXtypes = 6:10;      %GeoTypes that are external to inlet
-        RCtypes = 1;         %Geotypes that define a reach          - could be [1,5]
-        REtypes = 2:6;       %Geotypes that can belong to a reach   - could be [2,3,4,6]
+        RCtypes = 1;         %Geotypes that define a reach - can be [1,5] or 1
+        REtypes = 2:6;       %Geotypes that can belong to a reach - can be [2,3,4,6] or 2:6
         FNtypes = [2,3,4];   %GeoTypes that use fine eq concentration
                              %assume this excludes DeltaFlat????
         %NB: Rivers can only connect to 'Channel' - hard coded in River class.

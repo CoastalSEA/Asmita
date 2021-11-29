@@ -39,15 +39,17 @@ function setgraph(mobj,src,~)
             [g,nlabel] = Advection.initialiseRiverGraph(mobj);
         case 'Drift'
             axtag = 'axDrift';
-            [g,nlabel] = Advection.initialiseDriftGraph(mobj); 
-            %convert from drift rate to equivalent flow rate
-            nele = length(eleobj);
-            [q,exchIn,exchOut,nodetxt] = graph2matrix(g,nele);
-            qIn = exchIn(:,2);
-            qOut = exchOut(:,1);
-            Element.setEqConcentration(mobj);
-            [q,qIn,qOut] = getDriftFlow(advobj,mobj,q,qIn,qOut);
-            equivFlow = matrix2graph(q,qIn,qOut,nodetxt);
+            [g,nlabel] = Advection.initialiseDriftGraph(mobj);
+            if height(g.Edges)>0
+                %convert from drift rate to equivalent flow rate
+                nele = length(eleobj);
+                [q,exchIn,exchOut,nodetxt] = graph2matrix(g,nele);
+                qIn = exchIn(:,2);
+                qOut = exchOut(:,1);
+                Element.setEqConcentration(mobj);
+                [q,qIn,qOut] = getDriftFlow(advobj,mobj,q,qIn,qOut);
+                equivFlow = matrix2graph(q,qIn,qOut,nodetxt);
+            end
         case 'TP Network'
             axtag = 'axTidalPump';
             [g,nlabel] = Advection.initialiseQtpGraph(mobj); 
@@ -102,7 +104,7 @@ function setgraph(mobj,src,~)
             'Tag','panbut'); 
     end
     %
-    if strcmp(src.Tag,'Drift') 
+    if strcmp(src.Tag,'Drift') && height(g.Edges)>0
         hdrift = findobj(src,'Style','pushbutton','Tag','drift');
         h_ax.UserData = equivFlow.Edges.Weight;
         if isempty(hdrift)

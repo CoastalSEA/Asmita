@@ -53,17 +53,6 @@ function [exmatrix,exchIn,exchOut,flowgraph] = setmatrix(eleobj,figtitle,...
     [exmatrix,exchIn,exchOut] = graph2matrix(flowgraph,nele);
 end
 %%
-% function nodetxt = setnodetxt(eleid,eletype,elename,inoutxt)
-%     %use the element id, type and name to return the nodetxt, a struct with
-%     %nid - node id, ntype - node type, nname - node name
-%     %inoutxt - sets the name for the source and sink
-%     nele = length(eleid);
-%     nodetxt.nid = zeros(nele+2,1);
-%     nodetxt.nid = [0;eleid;0];
-%     nodetxt.ntype = [{''};eletype;{''}];                   
-%     nodetxt.nname = [inoutxt(1);elename;inoutxt(2)];
-% end
-%%
 function msg = namemsg()
     msg1 = 'Duplicate element names are not allowed';
     msg2 = 'Some names have been modified';

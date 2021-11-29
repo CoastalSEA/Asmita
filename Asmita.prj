@@ -1,5 +1,5 @@
 <deployment-project plugin="plugin.apptool" plugin-version="1.0">
-  <configuration build-checksum="1076219863" file="D:\Work\Tools\MATLAB\MUImodels2\muiApps\Asmita\Asmita.prj" location="D:\Work\Tools\MATLAB\MUImodels2\muiApps\Asmita" name="Asmita" target="target.mlapps" target-name="Package App">
+  <configuration build-checksum="73586032" file="D:\Work\Tools\MATLAB\MUImodels2\muiApps\Asmita\Asmita.prj" location="D:\Work\Tools\MATLAB\MUImodels2\muiApps\Asmita" name="Asmita" target="target.mlapps" target-name="Package App">
     <param.appname>Asmita</param.appname>
     <param.authnamewatermark>Ian Townend</param.authnamewatermark>
     <param.email>i.townend@soton.ac.uk</param.email>
@@ -14,7 +14,7 @@
     <param.description>ASMITA stands for Aggregated Scale Morphological Interaction between Tidal basin and Adjacent coast. 
 The model is used to examine long-tern morphological change in tidal inlets and estuaries. Rather than schematise a grid of the real-world bathymetry, the model uses elements that represent geomorphological components of the system such as channels, tidal flats, deltas, saltmarshes, etc. As such the model address changes to the sediment volumes in the estuary over long time scales (decades, centuries and aeons).</param.description>
     <param.screenshot>${PROJECT_ROOT}\Asmita_logo.jpg</param.screenshot>
-    <param.version>1.0</param.version>
+    <param.version>3.0</param.version>
     <param.products.name>
       <item>MATLAB</item>
     </param.products.name>
@@ -28,7 +28,6 @@ The model is used to examine long-tern morphological change in tidal inlets and 
     <param.output>${PROJECT_ROOT}</param.output>
     <param.guid>471fc7ce-db4a-474b-b7be-14d29f4c1dd3</param.guid>
     <unset>
-      <param.version />
       <param.platforms />
       <param.output />
     </unset>

@@ -12,17 +12,17 @@ classdef Advection < handle
     %    
     properties               %user defined variables at start of run                      
         RiverFlows = []        %advection matrix, q (m3/s)
-        RiverIn = 0            %array of external flows into estuary
-        RiverOut = 0           %array of external flows out of estuary
+        RiverIn = [0,0]           %array of external flows into estuary
+        RiverOut = [0,0]           %array of external flows out of estuary
         DriftFlows = []        %matrix of littoral drift flows, qs (m3/s)
-        DriftIn = 0            %array of littoral flows into system
-        DriftOut = 0           %array of littoral flows out of system
+        DriftIn = [0,0]            %array of littoral flows into system
+        DriftOut = [0,0]           %array of littoral flows out of system
     end
     
     properties (Transient)  %properties that are time varying
         TidalPumpingFlows = [] %tidal pumping matrix, qtp (m3/s)
-        TidalPumpingIn = 0     %array of tidal pumping flows into estuary
-        TidalPumpingOut = 0    %array of tidal pumping flows out of estuary
+        TidalPumpingIn = [0,0]     %array of tidal pumping flows into estuary
+        TidalPumpingOut = [0,0]    %array of tidal pumping flows out of estuary
         RiverGraph             %handle to graph of river flows (advection)
         DriftGraph             %handle to graph of drift flows (advection)
         QtpGraph               %handle to graph of tidal pumping flows (advection)  
@@ -76,6 +76,7 @@ classdef Advection < handle
                 userdata(2:end-1,2:end-1) = obj.InternalAdv;
             else
                 obj.ExternalAdvIn = zeros(nele,1);
+                obj.ExternalAdvOut = zeros(nele,1);
             end
             preExtAdvIn = obj.ExternalAdvIn;
             
@@ -94,14 +95,17 @@ classdef Advection < handle
             %define tableUI for user to edit matrix
             prop = 'Advection';
             prompt = sprintf('Enter advection between elements %s\n(from row element to column element in direction of flow)',qunits);            
-            [obj.InternalAdv,obj.ExternalAdvIn,obj.ExternalAdvOut,obj.RiverGraph] = ...
+            [obj.InternalAdv,AdvIn,AdvOut,obj.RiverGraph] = ...
                             setmatrix(eleobj,prop,prompt,tabletxt,userdata);
-
+            %setmatrix returns [nx2] exchange arrays. restore to vector
+            obj.ExternalAdvIn = AdvIn(:,2);
+            obj.ExternalAdvOut = AdvOut(:,1);
+            
             %check whether inputs have been changed and update
             checkSourceInputs(obj,mobj,AdvType,flowVar,g_flow,src,preExtAdvIn);
             
             %assign updated flow field to the specified flow type
-            obj = setAdvectionProps(obj,AdvType);   
+            obj = addAdvectionProps(obj,AdvType);   
             setClassObj(mobj,'Inputs','Advection',obj);
             
             %--------------------------------------------------------------
@@ -137,7 +141,7 @@ classdef Advection < handle
             function checkSourceInputs(obj,mobj,AdvType,flowVar,...
                                                    g_flow,src,preExtAdvIn)                 
                 %check whether inputs have been changed and update
-                idx = diff([preExtAdvIn,obj.ExternalAdvIn(:,2)],1,2);
+                idx = diff([preExtAdvIn,obj.ExternalAdvIn],1,2);
                 idinputs = find(idx~=0);
                 if ~isempty(src.InputEle)        %if some source already exists
                     idnewinput = setdiff(idinputs,src.InputEle);
@@ -146,7 +150,7 @@ classdef Advection < handle
                             %check that source is assigned to an element that exists   
                             ok = src.okEle(idnewinput(i));
                             if ok==0 %catch changes to elements that are not valid
-                                if obj.ExternalAdvIn(idnewinput(i),2)>0 %only report when a non-zero value has been input (ie not corrections back to zero)
+                                if obj.ExternalAdvIn(idnewinput(i))>0 %only report when a non-zero value has been input (ie not corrections back to zero)
                                     msgtxt = sprintf(src.msg{1},idnewinput(i));
                                     warndlg(msgtxt);
                                 end
@@ -161,7 +165,7 @@ classdef Advection < handle
                     
                     for i=1:length(src.InputEle) 
                         %update existing sources
-                        g_flow(i).(flowVar) =  obj.ExternalAdvIn(src.InputEle(i),2);
+                        g_flow(i).(flowVar) =  obj.ExternalAdvIn(src.InputEle(i));
                     end
 
                 else                         %if no input source exist
@@ -612,13 +616,13 @@ classdef Advection < handle
             if ~isempty(obj.RiverFlows)
                 obj = setAdvectionType(obj,'River');
                 obj = updateAdvectionArrays(obj);
-                obj = setAdvectionProps(obj,'River');
+                obj = addAdvectionProps(obj,'River');
             end
             %
             if ~isempty(obj.DriftFlows)
                 obj = setAdvectionType(obj,'Drift');
                 obj = updateAdvectionArrays(obj);
-                obj = setAdvectionProps(obj,'Drift');
+                obj = addAdvectionProps(obj,'Drift');
             end
             %
             setClassObj(mobj,'Inputs','Advection',obj);        
@@ -742,22 +746,52 @@ classdef Advection < handle
         function obj = setAdvectionProps(obj,AdvType)
             %assign the internal advection property values to the
             %specified set of flow type properties (River, Drift, Qtp)
+            idin = 2; idout = 1;
             switch AdvType
                 case 'River'
-                    obj.RiverIn = obj.ExternalAdvIn;
-                    obj.RiverOut = obj.ExternalAdvOut;
+                    obj.RiverIn(:,idin) = obj.ExternalAdvIn;
+                    obj.RiverOut(:,idout) = obj.ExternalAdvOut;
                     obj.RiverFlows = obj.InternalAdv;                    
                 case 'Drift'
-                    obj.DriftIn = obj.ExternalAdvIn;
-                    obj.DriftOut = obj.ExternalAdvOut;
+                    obj.DriftIn(:,idin) = obj.ExternalAdvIn;
+                    obj.DriftOut(:,idout) = obj.ExternalAdvOut;
                     obj.DriftFlows = obj.InternalAdv;                    
                 case 'Qtp'
-                    obj.TidalPumpingIn = obj.ExternalAdvIn;
-                    obj.TidalPumpingOut = obj.ExternalAdvOut;
+                    idin = 1; idout = 2;
+                    obj.TidalPumpingIn(:,idin) = obj.ExternalAdvIn;
+                    obj.TidalPumpingOut(:,idout) = obj.ExternalAdvOut;
                     obj.TidalPumpingFlows = obj.InternalAdv;
             end
         end
+%%
+        function obj = addAdvectionProps(obj,AdvType)
+            %assign the internal advection property values to the
+            %specified set of flow type properties (River, Drift, Qtp)
+            newlen = length(obj.ExternalAdvIn);
+            AdvIn = zeros(newlen,2); AdvOut = AdvIn;
+            if strcmp(AdvType,'Qtp')
+                AdvIn(:,1) = obj.ExternalAdvIn;
+                AdvOut(:,2) = obj.ExternalAdvOut;
+            else
+                AdvIn(:,2) = obj.ExternalAdvIn;
+                AdvOut(:,1) = obj.ExternalAdvOut;
+            end
 
+            switch AdvType
+                case 'River'
+                    obj.RiverIn = AdvIn;
+                    obj.RiverOut = AdvOut;
+                    obj.RiverFlows = obj.InternalAdv;                    
+                case 'Drift'
+                    obj.DriftIn = AdvIn;
+                    obj.DriftOut = AdvOut;
+                    obj.DriftFlows = obj.InternalAdv;                    
+                case 'Qtp'
+                    obj.TidalPumpingIn = AdvIn;
+                    obj.TidalPumpingOut = AdvOut;
+                    obj.TidalPumpingFlows = obj.InternalAdv;
+            end
+        end
 %%
         function addSource(obj,mobj,AdvType,idinput)
             %add a new advection source based on AdvType
@@ -792,7 +826,7 @@ classdef Advection < handle
                     idin = 1; idout = 2;
             end
             %assign to generic input. Only need the source in and sink out
-            obj.ExternalAdvIn = FlowIn(:,idin);  %column 2 is the source input
+            obj.ExternalAdvIn = FlowIn(:,idin);   %column 2 is the source input
             obj.ExternalAdvOut = FlowOut(:,idout);%column 1 is the sink output
             obj.InternalAdv = IntFlows; 
         end
@@ -823,6 +857,7 @@ classdef Advection < handle
 %%
         function Q = advMatrix(~,q,qOut,nele)
             %set up advection flow matrix
+            if isempty(q), Q = 0; return; end
             Q = -q;            
             for j=1:nele
                 Q(j,j) = sum(q(j,:))+qOut(j);

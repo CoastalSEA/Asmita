@@ -1,0 +1,163 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>ASMITA functions</title><meta name="generator" content="MATLAB 9.9"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2021-11-26"><meta name="DC.source" content="asmita_functions.m"><style type="text/css">
+html,body,div,span,applet,object,iframe,h1,h2,h3,h4,h5,h6,p,blockquote,pre,a,abbr,acronym,address,big,cite,code,del,dfn,em,font,img,ins,kbd,q,s,samp,small,strike,strong,tt,var,b,u,i,center,dl,dt,dd,ol,ul,li,fieldset,form,label,legend,table,caption,tbody,tfoot,thead,tr,th,td{margin:0;padding:0;border:0;outline:0;font-size:100%;vertical-align:baseline;background:transparent}body{line-height:1}ol,ul{list-style:none}blockquote,q{quotes:none}blockquote:before,blockquote:after,q:before,q:after{content:'';content:none}:focus{outine:0}ins{text-decoration:none}del{text-decoration:line-through}table{border-collapse:collapse;border-spacing:0}
+
+html { min-height:100%; margin-bottom:1px; }
+html body { height:100%; margin:0px; font-family:Arial, Helvetica, sans-serif; font-size:10px; color:#000; line-height:140%; background:#fff none; overflow-y:scroll; }
+html body td { vertical-align:top; text-align:left; }
+
+h1 { padding:0px; margin:0px 0px 25px; font-family:Arial, Helvetica, sans-serif; font-size:1.5em; color:#d55000; line-height:100%; font-weight:normal; }
+h2 { padding:0px; margin:0px 0px 8px; font-family:Arial, Helvetica, sans-serif; font-size:1.2em; color:#000; font-weight:bold; line-height:140%; border-bottom:1px solid #d6d4d4; display:block; }
+h3 { padding:0px; margin:0px 0px 5px; font-family:Arial, Helvetica, sans-serif; font-size:1.1em; color:#000; font-weight:bold; line-height:140%; }
+
+a { color:#005fce; text-decoration:none; }
+a:hover { color:#005fce; text-decoration:underline; }
+a:visited { color:#004aa0; text-decoration:none; }
+
+p { padding:0px; margin:0px 0px 20px; }
+img { padding:0px; margin:0px 0px 20px; border:none; }
+p img, pre img, tt img, li img, h1 img, h2 img { margin-bottom:0px; }
+
+ul { padding:0px; margin:0px 0px 20px 23px; list-style:square; }
+ul li { padding:0px; margin:0px 0px 7px 0px; }
+ul li ul { padding:5px 0px 0px; margin:0px 0px 7px 23px; }
+ul li ol li { list-style:decimal; }
+ol { padding:0px; margin:0px 0px 20px 0px; list-style:decimal; }
+ol li { padding:0px; margin:0px 0px 7px 23px; list-style-type:decimal; }
+ol li ol { padding:5px 0px 0px; margin:0px 0px 7px 0px; }
+ol li ol li { list-style-type:lower-alpha; }
+ol li ul { padding-top:7px; }
+ol li ul li { list-style:square; }
+
+.content { font-size:1.2em; line-height:140%; padding: 20px; }
+
+pre, code { font-size:12px; }
+tt { font-size: 1.2em; }
+pre { margin:0px 0px 20px; }
+pre.codeinput { padding:10px; border:1px solid #d3d3d3; background:#f7f7f7; }
+pre.codeoutput { padding:10px 11px; margin:0px 0px 20px; color:#4c4c4c; }
+pre.error { color:red; }
+
+@media print { pre.codeinput, pre.codeoutput { word-wrap:break-word; width:100%; } }
+
+span.keyword { color:#0000FF }
+span.comment { color:#228B22 }
+span.string { color:#A020F0 }
+span.untermstring { color:#B20000 }
+span.syscmd { color:#B28C00 }
+span.typesection { color:#A0522D }
+
+.footer { width:auto; padding:10px 0px; margin:25px 0px 0px; border-top:1px dotted #878787; font-size:0.8em; line-height:140%; font-style:italic; color:#878787; text-align:left; float:none; }
+.footer p { margin:0px; }
+.footer a { color:#878787; }
+.footer a:hover { color:#878787; text-decoration:underline; }
+.footer a:visited { color:#878787; }
+
+table th { padding:7px 5px; text-align:left; vertical-align:middle; border: 1px solid #d6d4d4; font-weight:bold; }
+table td { padding:7px 5px; text-align:left; vertical-align:top; border:1px solid #d6d4d4; }
+
+
+
+
+
+  </style></head><body><div class="content"><h1>ASMITA functions</h1><!--introduction--><p>Summary of functions available in the <i>asmita_functions</i> folder. Use the Matlab&#8482; help function in the command window to get further details of each function.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Saltmarsh functions</a></li><li><a href="#3">Network functions</a></li><li><a href="#5">Other functions</a></li><li><a href="#7">See Also</a></li></ul></div><h2 id="1">Saltmarsh functions</h2><p>Functions that implement generic aspects of the saltmarsh model</p><div><ul><li><b>bioenhancedsettling.m</b> - Adjust the vertical exchange due to biological enhanced settling for the specified depth</li></ul></div><div><ul><li><b>concovermarsh.m</b> - Calculate time averaged concentration over the marsh for a range of depths and return a dstable of depth, concentration and submergence time for an emulated spring-neap cycle.</li></ul></div><div><ul><li><b>interpdepthload.m</b> - Iterate to find the equilibrium depth and sediment load, qm(s^-1)</li></ul></div><div><ul><li><b>marsh_conc.m</b> - Calculate the concentration over a marsh flat using method proposed by Krone(1987).</li></ul></div><div><ul><li><b>morris_biocoeffs.m</b> - Calculate the biomass coefficients for Bc=aD+bD^2+c where D is the depth at peak biomass</li></ul></div><div><ul><li><b>morris_eqdepth.m</b> - Solve the Morris equation for equilibrium depth</li></ul></div><h2 id="3">Network functions</h2><p>Functions used to manipulate networks and graphs of flow pathways</p><div><ul><li><b>ele2node.m</b> - find graph node ids for specified element ids</li></ul></div><div><ul><li><b>graph2matrix.m</b> - extract the exchange matrix and vectors of external exchanges from a directed graph with labels defined in nodetxt</li></ul></div><div><ul><li><b>inverse_graph.m</b> - To reverse the direction of a directed graph by taking the inverse of the the adjacency matrix</li></ul></div><div><ul><li><b>matrix2graph.m</b> - use an exchange matrix and a vector of external exchanges to construct a directed graph with labels defined in nodetxt</li></ul></div><div><ul><li><b>rescale_graph.m</b> - rescale the exchanges in a network based on the inputs defined in the exchIn vector</li></ul></div><div><ul><li><b>setgraph.m</b> - update the Network or Flow tabs with directed graphs of network</li></ul></div><div><ul><li><b>setmatrix.m</b> - generate UI to edit dispersion or advection matrix</li></ul></div><div><ul><li><b>setnodetext.m</b> - generate UI to edit dispersion or advection matrix</li></ul></div><div><ul><li><b>type_sub_graph.m</b> - sub-sample a graph network based on node type</li></ul></div><h2 id="5">Other functions</h2><p>Other functions used in Asmita</p><div><ul><li><b>readinputdata.m</b> -read advection timeseries data from file. Read format is file specific but can handle multiple columns with space or tab separators</li></ul></div><div><ul><li><b>sealevelrise.m</b> - Function to compute sea level rise using linear or exponential rate of change</li></ul></div><div><ul><li><b>userprismcoeffs.m</b> - parameters to define volume-prism relationships of the form: volume = alpha*prism^beta or volume = alpha*tidal range^beta</li></ul></div><h2 id="7">See Also</h2><p>The <a href="matlab:doc('asmita_classes')">additional classes</a> used in Asmita and the <a href="matlab:open_manual">manual</a>, which provides further details of setup and configuration of the model.</p><p class="footer"><br><a href="https://www.mathworks.com/products/matlab/">Published with MATLAB&reg; R2020b</a><br></p></div><!--
+##### SOURCE BEGIN #####
+%% ASMITA functions
+% Summary of functions available in the _asmita_functions_ folder. Use the Matlab(TM)
+% help function in the command window to get further details of each
+% function.
+
+%% Saltmarsh functions
+% Functions that implement generic aspects of the saltmarsh model
+% 
+
+%%
+% * *bioenhancedsettling.m*
+% - Adjust the vertical exchange due to biological enhanced settling
+% for the specified depth
+%
+% * *concovermarsh.m*
+% - Calculate time averaged concentration over the marsh for a range of
+% depths and return a dstable of depth, concentration and submergence time
+% for an emulated spring-neap cycle.
+%
+% * *interpdepthload.m*
+% - Iterate to find the equilibrium depth and sediment load, qm(s^-1)
+%
+% * *marsh_conc.m*
+% - Calculate the concentration over a marsh flat using method proposed 
+% by Krone(1987).
+%
+% * *morris_biocoeffs.m*
+% - Calculate the biomass coefficients for Bc=aD+bD^2+c where D is
+% the depth at peak biomass
+%
+% * *morris_eqdepth.m*
+% - Solve the Morris equation for equilibrium depth
+
+%% Network functions
+% Functions used to manipulate networks and graphs of flow pathways
+
+%%
+% * *ele2node.m*
+% - find graph node ids for specified element ids
+% 
+% * *graph2matrix.m*
+% - extract the exchange matrix and vectors of external exchanges from
+% a directed graph with labels defined in nodetxt
+%
+% * *inverse_graph.m*
+% - To reverse the direction of a directed graph by taking the inverse of
+% the the adjacency matrix
+%
+% * *matrix2graph.m*
+% - use an exchange matrix and a vector of external exchanges to construct
+% a directed graph with labels defined in nodetxt
+%
+% * *rescale_graph.m*
+% - rescale the exchanges in a network based on the inputs defined in the
+% exchIn vector
+%
+% * *setgraph.m*
+% - update the Network or Flow tabs with directed graphs of network
+%
+% * *setmatrix.m*
+% - generate UI to edit dispersion or advection matrix
+%
+% * *setnodetext.m*
+% - generate UI to edit dispersion or advection matrix 
+%
+% * *type_sub_graph.m*
+% - sub-sample a graph network based on node type
+%
+
+%% Other functions
+% Other functions used in Asmita
+
+%%
+% * *readinputdata.m*
+% -read advection timeseries data from file. Read format is file specific
+% but can handle multiple columns with space or tab separators
+%
+% * *sealevelrise.m*
+% - Function to compute sea level rise using linear or exponential rate of
+% change
+%
+% * *userprismcoeffs.m*
+% - parameters to define volume-prism relationships of the form:
+% volume = alpha*prism^beta or volume = alpha*tidal range^beta
+
+%% See Also
+% The <matlab:doc('asmita_classes') additional classes> used in Asmita and
+% the <matlab:open_manual manual>, which provides further details of setup and 
+% configuration of the model.
+
+##### SOURCE END #####
+--></body></html>

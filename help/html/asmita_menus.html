@@ -1,0 +1,179 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Menu Options</title><meta name="generator" content="MATLAB 9.9"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2021-11-26"><meta name="DC.source" content="asmita_menus.m"><style type="text/css">
+html,body,div,span,applet,object,iframe,h1,h2,h3,h4,h5,h6,p,blockquote,pre,a,abbr,acronym,address,big,cite,code,del,dfn,em,font,img,ins,kbd,q,s,samp,small,strike,strong,tt,var,b,u,i,center,dl,dt,dd,ol,ul,li,fieldset,form,label,legend,table,caption,tbody,tfoot,thead,tr,th,td{margin:0;padding:0;border:0;outline:0;font-size:100%;vertical-align:baseline;background:transparent}body{line-height:1}ol,ul{list-style:none}blockquote,q{quotes:none}blockquote:before,blockquote:after,q:before,q:after{content:'';content:none}:focus{outine:0}ins{text-decoration:none}del{text-decoration:line-through}table{border-collapse:collapse;border-spacing:0}
+
+html { min-height:100%; margin-bottom:1px; }
+html body { height:100%; margin:0px; font-family:Arial, Helvetica, sans-serif; font-size:10px; color:#000; line-height:140%; background:#fff none; overflow-y:scroll; }
+html body td { vertical-align:top; text-align:left; }
+
+h1 { padding:0px; margin:0px 0px 25px; font-family:Arial, Helvetica, sans-serif; font-size:1.5em; color:#d55000; line-height:100%; font-weight:normal; }
+h2 { padding:0px; margin:0px 0px 8px; font-family:Arial, Helvetica, sans-serif; font-size:1.2em; color:#000; font-weight:bold; line-height:140%; border-bottom:1px solid #d6d4d4; display:block; }
+h3 { padding:0px; margin:0px 0px 5px; font-family:Arial, Helvetica, sans-serif; font-size:1.1em; color:#000; font-weight:bold; line-height:140%; }
+
+a { color:#005fce; text-decoration:none; }
+a:hover { color:#005fce; text-decoration:underline; }
+a:visited { color:#004aa0; text-decoration:none; }
+
+p { padding:0px; margin:0px 0px 20px; }
+img { padding:0px; margin:0px 0px 20px; border:none; }
+p img, pre img, tt img, li img, h1 img, h2 img { margin-bottom:0px; }
+
+ul { padding:0px; margin:0px 0px 20px 23px; list-style:square; }
+ul li { padding:0px; margin:0px 0px 7px 0px; }
+ul li ul { padding:5px 0px 0px; margin:0px 0px 7px 23px; }
+ul li ol li { list-style:decimal; }
+ol { padding:0px; margin:0px 0px 20px 0px; list-style:decimal; }
+ol li { padding:0px; margin:0px 0px 7px 23px; list-style-type:decimal; }
+ol li ol { padding:5px 0px 0px; margin:0px 0px 7px 0px; }
+ol li ol li { list-style-type:lower-alpha; }
+ol li ul { padding-top:7px; }
+ol li ul li { list-style:square; }
+
+.content { font-size:1.2em; line-height:140%; padding: 20px; }
+
+pre, code { font-size:12px; }
+tt { font-size: 1.2em; }
+pre { margin:0px 0px 20px; }
+pre.codeinput { padding:10px; border:1px solid #d3d3d3; background:#f7f7f7; }
+pre.codeoutput { padding:10px 11px; margin:0px 0px 20px; color:#4c4c4c; }
+pre.error { color:red; }
+
+@media print { pre.codeinput, pre.codeoutput { word-wrap:break-word; width:100%; } }
+
+span.keyword { color:#0000FF }
+span.comment { color:#228B22 }
+span.string { color:#A020F0 }
+span.untermstring { color:#B20000 }
+span.syscmd { color:#B28C00 }
+span.typesection { color:#A0522D }
+
+.footer { width:auto; padding:10px 0px; margin:25px 0px 0px; border-top:1px dotted #878787; font-size:0.8em; line-height:140%; font-style:italic; color:#878787; text-align:left; float:none; }
+.footer p { margin:0px; }
+.footer a { color:#878787; }
+.footer a:hover { color:#878787; text-decoration:underline; }
+.footer a:visited { color:#878787; }
+
+table th { padding:7px 5px; text-align:left; vertical-align:middle; border: 1px solid #d6d4d4; font-weight:bold; }
+table td { padding:7px 5px; text-align:left; vertical-align:top; border:1px solid #d6d4d4; }
+
+
+
+
+
+  </style></head><body><div class="content"><h1>Menu Options</h1><!--introduction--><p>Summary of the options available for each drop down menu.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">File</a></li><li><a href="#2">Tools</a></li><li><a href="#3">Project</a></li><li><a href="#5">Setup</a></li><li><a href="#6">Run</a></li><li><a href="#7">Analysis</a></li><li><a href="#8">Help</a></li><li><a href="#9">See Also</a></li></ul></div><h2 id="1">File</h2><div><ul><li><b>New</b>: clears any existing model (prompting to save if not already saved) and a popup dialog box prompts for Project name and Date (default is current date).</li><li><b>Open</b>: existing Asmita models are saved as *.mat files. User selects a model from dialog box.</li><li><b>Save</b>: save a file that has already been saved.</li><li><b>Save as</b>: save a file with a new or different name.</li><li><b>Exit</b>: exit the program. The close window button has the same effect.</li></ul></div><h2 id="2">Tools</h2><div><ul><li><b>Refresh</b>: updates Cases tab.</li><li><b>Clear all &gt; Project</b>: deletes the current project, including all Setup data and all Cases.</li><li><b>Clear all &gt; Figures</b>: deletes all results plot figures (useful if a large number of plots have been produced).</li><li><b>Clear all &gt; Cases</b>: deletes all Cases listed on the Cases tab but does not affect the model setup.</li></ul></div><h2 id="3">Project</h2><div><ul><li><b>Project Info</b>: edit the Project name and Date</li><li><b>Cases &gt; Edit Description</b>: user selects a Case to edit the Case description.</li><li><b>Cases &gt; Edit Data Set</b>: initialises the Edit Data UI for editing data sets.</li><li><b>Cases &gt; Save</b>: user selects a data set to be saved from a list box of Cases and the is then prompted to name the file. The data are written to an Excel spreadsheet.</li><li><b>Cases &gt; Delete</b>: user selects Case(s) to be deleted from a list box of Cases and results are then deleted (model setup is not changed).</li><li><b>Cases &gt; Reload</b>: user selects a Case to reload as the current parameter settings.</li><li><b>Cases &gt; View settings</b>: user selects a Case to display a table listing the parameters used for the selected Case.</li><li><b>Export/Import &gt; Export</b>: user selects a Case class instance to export as a mat file.</li><li><b>Export/Import &gt; Import</b>: user selects an exported Case class instance (mat file) to be loaded.</li></ul></div><p><b>NB</b>: to export the data from a Case for use in another application (eg text file, Excel, etc), use the <b>Project&gt;Cases&gt;Edit Data Set</b> option to make a selection and then use the &#8216;Copy to Clipboard&#8217; button to paste the selection to the clipboard.</p><h2 id="5">Setup</h2><div><ul><li><b>Estuary&gt;System Parameters</b>: dialogue to set external concentration, convergence and wind parameters</li><li><b>Estuary&gt;Water Levels</b>: dialogue to define water levels, and forcing conditions such as rate of sea level rise and changes in tidal range.</li><li><b>Estuary&gt;Dispersion</b>: dialogue table to define the horizontal exchange matrix, which is used to determine the element connectivity.</li><li><b>Estuary&gt;Model Constants</b>: A number of constants are used in the model. Generally, the default values are appropriate but these can be adjusted and saved with the project if required.</li></ul></div><div><ul><li><b>Element&gt;Define Elements</b>: when setting up a new model a listing of the different types of element allows the user to define the number of each type element to include in the model (elements can subsequently be added or deleted). Once a set of elements have been defined the user is prompted to edit the default names for each element, change the element type and choose to make the element non-erodible (for cases where the element can infill with sediment but if cannot erode.</li><li><b>Element&gt;Element Parameters</b>: definition of elements is on a continuous loop. Select Cancel from the element list box to finish defining element properties.</li><li><b>Element&gt;Load Parameters</b>: rather than enter data one element at a time, this option allows the properties to be loaded from a file.</li><li><b>Element&gt;Add</b>: select element type from list. The Define Element dialog box is then displayed allowing the user to edit the element name and whether it is erodible or not. Element properties and any Dispersion or Advection then need to be added using the individual dialog boxes for these components.</li><li><b>Element&gt;Delete</b>: select element to be deleted from the list of model elements.</li></ul></div><div><ul><li><b>Saltmarsh&gt;Species Parameters</b>: any number of saltmarsh species can be entered and a check is made to ensure that the number of values entered for minimum depth, maximum depth maximum biomass and species productivity is consistent with the number of species specified.</li><li><b>Saltmarsh&gt;Equilibrium Marsh Depth</b>: this utility allows the user to explore the response of the marsh depth to the defined saltmarsh parameters and to see how this response varies by adjusting the biomass production rates for each of the species included</li><li><b>Saltmarsh&gt;Biomass distribution</b>: displays a plot of how the biomass production of each species is distributed relative to tidal flat elevation</li><li><b>Saltmarsh&gt;Marsh-flat Animation</b>: shows the variation in marsh elevation over time starting from a bare tidal flat based on the current saltmarsh and water level settings</li></ul></div><div><ul><li><b>Rivers&gt;River Inputs</b>: this component can only be added once some channel elements have been setup in the model. If no rivers are defined, the dialog box requires the Channel id number, along with the flow rate and the concentration density of the rivers sediment load.</li><li><b>Rivers&gt;River Advection</b>: dialogue table to define river flow advection connectivity.</li><li><b>Rivers&gt;River Timeseries</b>: If there is more than one river input, user is prompted to select a river input channel. The user is then prompted for a text file with time series data to define river flow rates (which optionally can also include concentrations).</li><li><b>Rivers&gt;Delete Input</b>: select the source to be deleted from the list of channels with river inputs.</li></ul></div><div><ul><li><b>Drift&gt;Drift  Inputs</b>: this component can only be added once some channel elements have been setup in the model. If no rivers are defined, the dialog box requires the Channel id number, along with the flow rate and the concentration density of the rivers sediment load.</li><li><b>Drift&gt;Drift Advection</b>: dialogue table to define drift advection connectivity.</li><li><b>Drift&gt;Drift Timeseries</b>: to add a drift times series first define a source input element using ????????????????</li><li><b>Drift&gt;Delete Input</b>: select the source to be deleted from the list of channels with river inputs.</li></ul></div><div><ul><li><b>Interventions&gt;Add or Edit</b>: select element from list of elements and then use table to add interventions. Selection of elements is in a continuous loop. Select Cancel from the element list box to finish adding interventions.</li><li><b>Interventions&gt;Clear</b>: deletes interventions from all elements.</li><li><b>Interventions&gt;Load File</b>: interventions can also be loaded from a file. Select an element from the list of elements and then select the file to load from the file selection dialogue.</li><li><b>Interventions&gt;Change Sign</b>: changes the sign of interventions defined for the selected element (volume and area).</li></ul></div><div><ul><li><b>Hydraulics</b>: setup options when including idealised hydraulics in the model. This is only really needed for multi-element models of large systems with a large and variable river discharge. To run the option requires the CSTmodel App to be installed.</li><li><b>Hydraulics&gt;Additional Parameters</b>: dialogue to define the parameters needed to determine the along-channel hydraulics using the CST model.</li><li><b>Hydraulics&gt;Create Look-up</b>: creates a table of along-channel variations in water levels and discharge as a function of river discharge input.</li><li><b>Hydraulics&gt;Summary Plot</b>: provides a summary plot of along channel water levels and velocities, allowing the range of variability as a function of river discharge to be investigated (this can also be viewed on the <i>Tides&gt;Hydraulics</i> tab).</li></ul></div><div><ul><li><b>Run Parameters&gt;Time Step</b>: the time step parameters comprise the time step (years or parts of a year), the number of time steps and the intervals at which the model output should be saved.</li><li><b>Run Parameters&gt;Conditions</b>: a number of components can be defined in the model setup and the user can then select whether, or not, to include them in a particular model run</li><li><b>Run Parameters&gt;Select Eq. Coefficients</b>: select the set of equilibrium coefficients to be used from the list provided.</li><li><b>Run Parameters&gt;Edit Eq. Coefficients</b>: edit the selected coefficients for each Element Type.</li><li><b>Run Parameters&gt;Edit Eq. Coefficients List</b>: the coefficient sets are defined in userprismcoeffs.m. If a new set of coefficients is added, the name of the set can be added</li></ul></div><h2 id="6">Run</h2><div><ul><li><b>Check Input</b>: checks mass balance of any advection flows included and that sufficient components have been defined for the model to run. This is not a full diagnostic check, so it does not ensure that the model output is valid &#8211; simply that the model will run.</li><li><b>Run Model</b>: runs model, prompts for a Case description, which is added to the listing on the Cases tab.</li><li><b>Derive Output</b>: initialises the Derive Output UI to select and define manipulations of the data or call external functions and load the result as new data set.</li></ul></div><h2 id="7">Analysis</h2><div><ul><li><b>Plots</b>: initialises the Plot UI to select variables and produce various types of plot. The user selects the Case, Dataset and Variable to used, along with the Plot type and any Scaling to be applied from a series of drop down lists,</li><li><b>Statistics</b>: initialiss the Statistics UI to select data and run a range of standard statistical methods.</li></ul></div><h2 id="8">Help</h2><div><ul><li><b>Help</b>: access the online documentation for Asmita.</li></ul></div><h2 id="9">See Also</h2><p>The <a href="matlab:open_manual">manual</a> provides further details of setup and configuration of the model.</p><p class="footer"><br><a href="https://www.mathworks.com/products/matlab/">Published with MATLAB&reg; R2020b</a><br></p></div><!--
+##### SOURCE BEGIN #####
+%% Menu Options
+% Summary of the options available for each drop down menu.
+
+%% File
+% * *New*: clears any existing model (prompting to save if not already saved) and a popup dialog box prompts for Project name and Date (default is current date). 
+% * *Open*: existing Asmita models are saved as *.mat files. User selects a model from dialog box.
+% * *Save*: save a file that has already been saved.
+% * *Save as*: save a file with a new or different name.
+% * *Exit*: exit the program. The close window button has the same effect.
+
+%% Tools
+% * *Refresh*: updates Cases tab.
+% * *Clear all > Project*: deletes the current project, including all Setup data and all Cases.
+% * *Clear all > Figures*: deletes all results plot figures (useful if a large number of plots have been produced).
+% * *Clear all > Cases*: deletes all Cases listed on the Cases tab but does not affect the model setup.
+
+%% Project
+% * *Project Info*: edit the Project name and Date
+% * *Cases > Edit Description*: user selects a Case to edit the Case description.
+% * *Cases > Edit Data Set*: initialises the Edit Data UI for editing data sets.
+% * *Cases > Save*: user selects a data set to be saved from a list box of Cases and the is then prompted to name the file. The data are written to an Excel spreadsheet. 
+% * *Cases > Delete*: user selects Case(s) to be deleted from a list box of Cases and results are then deleted (model setup is not changed).
+% * *Cases > Reload*: user selects a Case to reload as the current parameter settings.
+% * *Cases > View settings*: user selects a Case to display a table listing the parameters used for the selected Case. 
+% * *Export/Import > Export*: user selects a Case class instance to export as a mat file.
+% * *Export/Import > Import*: user selects an exported Case class instance (mat file) to be loaded.
+%%
+% *NB*: to export the data from a Case for use in another application 
+% (eg text file, Excel, etc), use the *Project>Cases>Edit Data Set* option 
+% to make a selection and then use the ‘Copy to Clipboard’ button to paste 
+% the selection to the clipboard.
+
+%% Setup
+% * *Estuary>System Parameters*: dialogue to set external concentration, convergence and wind parameters
+% * *Estuary>Water Levels*: dialogue to define water levels, and forcing conditions such as rate of sea level rise and changes in tidal range.
+% * *Estuary>Dispersion*: dialogue table to define the horizontal exchange
+% matrix, which is used to determine the element connectivity.
+% * *Estuary>Model Constants*: A number of constants are used in the model. Generally, the default values are appropriate but these can be adjusted and saved with the project if required.
+%
+% * *Element>Define Elements*: when setting up a new model a listing of the different types of element allows the user to define the number of each type element to include in the model (elements can subsequently be added or deleted). Once a set of elements have been defined the user is prompted to edit the default names for each element, change the element type and choose to make the element non-erodible (for cases where the element can infill with sediment but if cannot erode.
+% * *Element>Element Parameters*: definition of elements is on a continuous loop. Select Cancel from the element list box to finish defining element properties. 
+% * *Element>Load Parameters*: rather than enter data one element at a time, this option allows the properties to be loaded from a file. 
+% * *Element>Add*: select element type from list. The Define Element dialog box is then displayed allowing the user to edit the element name and whether it is erodible or not. Element properties and any Dispersion or Advection then need to be added using the individual dialog boxes for these components.
+% * *Element>Delete*: select element to be deleted from the list of model elements.
+%
+% * *Saltmarsh>Species Parameters*: any number of saltmarsh species can be entered and a check is made to ensure that the number of values entered for minimum depth, maximum depth maximum biomass and species productivity is consistent with the number of species specified.
+% * *Saltmarsh>Equilibrium Marsh Depth*: this utility allows the user to explore the response of the marsh depth to the defined saltmarsh parameters and to see how this response varies by adjusting the biomass production rates for each of the species included
+% * *Saltmarsh>Biomass distribution*: displays a plot of how the biomass
+% production of each species is distributed relative to tidal flat elevation
+% * *Saltmarsh>Marsh-flat Animation*: shows the variation in marsh
+% elevation over time starting from a bare tidal flat based on the current
+% saltmarsh and water level settings
+%
+% * *Rivers>River Inputs*: this component can only be added once some channel elements have been setup in the model. If no rivers are defined, the dialog box requires the Channel id number, along with the flow rate and the concentration density of the rivers sediment load. 
+% * *Rivers>River Advection*: dialogue table to define river flow advection connectivity.
+% * *Rivers>River Timeseries*: If there is more than one river input, user is prompted to select a river input channel. The user is then prompted for a text file with time series data to define river flow rates (which optionally can also include concentrations). 
+% * *Rivers>Delete Input*: select the source to be deleted from the list of channels with river inputs.
+%
+% * *Drift>Drift  Inputs*: this component can only be added once some channel elements have been setup in the model. If no rivers are defined, the dialog box requires the Channel id number, along with the flow rate and the concentration density of the rivers sediment load. 
+% * *Drift>Drift Advection*: dialogue table to define drift advection connectivity.
+% * *Drift>Drift Timeseries*: to add a drift times series first define a
+% source input element using ????????????????
+% * *Drift>Delete Input*: select the source to be deleted from the list of channels with river inputs.
+%
+% * *Interventions>Add or Edit*: select element from list of elements and then use table to add interventions. Selection of elements is in a continuous loop. Select Cancel from the element list box to finish adding interventions. 
+% * *Interventions>Clear*: deletes interventions from all elements.
+% * *Interventions>Load File*: interventions can also be loaded from a file. Select an element from the list of elements and then select the file to load from the file selection dialogue. 
+% * *Interventions>Change Sign*: changes the sign of interventions defined
+% for the selected element (volume and area).
+%
+% * *Hydraulics*: setup options when including idealised hydraulics in the model.
+% This is only really needed for multi-element models of large systems with
+% a large and variable river discharge. To run the option requires the
+% CSTmodel App to be installed.
+% * *Hydraulics>Additional Parameters*: dialogue to define the parameters
+% needed to determine the along-channel hydraulics using the CST model.
+% * *Hydraulics>Create Look-up*: creates a table of along-channel
+% variations in water levels and discharge as a function of river discharge
+% input.
+% * *Hydraulics>Summary Plot*: provides a summary plot of along channel 
+% water levels and velocities, allowing the range
+% of variability as a function of river discharge to be investigated (this 
+% can also be viewed on the _Tides>Hydraulics_ tab).
+%
+% * *Run Parameters>Time Step*: the time step parameters comprise the time step (years or parts of a year), the number of time steps and the intervals at which the model output should be saved. 
+% * *Run Parameters>Conditions*: a number of components can be defined in the model setup and the user can then select whether, or not, to include them in a particular model run
+% * *Run Parameters>Select Eq. Coefficients*: select the set of equilibrium coefficients to be used from the list provided. 
+% * *Run Parameters>Edit Eq. Coefficients*: edit the selected coefficients
+% for each Element Type.
+% * *Run Parameters>Edit Eq. Coefficients List*: the coefficient sets are defined in userprismcoeffs.m. If a new set of coefficients is added, the name of the set can be added
+
+%% Run
+% * *Check Input*: checks mass balance of any advection flows included and that sufficient components have been defined for the model to run. This is not a full diagnostic check, so it does not ensure that the model output is valid – simply that the model will run.
+% * *Run Model*: runs model, prompts for a Case description, which is added to the listing on the Cases tab.
+% * *Derive Output*: initialises the Derive Output UI to select and define manipulations of the data or call external functions and load the result as new data set.
+
+%% Analysis
+% * *Plots*: initialises the Plot UI to select variables and produce various types of plot. The user selects the Case, Dataset and Variable to used, along with the Plot type and any Scaling to be applied from a series of drop down lists, 
+% * *Statistics*: initialiss the Statistics UI to select data and run a range of standard statistical methods.
+
+%% Help
+% * *Help*: access the online documentation for Asmita.
+
+%% See Also
+% The <matlab:open_manual manual> provides further details of setup and 
+% configuration of the model.
+##### SOURCE END #####
+--></body></html>

@@ -132,10 +132,15 @@ classdef ASM_PlotsUI < muiDataUI
                         sel_uic{i}.Value = 1;   
                     case 'RunTime'
                         runtime = cobj.Data.(dataset).RowNames;
-                        setTimeSlider(obj,src,runtime);
-                        sel_uic{i}.Min = year(runtime(1));
-                        sel_uic{i}.Max = year(runtime(end));
-                        sel_uic{i}.Value = year(runtime(1));
+                        runtime.Format = 'dd-MMM-yyyy HH:mm:ss';
+                        %shifts are need to ensure that selected value is
+                        %within record so getProperty finds a record
+                        startime = dateshift(runtime(1),'end','day')-minutes(1);
+                        endtime = dateshift(runtime(end),'start','day')-days(1);
+                        setTimeSlider(obj,src,startime,endtime);
+                        sel_uic{i}.Min = deciyear(startime);
+                        sel_uic{i}.Max = deciyear(endtime);
+                        sel_uic{i}.Value = deciyear(startime);
                     case 'Type'
                         sel_uic{i}.String = S.Type;
                     otherwise
@@ -145,14 +150,14 @@ classdef ASM_PlotsUI < muiDataUI
             obj.TabContent(itab).Selections = sel_uic;
         end
 %%
-        function setTimeSlider(~,src,runtime)
+        function setTimeSlider(~,src,startime,endtime)
             %set the end markers and current value text for the slider
             htxt = findobj(src,'Tag','SLstart');
-            htxt.String = year(runtime(1));
+            htxt.String = deciyear(startime); %these are just markers
             htxt = findobj(src,'Tag','SLend');
-            htxt.String = year(runtime(end));
+            htxt.String = deciyear(endtime);
             htxt = findobj(src,'Tag','RunTimevalue');
-            htxt.String = year(runtime(1));
+            htxt.String = deciyear(startime);
         end
 %%        
         function useSelection(obj,src,mobj)  
@@ -211,7 +216,7 @@ classdef ASM_PlotsUI < muiDataUI
             txt1 = 'Select Case, Dataset, and Variable,adjust range and scaling, and assign to the Var button ';
             txt2 = 'For snap shot plot select Run Time. For animation change Ti button to Mv';
             txt3 = 'For X-T surface plot select surface Type, otherwise use line type (eg bar or stem)';
-            txt4 = 'Use the Select button to generate plot selection';
+            txt4 = 'Use the New button to generate plot selection, or Add, Delete if snap shot plot';
             S.HeadText = sprintf('1 %s\n2 %s\n3 %s\n4 %s',txt1,txt2,txt3,txt4); 
             %Use default lists except   For an animated Distance plot, 
             S.Titles = {'Case','Dataset','Variable','Run Time','Type'};  
@@ -221,8 +226,10 @@ classdef ASM_PlotsUI < muiDataUI
             %line plot, or surface plot
             S.Type = {'line','bar','scatter','stem','stairs',...
                       'surf','contour','contourf','mesh','User'}; 
+                  
             %Tab control button options
-            %Use defaults
+            S.TabButText = {'New','Add','Delete','Clear'}; %labels for tab button definition
+            S.TabButPos = [0.06,0.08;0.22,0.08;0.38,0.08;0.54,0.08]; %default positions
             
             %XYZ panel definition (if required)
             S.XYZnset = 1;                           %minimum number of buttons to use

@@ -12,6 +12,7 @@ classdef ASMinterface < handle
     %
     properties (Transient)
         export      %summation of net export over run (for mass balance)
+        import      %summation of net import over run (for mass balance)
         intervent   %summation of interventions over run (for mass balance)
         dWLvolume   %summation of volume changes due to water level change (for mass balance)
         SedMbal     %sediment mass balance updated at each time step
@@ -318,6 +319,7 @@ classdef ASMinterface < handle
          function obj = clearMassBalance(mobj)
              obj = getClassObj(mobj,'Inputs','ASM_model');
              obj.export = 0;
+             obj.import = 0;
              obj.intervent = 0;
              obj.dWLvolume = 0;
              obj.SedMbal = 0;
@@ -358,10 +360,11 @@ classdef ASMinterface < handle
             [~,qsIn,qsOut] = Advection.getAdvectionFlow(mobj,'Drift'); %sed.flow in m3/s
 
             % Calculate sediment mass balance (+ve is import to water column)
-            impriv = sum(qIn.*cI)*time;          %river import
-            impqtp = sum(qtpIn.*cE)*time;        %tidal pumping marine import
-            impsed = sum(qsIn.*cE)*time;         %littoral drift import
-            import = impriv+impqtp+impsed;       %import to system
+            impriv = sum(qIn.*cI)*(time>0);      %river import
+            impqtp = sum(qtpIn.*cE)*(time>0);    %tidal pumping marine import
+            impsed = sum(qsIn.*cE)*(time>0);     %littoral drift import
+            dimp = (impriv+impqtp+impsed)*delta; %import to system
+            obj.import = obj.import+dimp;        %export to marine
             dexp1  = sum(qOut.*conc)*(time>0);   %advective outflow
             dexp2  = sum(qtpOut.*conc)*(time>0); %tidal pumping outflow
             dexp3  = sum(qsOut.*conc)*(time>0);  %littoral drift export
@@ -372,7 +375,7 @@ classdef ASMinterface < handle
             obj.intervent = obj.intervent+sum(dV.*cb);  %user defined changes
             biosed = sum(vb.*cb);                %saltmarsh organic sedimentation
             %balance of cumulative changes from t=0 
-            sedbal = import+biosed-bed-obj.export-obj.intervent;
+            sedbal = obj.import+biosed-bed-obj.export-obj.intervent;
             obj.SedMbal = sedbal/sum(M*(Vo))*100;  %percentage change
             % obj.SedMbal = sedbal;
 

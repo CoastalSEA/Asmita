@@ -62,12 +62,6 @@ classdef Drift < matlab.mixin.Copyable
                 eletype = getEleProp(eleobj,'EleType');
                 extypes = mobj.GeoType(mobj.EXtypes);
                 ok = ismatch(eletype{usenum(1)},extypes); %could replace with matches
-                
-%                 ok = contains(eletype{usenum(1)},'Delta');
-%                 ok = ok+contains(eletype{usenum(1)},'Beach');
-%                 ok = ok+contains(eletype{usenum(1)},'Shore');
-%                 ok = ok+contains(eletype{usenum(1)},'Spit');
-                
                 if ok==0
                     warndlg('Can only connect to delta, beach, shore, or spit which must exit');
                 end
@@ -162,7 +156,7 @@ classdef Drift < matlab.mixin.Copyable
             %each drift object can have an independent timeseries that is
             %loaded from a file. This can define either just the input drift,
             %or drift between selected elements in the flow path
-            msgtxt = 'No drifts defined. Use Drift inputs to define some sources';
+            msgtxt = 'No drifts defined. Use Drift Inputs to define some sources';
             obj  = getClassObj(mobj,'Inputs','Drift',msgtxt);  
             if isempty(obj)
                 return;
@@ -343,11 +337,8 @@ classdef Drift < matlab.mixin.Copyable
             eletype = getEleProp(eleobj,'EleType');
             extypes = mobj.GeoType(mobj.EXtypes);
             source.okEle = ismatch(eletype,extypes); %could replace with matches
-%             okEle = strcmp(eletype,'Delta');
-%             okEle = okEle+strcmp(eletype,'Beach');
-%             okEle = okEle+strcmp(eletype,'Shoreface');
             msg{1} = 'Can only connect to delta/beach/shoreface/spit elements, which must exist\nRemove input to element %d';
-            msg{2} = 'Drift input added to element %d\nProperties need to be defined in Setup>Drift';
+            msg{2} = 'Drift input added to element %d';
             msg{3} = 'Drift inputs have been added';            
             ndft = length(obj);
             rele(ndft,1) = 0; flow(ndft,1) = 0;

@@ -1,0 +1,175 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Tabs</title><meta name="generator" content="MATLAB 9.9"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2021-11-26"><meta name="DC.source" content="asmita_tabs.m"><style type="text/css">
+html,body,div,span,applet,object,iframe,h1,h2,h3,h4,h5,h6,p,blockquote,pre,a,abbr,acronym,address,big,cite,code,del,dfn,em,font,img,ins,kbd,q,s,samp,small,strike,strong,tt,var,b,u,i,center,dl,dt,dd,ol,ul,li,fieldset,form,label,legend,table,caption,tbody,tfoot,thead,tr,th,td{margin:0;padding:0;border:0;outline:0;font-size:100%;vertical-align:baseline;background:transparent}body{line-height:1}ol,ul{list-style:none}blockquote,q{quotes:none}blockquote:before,blockquote:after,q:before,q:after{content:'';content:none}:focus{outine:0}ins{text-decoration:none}del{text-decoration:line-through}table{border-collapse:collapse;border-spacing:0}
+
+html { min-height:100%; margin-bottom:1px; }
+html body { height:100%; margin:0px; font-family:Arial, Helvetica, sans-serif; font-size:10px; color:#000; line-height:140%; background:#fff none; overflow-y:scroll; }
+html body td { vertical-align:top; text-align:left; }
+
+h1 { padding:0px; margin:0px 0px 25px; font-family:Arial, Helvetica, sans-serif; font-size:1.5em; color:#d55000; line-height:100%; font-weight:normal; }
+h2 { padding:0px; margin:0px 0px 8px; font-family:Arial, Helvetica, sans-serif; font-size:1.2em; color:#000; font-weight:bold; line-height:140%; border-bottom:1px solid #d6d4d4; display:block; }
+h3 { padding:0px; margin:0px 0px 5px; font-family:Arial, Helvetica, sans-serif; font-size:1.1em; color:#000; font-weight:bold; line-height:140%; }
+
+a { color:#005fce; text-decoration:none; }
+a:hover { color:#005fce; text-decoration:underline; }
+a:visited { color:#004aa0; text-decoration:none; }
+
+p { padding:0px; margin:0px 0px 20px; }
+img { padding:0px; margin:0px 0px 20px; border:none; }
+p img, pre img, tt img, li img, h1 img, h2 img { margin-bottom:0px; }
+
+ul { padding:0px; margin:0px 0px 20px 23px; list-style:square; }
+ul li { padding:0px; margin:0px 0px 7px 0px; }
+ul li ul { padding:5px 0px 0px; margin:0px 0px 7px 23px; }
+ul li ol li { list-style:decimal; }
+ol { padding:0px; margin:0px 0px 20px 0px; list-style:decimal; }
+ol li { padding:0px; margin:0px 0px 7px 23px; list-style-type:decimal; }
+ol li ol { padding:5px 0px 0px; margin:0px 0px 7px 0px; }
+ol li ol li { list-style-type:lower-alpha; }
+ol li ul { padding-top:7px; }
+ol li ul li { list-style:square; }
+
+.content { font-size:1.2em; line-height:140%; padding: 20px; }
+
+pre, code { font-size:12px; }
+tt { font-size: 1.2em; }
+pre { margin:0px 0px 20px; }
+pre.codeinput { padding:10px; border:1px solid #d3d3d3; background:#f7f7f7; }
+pre.codeoutput { padding:10px 11px; margin:0px 0px 20px; color:#4c4c4c; }
+pre.error { color:red; }
+
+@media print { pre.codeinput, pre.codeoutput { word-wrap:break-word; width:100%; } }
+
+span.keyword { color:#0000FF }
+span.comment { color:#228B22 }
+span.string { color:#A020F0 }
+span.untermstring { color:#B20000 }
+span.syscmd { color:#B28C00 }
+span.typesection { color:#A0522D }
+
+.footer { width:auto; padding:10px 0px; margin:25px 0px 0px; border-top:1px dotted #878787; font-size:0.8em; line-height:140%; font-style:italic; color:#878787; text-align:left; float:none; }
+.footer p { margin:0px; }
+.footer a { color:#878787; }
+.footer a:hover { color:#878787; text-decoration:underline; }
+.footer a:visited { color:#878787; }
+
+table th { padding:7px 5px; text-align:left; vertical-align:middle; border: 1px solid #d6d4d4; font-weight:bold; }
+table td { padding:7px 5px; text-align:left; vertical-align:top; border:1px solid #d6d4d4; }
+
+
+
+
+
+  </style></head><body><div class="content"><h1>Tabs</h1><!--introduction--><p>To examine what has been set-up the Tabs provide a summary of what is currently defined. Note: these only update when clicked on using a mouse and the values cannot be edited from the Tabs.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Tab options</a></li><li><a href="#8">Accessing Case meta-data</a></li><li><a href="#9">See Also</a></li></ul></div><h2 id="1">Tab options</h2><div><ul><li><b>Cases</b>: lists the cases that have been run with a case id and description.</li><li><b>Settings</b>: tabulates the current model settings (display only). This tab has the following sub-tabs:</li></ul></div><p>
+<ul><ul>
+<li>System - tabulates the system and water level parameters.</li>
+<li>Elements - tabulates the key parameters of each element.</li>
+<li>Saltmarsh - tabulates the saltmarsh parameters and plots the species distribution biomass</li>
+<li>Interventions -  plots the volume and surface area changes defined for individual elements.</li>
+<li>Run Parameters - tabulates the key run parameters, conditions and equilibrium coefficients).</li>
+</ul></ul>
+</p><div><ul><li><b>Tides</b>: graphics of the tidal network, water levels and hydraulics (if included). This tab has the following sub-tabs:</li></ul></div><p>
+<ul><ul>
+<li>Network - graphic of the element network showing the connectivity and
+horizontal exchanges between all elements (m3/s).</li>
+<li>Water Levels - plots the water levels over the run duration based on
+the current settings.</li>
+<li>Hydraulics - plots the summary hydraulics (water levels and velocities)
+along channel if Hydraulic parameters have been defined.</li>
+<li>TP Discharge - plots the tidal pumping discharge as a function of distance from the mouth.</li>
+<li>TP Network - network graph plot of the tidal pumping advection
+flows.</li>
+</ul></ul>
+</p><div><ul><li><b>Flows</b>: graphics of the elements that have an advection (e.g. channels) showing the connectivity and the flow rate (m3/s). This tab has the following sub-tabs:</li></ul></div><p>
+<ul><ul>
+<li>Rivers - network graph plot of the river advection flows.</li>
+<li>Drift - network graph plot of the drift advection flows.</li>
+<li>Input Summary - tabulated summary of the input nodes and the type of
+input.</li>
+<li>River Input - summary plot of any timeseries river advection inputs
+defined (flow and concentration if both are defined).</li>
+<li>Drift Input - summary plot of any timeseries drift advection inputs
+defined.</li>
+</ul></ul>
+</p><div><ul><li><b>Response</b>: summary of morphological response times based on system definition.</li><li><b>Q-Plot</b>: user selects a variable from imported data or model output, and a plot is created on the tab. The plot cannot be edited.</li><li><b>Stats</b>: tabulates the results from statistics UI.</li></ul></div><h2 id="8">Accessing Case meta-data</h2><p>On the <b>Cases</b> tab, using the mouse to click on a case record generates a table figure with a summary of the meta-data for the selected case. The figure includes buttons to Copy the data to the clipboard, view the DSproperties of the selected dataset and examine the Source of the dataset, which may be alist of files for imported data or details of the model used.</p><h2 id="9">See Also</h2><p>The <a href="matlab:open_manual">manual</a> provides further details of setup and configuration of the model..</p><p class="footer"><br><a href="https://www.mathworks.com/products/matlab/">Published with MATLAB&reg; R2020b</a><br></p></div><!--
+##### SOURCE BEGIN #####
+%% Tabs
+% To examine what has been set-up the Tabs provide a summary of what is 
+% currently defined. Note: these only update when clicked on using a mouse 
+% and the values cannot be edited from the Tabs.
+
+%% Tab options
+% * *Cases*: lists the cases that have been run with a case id and description.
+% * *Settings*: tabulates the current model settings (display only). 
+% This tab has the following sub-tabs:
+%%
+% <html>
+% <ul><ul>
+% <li>System - tabulates the system and water level parameters.</li>
+% <li>Elements - tabulates the key parameters of each element.</li>
+% <li>Saltmarsh - tabulates the saltmarsh parameters and plots the species distribution biomass</li>
+% <li>Interventions -  plots the volume and surface area changes defined for individual elements.</li>
+% <li>Run Parameters - tabulates the key run parameters, conditions and equilibrium coefficients).</li>
+% </ul></ul>
+% </html>
+%%
+% * *Tides*: graphics of the tidal network, water levels and hydraulics (if included).
+% This tab has the following sub-tabs:
+%%
+% <html>
+% <ul><ul>
+% <li>Network - graphic of the element network showing the connectivity and 
+% horizontal exchanges between all elements (m3/s).</li>
+% <li>Water Levels - plots the water levels over the run duration based on 
+% the current settings.</li>
+% <li>Hydraulics - plots the summary hydraulics (water levels and velocities)
+% along channel if Hydraulic parameters have been defined.</li>
+% <li>TP Discharge - plots the tidal pumping discharge as a function of distance from the mouth.</li>
+% <li>TP Network - network graph plot of the tidal pumping advection
+% flows.</li>
+% </ul></ul>
+% </html>
+%%
+% * *Flows*: graphics of the elements that have an advection (e.g. channels) 
+% showing the connectivity and the flow rate (m3/s). This tab has the
+% following sub-tabs:
+
+%%
+% <html>
+% <ul><ul>
+% <li>Rivers - network graph plot of the river advection flows.</li>
+% <li>Drift - network graph plot of the drift advection flows.</li>
+% <li>Input Summary - tabulated summary of the input nodes and the type of
+% input.</li>
+% <li>River Input - summary plot of any timeseries river advection inputs
+% defined (flow and concentration if both are defined).</li>
+% <li>Drift Input - summary plot of any timeseries drift advection inputs
+% defined.</li>
+% </ul></ul>
+% </html>
+
+%%
+% * *Response*: summary of morphological response times based on system definition.
+% * *Q-Plot*: user selects a variable from imported data or model output, and a plot is created on the tab. The plot cannot be edited.
+% * *Stats*: tabulates the results from statistics UI.
+
+%% Accessing Case meta-data
+% On the *Cases* tab, using the mouse to click on a case record generates a
+% table figure with a summary of the meta-data for the selected case. The
+% figure includes buttons to Copy the data to the clipboard, view the
+% DSproperties of the selected dataset and examine the Source of the
+% dataset, which may be alist of files for imported data or details of the
+% model used.
+
+%% See Also
+% The <matlab:open_manual manual> provides further details of setup and 
+% configuration of the model..
+##### SOURCE END #####
+--></body></html>

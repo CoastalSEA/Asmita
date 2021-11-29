@@ -19,7 +19,8 @@ function [alpha,beta,eqtype] = userprismcoeffs(UserSelection)
 %   Setting the scale parameter, beta, to 0, has the effect of applying a
 %   constant value defined by alpha.
 %   The Element Types are as defined by the GeoTypes property in the Asmita
-%   class.
+%   class and MUST be the same for selection to work. 
+
 % SEE ALSO
 %   EqCoeffParams class in Asmita handles the selection of a parameter set
 %
@@ -28,11 +29,12 @@ function [alpha,beta,eqtype] = userprismcoeffs(UserSelection)
 %--------------------------------------------------------------------------
 %
 
-    %define default structs and then overwrite with case specific values
-    alpha = struct('Channel',1,'Tidalflat',1,'Saltmarsh',1,...
-                   'Storage',1,'FloodDelta',1,'EbbDelta',1,'DeltaFlat',1);
-    beta = alpha;
-    eqtype = alpha;
+%define default structs and then overwrite with case specific values
+alpha = struct('Channel',1,'Tidalflat',1,'Saltmarsh',1,...
+               'Storage',1,'FloodDelta',1,'EbbDelta',1,'DeltaFlat',1,...
+               'Beachface',0,'Shoreface',0,'Spit',0);
+beta = alpha;
+eqtype = alpha;
 
 switch UserSelection       
     case 'Default'
@@ -47,6 +49,9 @@ switch UserSelection
         alpha.FloodDelta = 7000;      %Powell etal (2006)   
         alpha.EbbDelta = 5.0e-3;      %reworked W&A(1976) data
         alpha.DeltaFlat = 0.08;       %same as tidal flats
+        alpha.Beachface = 1;
+        alpha.Shoreface = 1;
+        alpha.Spit = 1;
         %
         beta.Channel = 1.23;          %COE paper Part 1 (Townend etal, 2016)
         beta.Tidalflat = 1.08;        %COE paper Part 1 (Townend etal, 2016)
@@ -55,6 +60,9 @@ switch UserSelection
         beta.FloodDelta = 0.37;       %Powell etal (2006) 
         beta.EbbDelta = 1.23;         %reworked W&A(1976) data
         beta.DeltaFlat = 1.08;        %same as tidal flats
+        beta.Beachface = 1;
+        beta.Shoreface = 1;
+        beta.Spit = 1;
     
     case 'Venice'                     % Venice 9EM model parameters
         alpha.EbbDelta = 5.0e-3;

@@ -23,7 +23,8 @@ classdef Estuary < muiPropertyUI
                           'Width e-folding convergence length (m)',...
                           'Area e-folding convergence length (m)',...
                           'Wind speed (m/s)',...
-                          'Wind elevation (m)'};
+                          'Wind elevation (m)',...
+                          'Flood delta acts as a Reach (1/0)'};
         %abstract properties in muiPropertyUI for tab display
         TabDisplay   %structure defines how the property table is displayed 
         Dispersion = []          %dispersin matrix, d (m/s) - uses upper triangle 
@@ -37,6 +38,7 @@ classdef Estuary < muiPropertyUI
         AreaELength = 0          %area convergence length (m)
         WindSpeed = 0            %characteristic annual wind speed (m/s)        
         WindHeight = 10          %wind measurement elevation above msl (m) 
+        isFDreach = false        %include the Flood Delta as a Reach element
     end    
     
     properties (Dependent)
@@ -130,6 +132,20 @@ classdef Estuary < muiPropertyUI
             %when called during run time update instance
             obj.DispersionGraph = dispersionGraph;
             setClassObj(mobj,'Inputs','Estuary',obj);
+        end
+        
+%%
+        function setReachTypes(mobj)
+            %update the element types that can form reaches if redefined by
+            %user
+            obj  = getClassObj(mobj,'Inputs','Estuary');
+            if obj.isFDreach
+                mobj.RCtypes = [1,5];     %Geotypes that define a reach
+                mobj.REtypes = [2,3,4,6]; %Geotypes that can belong to a reach 
+            else
+                mobj.RCtypes = 1;         %Only channel forms a reach (default)
+                mobj.REtypes = 2:6;
+            end
         end
 
 %%
