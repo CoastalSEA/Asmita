@@ -140,7 +140,7 @@ classdef AsmitaModel < muiDataSet
             edst.Source = metaclass(obj).Name;
             edst.MetaData = 'Any additional information to be saved';
             
-            %assign element data to a dstable
+            %assign reach data to a dstable
             rdst = dstable(obj.RchData{:},'RowNames',modeltime,'DSproperties',rchdsp);
             eleobj = getClassObj(mobj,'Inputs','Element');
             idr = unique(getEleProp(eleobj,'ReachID'));
@@ -151,7 +151,7 @@ classdef AsmitaModel < muiDataSet
             rdst.Source = metaclass(obj).Name;
             rdst.MetaData = 'Any additional information to be saved';            
             
-            
+            %create struct for set of dstables
             dst.Element = edst;  %struct of dstables - fieldnames define Datasets
             dst.Reach = rdst;
 %--------------------------------------------------------------------------
@@ -365,12 +365,23 @@ classdef AsmitaModel < muiDataSet
             if obj.iStep==1 || rem(obj.iStep,obj.outInt)==0
                 jr = length(obj.StepTime)+1;
                 obj.StepTime(jr,1) = obj.Time;
-                vname = {eledsp.Variables.Name};           
+                vname = {eledsp.Variables.Name};  
+                M = sign(getEleProp(eleobj,'TransportCoeff'));
+                
                 for i=1:length(vname)
                     %sorting depends on variable list in DSproperties
                     %element properties
                     eleprop = getEleProp(eleobj,vname{i});
-                    obj.EleData{i}(jr,:) = [eleprop;sum(eleprop,1)];
+                    if i>3
+                        %append mean of all elements
+                        meanele = mean(eleprop,1);
+                        obj.EleData{i}(jr,:) = [eleprop;meanele];
+                    else
+                        %append the sum of all elements adjusted for 
+                        %water/sediment volumes using sign(n)
+                        sumele = sum(M.*eleprop,1);
+                        obj.EleData{i}(jr,:) = [eleprop;sumele];
+                    end
                 end
                 
                 vname = {rchdsp.Variables.Name};
@@ -476,8 +487,7 @@ classdef AsmitaModel < muiDataSet
             %accept most data types but the values in each vector must be unique
             
             %struct entries are cell arrays and can be column or row vectors
-            %NB if number of variables changes, update the outType property
-            % Also variable names in dsp.Variables must match Element 
+            %NB variable names in dsp.Variables must match Element 
             % properties for use in PostTimeStep.
             dsp.Variables = struct(...                      
                 'Name',{'MovingVolume','FixedVolume','EqVolume',...                           
@@ -517,8 +527,7 @@ classdef AsmitaModel < muiDataSet
             %accept most data types but the values in each vector must be unique
             
             %struct entries are cell arrays and can be column or row vectors
-            %NB if number of variables changes, update the outType property
-            % Also variable names in dsp.Variables must match Element 
+            %NB variable names in dsp.Variables must match Element 
             % properties for use in PostTimeStep.
             dsp.Variables = struct(...                      
                 'Name',{'ReachPrism','UpstreamPrism',...

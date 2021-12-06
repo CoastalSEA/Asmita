@@ -4,7 +4,7 @@ classdef RunProperties < muiPropertyUI
 % NAME
 %   RunProperties.m
 % PURPOSE
-%   Class for the ASMITA model run time properties 
+%   Class for to set run time properties - used in ASMITA and ChannelForm
 % USAGE
 %   obj = RunProperties.setInput(mobj); %mobj is a handle to Main UI
 % SEE ALSO
@@ -17,9 +17,9 @@ classdef RunProperties < muiPropertyUI
     properties (Hidden)
         %abstract properties in muiPropertyUI to define input parameters
         PropertyLabels = {' Time Step (years)',...
-                        ' Number of Time Steps',...
-                        ' Output Interval (No. of time steps)', ...
-                        ' Start Year'};
+                          ' Number of Time Steps',...
+                          ' Output Interval (No. of time steps)', ...
+                          ' Start Year'};
         %abstract properties in muiPropertyUI for tab display
         TabDisplay   %structure defines how the property table is displayed 
     end
@@ -44,7 +44,7 @@ classdef RunProperties < muiPropertyUI
     methods (Static)  
         function obj = setInput(mobj,editflag)
             %gui for user to set Parameter Input values
-            classname = 'RunProperties';               % <<Edit to classname
+            classname = 'RunProperties';           
             obj = getClassObj(mobj,'Inputs',classname);
             if isempty(obj)
                 obj = RunProperties(mobj);             
@@ -59,6 +59,4 @@ classdef RunProperties < muiPropertyUI
             setClassObj(mobj,'Inputs',classname,obj);
         end     
     end
-%%        
-        %add other functions to operate on properties as required   
 end

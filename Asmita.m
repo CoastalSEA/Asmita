@@ -258,7 +258,7 @@ classdef Asmita < muiModelUI
         end
 %%
         function setAsmitaTabs(obj,src,evt)
-            %update the Saltmarsh tabe with table and plot
+            %update the SSettings tabs with tables and/or plots
             switch src.Tag
                 case 'Saltmarsh'
                     InputTabSummary(obj,src,evt)

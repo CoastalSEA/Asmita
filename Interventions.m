@@ -333,7 +333,7 @@ classdef Interventions < matlab.mixin.Copyable
             end
             xlabel('Year');
             ylabel('Area change (m^2)');
-            if smax<0 && smax<s2.YLim(2)
+            if smax<=0 && smax<s2.YLim(2)
                 s2.YLim(1) = smax+offset*smax;
             else
                 s2.YLim(2) = smax+offset*smax;

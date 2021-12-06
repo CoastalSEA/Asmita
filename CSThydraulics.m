@@ -31,7 +31,7 @@ classdef CSThydraulics < muiPropertyUI
     end
     
     properties
-        EstuaryLength   %estuary length (m)
+        EstuaryLength  %estuary length (m)
         MouthWidth     %width at mouth (m)
         MouthCSA       %area at mouth (m^2)    
         RiverWidth     %upstream river width (m) 
@@ -108,14 +108,14 @@ classdef CSThydraulics < muiPropertyUI
             %--------------------------------------------------------------------------
             %input parameters for model
             [inp,rnp] = getModelParameters(obj,mobj);
-            est = [];  %can be empty
-            if isempty(inp.Qrange)
-                inp.Qrange = 0;
+            est = [];  %observed values of estuary form so can be empty
+            if isempty(obj.Qrange) || obj.Qrange==0
+                obj.Qrange = obj.RiverDischarge;
             end
-            nrow = length(inp.Qrange);
+            nrow = length(obj.Qrange);
             resX{nrow,5} = [];
             for i=1:nrow
-                inp.RiverDischarge = inp.Qrange(i);
+                inp.RiverDischarge = obj.Qrange(i);
                 [res,~,~,xy] = cst_model(inp,rnp,est);
                 resX(i,:) = res;
             end
@@ -139,7 +139,7 @@ classdef CSThydraulics < muiPropertyUI
             setClassObj(mobj,'Inputs','CSThydraulics',obj);
             getdialog('Run complete');
         end
-        %%
+%%
         function tabPlot(obj,src,~)
             %create a summary of the hydraulic model results
             if isempty(obj.CSTmodel)
@@ -292,7 +292,7 @@ classdef CSThydraulics < muiPropertyUI
             %rnp parameters requires the following
             rnp.TimeInt = 1;     %time increment in analytical model (hrs)
             rnp.DistInt = 1000;  %distance increment along estuary (m)
-            rnp.useObs = false;  %flag to indicate whether to use
+            rnp.useObs = false;  %flag to indicate whether to use observations
         end
 %%
         function dsp1 = modelDSproperties(~)

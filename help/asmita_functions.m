@@ -76,8 +76,12 @@
 % but can handle multiple columns with space or tab separators
 %
 % * *sealevelrise.m*
-% - Function to compute sea level rise using linear or exponential rate of
+% - function to compute sea level rise using linear or exponential rate of
 % change
+%
+% * *simple_tide.m*
+% - function to compute a tidal water level time series using the main
+% constituents scaled to the required tidal amplitude 
 %
 % * *userprismcoeffs.m*
 % - parameters to define volume-prism relationships of the form:
