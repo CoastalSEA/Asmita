@@ -347,13 +347,13 @@ classdef Estuary < muiPropertyUI
     methods
         function eqConc = get.EqConcCoarse(obj)
             %dependent property derived from EqRhoCoarse
-            cn = muiConstants.Evoke;
+            cn = muiConstants.Evoke;  %uses default value of 2650
             eqConc = obj.EqRhoCoarse/cn.SedimentDensity;
         end
 %%
         function eqConc = get.EqConcFine(obj)
             %dependent property derived from EqRhoFine
-            cn = muiConstants.Evoke;
+            cn = muiConstants.Evoke;  %uses default value of 2650
             if isempty(obj.EqRhoFine) || obj.EqRhoFine==0
                 eqConc = obj.EqConcCoarse;
             else

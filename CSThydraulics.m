@@ -51,6 +51,10 @@ classdef CSThydraulics < muiPropertyUI
         % RiverVel       %river flow velocity along estuary
         % HydDepth       %along estuary hydraulic depth 
     end   
+    
+    properties (Transient)
+        msgtxt = 'To include hydraulics in Asmita the CSTmodel App must be installed';
+    end
 
 %%   
     methods (Access=protected)
@@ -60,12 +64,14 @@ classdef CSThydraulics < muiPropertyUI
             %the tabname and position on tab for the data to be displayed
             obj = setTabProps(obj,mobj);  %muiPropertyUI function
             %check that CSTmodel is available as an App
-            msg = 'To include hydraulics in Asmita the CSTmodel App must be installed';
-            appinfo = matlab.apputil.getInstalledAppInfo;            
-            if isempty(appinfo), warndlg(msg); return; end
             
-            idx = find(strcmp({appinfo.name},'CSTmodel'), 1);  
-            if isempty(idx), warndlg(msg); return; end
+%             appinfo = matlab.apputil.getInstalledAppInfo;            
+%             if isempty(appinfo), warndlg(msg); return; end
+%             
+%             idx = find(strcmp({appinfo.name},'CSTmodel'), 1);  
+%             if isempty(idx), warndlg(msg); return; end
+            ok = initialise_mui_app('CSTmodel',obj.msgtxt,'CSTfunctions');
+            if ok<1, return; end
         end
     end
     %%
@@ -91,6 +97,9 @@ classdef CSThydraulics < muiPropertyUI
     methods
         function runModel(obj,mobj)
             %compile input data and run model
+            ok = initialise_mui_app('CSTmodel',obj.msgtxt,'CSTfunctions');
+            if ok<1, return; end
+            
             if isempty(obj.MouthWidth)  %check first property has been set
                 warndlg('Hydraulic properties have not been defined')
                 return;
@@ -116,8 +125,18 @@ classdef CSThydraulics < muiPropertyUI
             resX{nrow,5} = [];
             for i=1:nrow
                 inp.RiverDischarge = obj.Qrange(i);
-                [res,~,~,xy] = cst_model(inp,rnp,est);
-                resX(i,:) = res;
+                try
+                    [res,~,~,xy] = cst_model(inp,rnp,est);
+                    resX(i,:) = res;
+                catch
+                    %remove the waitbar if program did not complete
+                    hw = findall(0,'type','figure','tag','TMWWaitbar');
+                    delete(hw);
+                    inpQr = inp.RiverDischarge;
+                    msg = sprintf('Failed to find solution in cst_model for Qr=%d',inpQr);
+                    warndlg(msg);
+                    return;
+                end
             end
             resXQ = cell(1,5);
             for col = 1:5
