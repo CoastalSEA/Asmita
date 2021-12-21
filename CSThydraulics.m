@@ -118,7 +118,7 @@ classdef CSThydraulics < muiPropertyUI
             %input parameters for model
             [inp,rnp] = getModelParameters(obj,mobj);
             est = [];  %observed values of estuary form so can be empty
-            if isempty(obj.Qrange) || obj.Qrange==0
+            if isempty(obj.Qrange) || all(obj.Qrange==0)
                 obj.Qrange = obj.RiverDischarge;
             end
             nrow = length(obj.Qrange);
