@@ -562,10 +562,16 @@ classdef Element < muiPropertyUI
             header = 'Edit element Names';  
             but.Text = {'Save','Cancel'}; %labels for tab button definition
             newtable = tablefigureUI(title,header,oldtable,true,but,[0.1,0.6]);
-            if isempty(newtable), return; end  %user cancelled  
-            var = newtable{:,1};           [obj.EleType] = var{:};            
-            var = newtable{:,2};           [obj.EleName] = var{:};            
-            var = num2cell(newtable{:,3}); [obj.Erodible] = var{:};      
+            if isempty(newtable) %user cancelled  
+                oldtable.Erodible = [oldtable.Erodible{:}]';
+                newtable = oldtable;
+            end
+            var = newtable{:,1};           
+            [obj.EleType] = var{:};            
+            var = newtable{:,2};           
+            [obj.EleName] = var{:};            
+            var = num2cell(newtable{:,3}); 
+            [obj.Erodible] = var{:};  
         end     
     end      
 end

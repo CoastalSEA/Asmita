@@ -30,7 +30,7 @@ classdef AsmitaModel < muiDataSet
         outInt = 0    %output interval adjusted for any change in time step
         EleData = []; %array used to store element output at each time step
         RchData = []; %array used to store reach output at each time step
-        StepTime      %time to be saved in years
+        StepTime      %time to be saved (seconds during run and converted to years)
         MinimumTimeStep = 0.04;  %value used (yrs) as minimum to prompt user
                                  %based on a sp-np cycle (14.6 days)
     end

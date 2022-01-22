@@ -111,13 +111,13 @@ classdef EqCoeffParams < muiPropertyUI
             end
             userdata = obj.UserEqCoeffOptions';
             oldtable = table(userdata,'VariableNames',{'EqCoeff_Options'});
-                                    
+                       
             title = sprintf('Edit Equilibrium List'); 
             header = 'Select row to edit or use Add button for new definition';  
             but.Text = {'Save','Add','Cancel'}; %labels for tab button definition
             newtable = tablefigureUI(title,header,oldtable,true,but);
             if isempty(newtable), return; end  %user cancelled  
-            obj.UserEqCoeffOptions =  newtable.EqCoeff_Options;
+            obj.UserEqCoeffOptions =  newtable.EqCoeff_Options';
             setClassObj(mobj,'Inputs',classname,obj);
         end           
     end
@@ -162,19 +162,6 @@ classdef EqCoeffParams < muiPropertyUI
                     'HorizontalAlignment', 'left',...
                     'Units','normalized', 'Position',[0.52 tabpos(1) 0.4 0.04],...
                     'Tag','RPtext');
-        end  
-     
+        end       
     end
-%%
-%     methods (Static, Access=private)
-%         function obj = setClassObj(mobj,classname)
-%             %check if class exists and if not call constructor                
-%             if isfield(mobj.Inputs,classname) && ...
-%                             isa(mobj.Inputs.(classname),classname)
-%                 obj = mobj.Inputs.(classname);  
-%             else
-%                 obj = EqCoeffParams(mobj);    
-%             end
-%         end
-%     end
 end
