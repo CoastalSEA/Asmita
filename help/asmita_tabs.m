@@ -12,7 +12,7 @@
 % <ul><ul>
 % <li>System - tabulates the system and water level parameters.</li>
 % <li>Elements - tabulates the key parameters of each element.</li>
-% <li>Saltmarsh - tabulates the saltmarsh parameters and plots the species distribution biomass</li>
+% <li>Saltmarsh - tabulates the saltmarsh parameters and plots the species distribution biomass.</li>
 % <li>Interventions -  plots the volume and surface area changes defined for individual elements.</li>
 % <li>Run Parameters - tabulates the key run parameters, conditions and equilibrium coefficients).</li>
 % </ul></ul>
