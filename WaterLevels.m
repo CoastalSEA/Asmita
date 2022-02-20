@@ -197,11 +197,15 @@ classdef WaterLevels < muiPropertyUI
                 dslrvec(1) = -obj.SLRrate;   %only ert specified
                 option = 2;  %exponential rate
             elseif length(obj.SLRrate)==3
-                %user has defined [ert,yr0,dslr0] see model_slr for details
+                %user has defined [ert,yr0,dslr0] see sealevelrise.m for details
                 dslrvec = obj.SLRrate; 
                 option = 2;  %exponential rate
+            elseif length(obj.SLRrate)==6
+                %user has defined [ert,yr0,dslr0] see sealevelrise.m for details
+                dslrvec = obj.SLRrate; 
+                option = 3;  %double exponential rate for Holocens & Modern                    
             elseif isnan(obj.SLRrate)
-                option = 3;  %allow user to define slr function
+                option = 4;  %allow user to define slr function
             else
                 dslrvec =  obj.SLRrate; 
                 option = 1;  %linear rate
