@@ -3,10 +3,12 @@
 % Tidal basin and Adjacent coast. The model is used to examine long-term
 % morphological change in tidal inlets and estuaries.
 
+%% Licence
+% The code is provided as Open Source code (issued under a GNU General 
+% Public License).
 
 %% Requirements
-% The code is provided as Open Source code (issued under a GNU General 
-% Public License). It is written in MATLAB(TM) and requires v2018b, or later.
+% The code is written in MATLAB(TM) and requires v2018b, or later.
 % Routing within the model makes use of graph and directed graph functions, 
 % which were introduced in Matlab 2015b. 
 
