@@ -1,4 +1,4 @@
-%% ASMITA functions
+%% Asmita Functions
 % Summary of functions available in the _asmita_functions_ folder. Use the Matlab(TM)
 % help function in the command window to get further details of each
 % function.

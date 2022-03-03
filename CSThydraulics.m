@@ -64,12 +64,6 @@ classdef CSThydraulics < muiPropertyUI
             %the tabname and position on tab for the data to be displayed
             obj = setTabProps(obj,mobj);  %muiPropertyUI function
             %check that CSTmodel is available as an App
-            
-%             appinfo = matlab.apputil.getInstalledAppInfo;            
-%             if isempty(appinfo), warndlg(msg); return; end
-%             
-%             idx = find(strcmp({appinfo.name},'CSTmodel'), 1);  
-%             if isempty(idx), warndlg(msg); return; end
             ok = initialise_mui_app('CSTmodel',obj.msgtxt,'CSTfunctions');
             if ok<1, return; end
         end

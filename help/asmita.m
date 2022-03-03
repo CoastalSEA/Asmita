@@ -1,4 +1,4 @@
-%% asmita 
+%% Asmita 
 % ASMITA stands for Aggregated Scale Morphological Interaction between 
 % Tidal basin and Adjacent coast. The model is used to examine long-term
 % morphological change in tidal inlets and estuaries.

@@ -1,4 +1,4 @@
-%% ASMITA classes
+%% Asmita Classes
 % The ASMITA model is built using the <matlab:doc('muitoolbox') muitoolbox>
 % and a number of model specific classes.
 

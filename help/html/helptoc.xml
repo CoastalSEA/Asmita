@@ -3,7 +3,7 @@
 <toc version="2.0">
 <!-- First tocitem specifies top level in Help browser Contents pane -->
 <!-- This can be a roadmap page, as shown below, or a content page -->
-    <tocitem target="asmita.html">asmita
+    <tocitem target="asmita.html">Asmita
         <!-- Nest tocitems to create hierarchical entries in  Contents-->
         <!-- To include icons, use the following syntax for tocitems: -->
         <!-- <tocitem target="foo.html" image="HelpIcon.NAME"> -->
@@ -21,17 +21,17 @@
 
         <!-- User Guide comes next -->
         <tocitem target="asmita_user_guide.html" 
-            image="HelpIcon.USER_GUIDE">asmita User Guide
+            image="HelpIcon.USER_GUIDE">Asmita User Guide
             <tocitem target="asmita_menus.html">Menu options</tocitem>
             <tocitem target="asmita_tabs.html">Tab options</tocitem>
             <tocitem target="asmita_output.html">Output</tocitem>
-            <tocitem target="asmita_examples.html">asmita Examples</tocitem>
+            <tocitem target="asmita_examples.html">Asmita Examples</tocitem>
         </tocitem>
         <!-- Developers Guide comes next -->
         <tocitem target="asmita_dev_guide.html"
-            image="HelpIcon.USER_GUIDE">asmita Developers Guide
-            <tocitem target="asmita_classes.html">asmita classes</tocitem>
-            <tocitem target="asmita_functions.html">asmita functions</tocitem>
+            image="HelpIcon.USER_GUIDE">Asmita Developers Guide
+            <tocitem target="asmita_classes.html">Asmita classes</tocitem>
+            <tocitem target="asmita_functions.html">Asmita functions</tocitem>
         </tocitem>
         <!-- Optional link or links to your or other Web sites -->
         <tocitem target="http://www.coastalsea.uk" 

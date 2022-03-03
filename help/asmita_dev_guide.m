@@ -1,4 +1,4 @@
-%% asmita Developers Guide
+%% Asmita Developers Guide
 % This guide provides details of the classes and functions used in the model.
 
 %%
