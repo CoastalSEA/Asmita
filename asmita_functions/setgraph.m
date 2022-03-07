@@ -82,6 +82,7 @@ function setgraph(mobj,src,~)
             'XColor','none', 'YColor','none','ZColor','none', ...
             'NextPlot','replacechildren');    
     end
+    
     %LWidths = 5*elabel/max(elabel);
     hg = plot(g,'Parent',h_ax,'EdgeLabel',elabel,'NodeLabel',nlabel);
         %'LineWidth',LWidths,

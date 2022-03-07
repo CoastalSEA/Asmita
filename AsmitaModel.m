@@ -562,6 +562,9 @@ classdef AsmitaModel < muiDataSet
     methods
         function tabPlot(obj,src,mobj) %abstract class for muiDataSet
             %generate plot for display on Q-Plot tab
+            tabcb  = @(src,evdat)tabPlot(obj,src,mobj);
+            ax = tabfigureplot(obj,src,tabcb,false);            
+            
             dst = obj.Data.Element;
             t = dst.RowNames;
             if iscalendarduration(t)
@@ -570,10 +573,6 @@ classdef AsmitaModel < muiDataSet
             vm = dst.MovingVolume;
             vf = dst.FixedVolume;
             ve = dst.EqVolume;
-
-            ht = findobj(src,'Type','axes');
-            delete(ht);
-            ax = axes('Parent',src,'Tag','Regime');
             
             eleobj = getClassObj(mobj,'Inputs','Element');
             n  = getEleProp(eleobj,'TransportCoeff');
