@@ -62,7 +62,7 @@ classdef WaterLevels < muiPropertyUI
     end
 
     properties (Transient)
-        MeanSeaLevel        %Mean sea level based on z0+slr*t
+        MeanSeaLevel        %Mean sea level based on z0+slr(t)
         HWaterLevel         %High Water Level at time t 
         LWaterLevel         %Low Water Level at time t
         dHWchange           %change over a time step at high water
@@ -181,7 +181,8 @@ classdef WaterLevels < muiPropertyUI
             amp = obj.CycleAmp;
             om1 = obj.AngularPeriod; %get fcn converts input to s^-1
             om2 = obj.AngularPhase;
-            z0 = obj.MSL0;   
+            z0 = obj.MSL0;  
+            y2s = muiConstants.y2s;   %factor to convert years to seconds
             %
             if mtime==0 || isempty(obj.HWaterLevel)
                 initialWL(obj,startyr);
@@ -198,25 +199,39 @@ classdef WaterLevels < muiPropertyUI
                 option = 2;  %exponential rate
             elseif length(obj.SLRrate)==3
                 %user has defined [ert,yr0,dslr0] see sealevelrise.m for details
-                dslrvec = obj.SLRrate; 
+                dslrvec = obj.SLRrate;
+                pivotyear = 2000;
+                option = 2;  %exponential rate
+            elseif length(obj.SLRrate)==4
+                %user has defined [ert,yr0,dslr0] see sealevelrise.m for details
+                dslrvec = obj.SLRrate(1:3);
+                pivotyear = obj.SLRrate(4);
                 option = 2;  %exponential rate
             elseif length(obj.SLRrate)==6
                 %user has defined [ert,yr0,dslr0] see sealevelrise.m for details
                 dslrvec = obj.SLRrate; 
-                option = 3;  %double exponential rate for Holocens & Modern                    
+                pivotyear = 2000;
+                option = 3;  %double exponential rate for Holocens & Modern   
+            elseif length(obj.SLRrate)==7
+                %user has defined [ert,yr0,dslr0] see sealevelrise.m for details
+                dslrvec = obj.SLRrate(1:6); 
+                pivotyear = obj.SLRrate(7);
+                option = 3;  %double exponential rate for Holocens & Modern      
             elseif isnan(obj.SLRrate)
+                dslrvec = obj.SLRrate;
+                pivotyear = startyr/y2s; 
                 option = 4;  %allow user to define slr function
             else
                 dslrvec =  obj.SLRrate; 
-                option = 1;  %linear rate
+                pivotyear = startyr/y2s;
+                option = 1;  %linear rate                
             end   
-            y2s = muiConstants.y2s;   %factor to convert years to seconds
+            
             realtime = startyr+mtime; %time in seconds from Julian 0            
             %time inputs to sealevelrise function are in years
             realyears = realtime/y2s; %convert to time in calender years
-            [slr,obj.dslr] = sealevelrise(realyears,startyr/y2s,...
-                                                        dslrvec,option);  
-            
+            [slr,obj.dslr] = sealevelrise(realyears,pivotyear,dslrvec,option);
+                                                          
             msl = z0+slr; 
             dtr = real(sum(amp.*exp(1i*(om1*realtime+om2)))); %change in tidal range at t
             obj.MeanSeaLevel = msl;    
@@ -241,9 +256,8 @@ classdef WaterLevels < muiPropertyUI
             [HWL,MSL,LWL] = newWaterLevels(obj,mtime,rnpobj.StartYear*y2s);
             
             %clear any existing plot
-            ht = findobj(src,'Type','axes');
-            delete(ht);
-            ax = axes(src,'Tag','PlotFigAxes');
+            tabcb =  @(src,evdat)tabPlot(obj,src,mobj);
+            ax = tabfigureplot(obj,src,tabcb,false); %rotate button not required
             
             %create plot of water level change over the model run period
             ptime = rnpobj.StartYear+mtime/y2s;

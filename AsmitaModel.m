@@ -112,15 +112,19 @@ classdef AsmitaModel < muiDataSet
             end
             close(hw);
 
-%             results = obj.RunData; 
             %now assign results to object properties  
-            %code for datetime format
-            modeldate = datetime(rnpobj.StartYear,1,1,0,0,0);
-            modeltime = modeldate + seconds(obj.StepTime);
-            modeltime.Format = eledsp.Row.Format;
-            %code for duration format
-            % modeltime = years(rnpobj.StartYear)+seconds(obj.StepTime);
-            % modeltime.Format = dsp.Row.Format;
+            if rnpobj.StartYear>0
+                %code for datetime format
+                modeldate = datetime(rnpobj.StartYear,1,1,0,0,0);
+                modeltime = modeldate + seconds(obj.StepTime);
+                modeltime.Format = eledsp.Row.Format;
+            else
+                %code for duration format
+                modeltime = years(rnpobj.StartYear)+seconds(obj.StepTime);
+                eledsp.Row.Format = 'y';
+                modeltime.Format = eledsp.Row.Format;
+                rchdsp.Row.Format = eledsp.Row.Format;
+            end
             %code for calendatDuration format 
             % modeldate = datetime(rnpobj.StartYear,1,1,0,0,0);
             % modeltime = modeldate + seconds(obj.StepTime);
