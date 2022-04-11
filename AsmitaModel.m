@@ -48,7 +48,6 @@ classdef AsmitaModel < muiDataSet
         function runModel(mobj)
             %function to run a simple 2D diffusion model
             obj = AsmitaModel;                           
-%             dsp = modelDSproperties(obj);
             eledsp = elementDSproperties(obj);
             rchdsp = reachDSproperties(obj);
             %check that the input data has been entered
@@ -68,6 +67,7 @@ classdef AsmitaModel < muiDataSet
                         return; 
                     end
                 end
+                %
                 if ok<1 
                     warndlg('Not enough components defined to run model');
                     return
@@ -226,7 +226,7 @@ classdef AsmitaModel < muiDataSet
             estobj = getClassObj(mobj,'Inputs','Estuary');            
             if isempty(estobj.Dispersion)
                 imes = imes+1;
-                message{imes} = 'Dispersion has not beed defined';                
+                message{imes} = 'Dispersion has not been defined';                
                 ok = 0;
             end
             
@@ -259,13 +259,14 @@ classdef AsmitaModel < muiDataSet
             advobj= getClassObj(mobj,'Inputs','Advection'); 
             if (rncobj.IncRiver || rncobj.IncDrift) && isempty(advobj)
                 imes = imes+1;
-                message{imes} = 'Advection has not beed defined';
+                message{imes} = 'Advection has not been defined';
             elseif rncobj.IncRiver
-                ok = checkMassBalance(advobj,'River');
-                if ok==0
+                okriver = checkMassBalance(advobj,'River');
+                if okriver==0
                     imes = imes+1;    
                     message{imes} = 'Mass balance fails for defined River Flows';                
-                end             
+                    ok = 0;
+                end            
             end 
         end
     end

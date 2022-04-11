@@ -352,7 +352,15 @@ classdef Interventions < matlab.mixin.Copyable
             if isempty(eleobj), obj = eleobj; return; end
 
             obj  = getClassObj(mobj,'Inputs','Interventions');
-            if isempty(obj)
+
+            if length(obj)~=length(eleobj)
+                %interventions dims do not match element dims
+                msgerr = sprintf('Element dimensions do not match\nInterventions have been cleared\nYou may need to input intervention data again.');
+                warndlg(msgerr)
+                obj = [];
+            end
+
+            if isempty(obj)    %no inverventions defined
                 clear obj
                 nele = length(eleobj);
                 obj(nele,1) = Interventions;

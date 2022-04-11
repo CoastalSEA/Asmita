@@ -70,7 +70,9 @@ classdef Advection < handle
             %create or get data and build matrix of exchanges
             userdata = zeros(nelp,nelp);
             obj = setAdvectionType(obj,AdvType);
-            if ~isempty(obj.InternalAdv)                
+            if ~isempty(obj.InternalAdv) && size(obj.InternalAdv,1)==nele
+                %second condition added to trap incorrectly sized matrix
+                %for current number of elements (ie dims have changed)               
                 userdata(end,2:end-1) = obj.ExternalAdvIn;
                 userdata(2:end-1,1) = obj.ExternalAdvOut;
                 userdata(2:end-1,2:end-1) = obj.InternalAdv;
