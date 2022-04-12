@@ -659,7 +659,8 @@ classdef Saltmarsh < muiPropertyUI
             ax1 = axes(hfig,'Position',ax1_pos,...
                       'XAxisLocation','bottom','YAxisLocation','left');
             
-            profilePlot(obj,y,z,a,ax1); %plot tidal flat profile and HW            
+            profilePlot(obj,y,z,a,ax1); %plot tidal flat profile and HW  
+            ax1.YLim = [ax1.YLim(1),a+0.1];
             
             style = {'-','-.','--',':'};
             green = mcolor('green');
