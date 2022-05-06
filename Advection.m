@@ -72,7 +72,7 @@ classdef Advection < handle
             obj = setAdvectionType(obj,AdvType);
             if ~isempty(obj.InternalAdv) && size(obj.InternalAdv,1)==nele
                 %second condition added to trap incorrectly sized matrix
-                %for current number of elements (ie dims have changed)               
+                %for current number of elements (ie dims have changed)
                 userdata(end,2:end-1) = obj.ExternalAdvIn;
                 userdata(2:end-1,1) = obj.ExternalAdvOut;
                 userdata(2:end-1,2:end-1) = obj.InternalAdv;
@@ -99,6 +99,11 @@ classdef Advection < handle
             prompt = sprintf('Enter advection between elements %s\n(from row element to column element in direction of flow)',qunits);            
             [obj.InternalAdv,AdvIn,AdvOut,obj.RiverGraph] = ...
                             setmatrix(eleobj,prop,prompt,tabletxt,userdata);
+            if isempty(AdvIn) || all(AdvIn==0,'all') ||...
+                                isempty(AdvOut) || all(AdvOut==0,'all')
+                warndlg('One or more exchanges to the outside not defined')
+                return; 
+            end          
             %setmatrix returns [nx2] exchange arrays. restore to vector
             obj.ExternalAdvIn = AdvIn(:,2);
             obj.ExternalAdvOut = AdvOut(:,1);

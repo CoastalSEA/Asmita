@@ -48,7 +48,7 @@ classdef Interventions < matlab.mixin.Copyable
             for i=1:nintele
                 uyrs = cat(1,uyrs,obj(i).Year{1});
             end     
-            uyrs = unique(uyrs);
+            uyrs = unique(uyrs);  %returns sorted order
             nyr  = length(uyrs);
             vals = zeros(nintele,nyr,2);
             for i=1:nintele
@@ -181,8 +181,8 @@ classdef Interventions < matlab.mixin.Copyable
             
             %if the run properties have been defined use these to adjust
             %time range of plot
-            rnpobj = getClassObj(mobj,'Inputs','RunProps');
-            if ~isempty(rnpobj)
+            rnpobj = getClassObj(mobj,'Inputs','RunProperties');
+            if ~isempty(rnpobj) && length(Vol)>5  %5 used as switch to stair plot in tabPlot
                 t0 = rnpobj.StartYear;
                 tN = t0+rnpobj.TimeStep*rnpobj.NumSteps;
                 if t0<tim(1)
@@ -267,7 +267,11 @@ classdef Interventions < matlab.mixin.Copyable
             newtable = tablefigureUI(title,header,oldtable,true,but,[0.1,0.6]);
             if isempty(newtable), return; end 
             newtable = sortrows(newtable);
-
+            %remove row if year has not been defined
+            newtable = rmmissing(newtable,'DataVariables',{'Year'});
+            %if user has not edited all NaN values amend to zeros
+            newtable = fillmissing(newtable,'constant',0);
+            
             obj(eleid).Year = {newtable.Year};
             obj(eleid).VolumeChange = {newtable.Volume};
             obj(eleid).SurfaceAreaChange = {newtable.SurfaceArea};
@@ -281,7 +285,8 @@ classdef Interventions < matlab.mixin.Copyable
             count = 0;
             intid = [];
             for i=1:length(obj)                
-                if obj(i).Year{1}>0
+                if any(obj(i).VolumeChange{1}~=0) || ...
+                                        any(obj(i).SurfaceAreaChange{1}~=0) 
                     count = count+1;
                     intid(count) = i;                     %#ok<AGROW>
                     eleid = obj(i).ElementID;
@@ -315,7 +320,11 @@ classdef Interventions < matlab.mixin.Copyable
             if length(Vol)<5
                 bar(tim,Vol,'DisplayName',legtxt);
             else
-                stairs(tim,Vol,'DisplayName',legtxt);
+                stairs(tim,Vol,'DisplayName',legtxt,'LineWidth',1);
+                hold on
+                p1 = plot([tim(1),tim(end)],[Vol(1),Vol(end)],'.','MarkerSize',10);
+                p1.Annotation.LegendInformation.IconDisplayStyle = 'off'; 
+                hold off
             end
             title(legtxt);
             ylabel('Volume change (m^3)');
@@ -324,12 +333,17 @@ classdef Interventions < matlab.mixin.Copyable
             else
                 s1.YLim(2) = vmax+offset*vmax;
             end
+            s1.XLim(2) = tim(end)+1;
             %
             s2 =  subplot(2,1,2);
-            if length(Vol)<5
-                bar(tim,Vol,'DisplayName',legtxt);
+            if length(Surf)<5
+                bar(tim,Surf,'DisplayName',legtxt);
             else
-                stairs(tim,Surf,'DisplayName',legtxt);
+                stairs(tim,Surf,'DisplayName',legtxt,'LineWidth',1);
+                hold on
+                p2 = plot([tim(1),tim(end)],[Surf(1),Surf(end)],'.','MarkerSize',10);
+                p2.Annotation.LegendInformation.IconDisplayStyle = 'off';
+                hold off
             end
             xlabel('Year');
             ylabel('Area change (m^2)');
@@ -338,6 +352,7 @@ classdef Interventions < matlab.mixin.Copyable
             else
                 s2.YLim(2) = smax+offset*smax;
             end
+            s2.XLim(2) = tim(end)+1;
         end
     end
     

@@ -454,32 +454,32 @@ classdef AsmitaModel < muiDataSet
             rncobj = getClassObj(mobj,'Inputs','RunConditions');
             if rncobj.IncInterventions
                 intobj = getClassObj(mobj,'Inputs','Interventions');
-                obj.RunParam.Interventions = intobj;
+                obj.RunParam.Interventions = copy(intobj);
             end
             %
             if rncobj.IncRiver
                 rivobj = getClassObj(mobj,'Inputs','River');
-                obj.RunParam.River = rivobj;
+                obj.RunParam.River = copy(rivobj);
             end
             %
             if rncobj.IncDrift
                 dftobj = getClassObj(mobj,'Inputs','Drift');
-                obj.RunParam.Drift = dftobj;
+                obj.RunParam.Drift = copy(dftobj);
             end
             %
             if rncobj.IncSaltmarsh
                 smsobj = getClassObj(mobj,'Inputs','Saltmarsh');
-                obj.RunParam.Saltmarsh = smsobj;
+                obj.RunParam.Saltmarsh = copy(smsobj);
             end
             %
             if rncobj.IncDynHydraulics
                 cstobj = getClassObj(mobj,'Inputs','CSThydraulics');
-                obj.RunParam.CSThydraulics = cstobj;
+                obj.RunParam.CSThydraulics = copy(cstobj);
             end
             %
             if rncobj.IncRiver || rncobj.IncDrift || rncobj.IncDynHydraulics
                 advobj = getClassObj(mobj,'Inputs','Advection');
-                obj.RunParam.Advection = advobj;                
+                obj.RunParam.Advection = copy(advobj);                
             end
         end
         

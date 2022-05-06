@@ -72,13 +72,18 @@ function [exmatrix,exchIn,exchOut,nodetxt] = graph2matrix(flowgraph,nele)
         end
     else
         exchIn = fullmatrix(~idx,idx)';  %exchanges into the network
-        exchOut = fullmatrix(idx,~idx);  %exchanges out of the network
+        exchOut = fullmatrix(idx,~idx);  %exchanges out of the network        
     end
 
     matrixsze = size(exmatrix,1);
     %if the matrix is a subset of the network expand to full matrix
     %based on the number of elements required equal to nele
     if nargin>1 && ~isempty(nele) && nele>matrixsze
+        if isempty(exchIn) || all(exchIn==0,'all') ||...
+                                isempty(exchOut) || all(exchOut==0,'all')
+            %one or more external exchanges not defined or zero                
+            return; 
+        end 
         idxx = nodetxt.nid>0;  %update idx in case inner or outer have been added
         %initialise arrays
         exmatrix = zeros(nele,nele);                     %null matrix
@@ -86,7 +91,7 @@ function [exmatrix,exchIn,exchOut,nodetxt] = graph2matrix(flowgraph,nele)
         newid = zeros(nele,1); newtype = repmat({''},nele,1); newname = newtype;
         %assign values based on node ID stored in nodetxt.nid
         nids = nodetxt.nid(idxx); %use updated idx
-        exmatrix(nids,nids) = fullmatrix(idx,idx); %us original consistent with matrix dimensions
+        exmatrix(nids,nids) = fullmatrix(idx,idx); %use original idx consistent with matrix dimensions
         exchIn(nids,:) = fullmatrix(~idx,idx)';
         exchOut(nids,:) = fullmatrix(idx,~idx);
         %update nodetext to the new array dimension

@@ -90,8 +90,11 @@ classdef Estuary < muiPropertyUI
             nele = length(eleobj);
             nelp = nele+2;
             userdata = zeros(nelp,nelp);
-            if ~isempty(obj.Dispersion)
+            if ~isempty(obj.ExternalDisp) %external exchange has been defined
                 userdata(1,2:end-1) = obj.ExternalDisp(:,1)';
+            end
+            %
+            if ~isempty(obj.Dispersion)   %internal exchange has been defined
                 userdata(2:end-1,2:end-1) = obj.Dispersion;
             end
             
