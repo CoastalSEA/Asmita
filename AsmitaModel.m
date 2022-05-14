@@ -53,7 +53,14 @@ classdef AsmitaModel < muiDataSet
             %check that the input data has been entered
             %isValidModel checks the InputHandles defined in ModelUI
             if ~isValidModel(mobj, metaclass(obj).Name)  
-                warndlg('Use Setup to define model input parameters');
+                [message,ok] = AsmitaModel.CheckInput(mobj);
+                    if ok<1  %some core input classes not instantiated
+                        warndlg(message);
+                    else     %all core input classes instantiated but some values missing
+                        msg1 = 'Some of the core input parameters have not been set';
+                        msg2 = 'Core inputs are Elements, System parameters, Water Levels, Run Properties, Run Conditions and Eq.Coefficients';
+                        warndlg(sprintf('%s\n%s',msg1,msg2));
+                    end
                 return;
             end
             %Check additional inputs and notify user what is included
@@ -216,11 +223,23 @@ classdef AsmitaModel < muiDataSet
             message = {};  ok=1;
             imes = 1;
             minclasses = mobj.ModelInputs.AsmitaModel;
-            msg = 'Core inputs: ';
+            msg = 'Core inputs: '; msg0 = msg;
             for i=1:length(minclasses)
-                msg = sprintf('%s %s, ',msg,minclasses{i});
+                %when called by runModel this repeats the isvalidmodel
+                %check so woul
+                lobj = getClassObj(mobj,'Inputs',minclasses{i});
+                if isempty(lobj)
+                    msg0 = sprintf('%s %s, ',msg0,minclasses{i});
+                    ok = 0;
+                else
+                    msg = sprintf('%s %s, ',msg,minclasses{i});
+                end
             end
             message{imes} = sprintf('%s are defined\n',msg(1:end-2));  %removes final comma
+            if ok==0
+                message{imes} = sprintf('%s have NOT been defined\n',msg0(1:end-2));  %removes final comma
+                return;
+            end
             
             %check dispersion has been set and that advection balances (if set) 
             estobj = getClassObj(mobj,'Inputs','Estuary');            
