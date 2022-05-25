@@ -1,4 +1,4 @@
-classdef Advection < handle
+classdef Advection < matlab.mixin.Copyable
     % Advection class handles different types of advection with functions
     % to create flow graphs and derive advection matrices.
     %
