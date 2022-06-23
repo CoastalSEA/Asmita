@@ -59,7 +59,7 @@
 % * *Stats*: tabulates the results from statistics UI.
 
 %% Accessing Case meta-data
-% On the *Cases* tab, using the mouse to click on a case record generates a
+% On the *Cases* tab, using the mouse to click on  the fist column of a case record generates a
 % table figure with a summary of the meta-data for the selected case. The
 % figure includes buttons to Copy the data to the clipboard, view the
 % DSproperties of the selected dataset and examine the Source of the
