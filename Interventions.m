@@ -96,7 +96,7 @@ classdef Interventions < matlab.mixin.Copyable
             [obj,eleid,~,ok] = Interventions.selectIntElement(mobj);
             if ok<1, return; end
             %get the name of the file and read it
-            data = readinputdata();
+            data = readinputdata();        %see asmita_functions (different to readinputfile)
             if isempty(data), return; end  %user aborted or file not read
             
             %assign interventions to object
