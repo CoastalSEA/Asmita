@@ -191,33 +191,35 @@ classdef WaterLevels < muiPropertyUI
             HWm1 = obj.HWaterLevel;   
             LWm1 = obj.LWaterLevel;
             MWm1 = obj.MeanSeaLevel;
-            %
+            %find selected slr case - see dslrvec in sealevelrise.m for details
             if obj.SLRrate<0 
                 %user has only defined the exponential rate, ert
                 dslrvec = [0,1900,0.001];
-                dslrvec(1) = -obj.SLRrate;   %only ert specified
+                dslrvec(1) = -obj.SLRrate;  %only dslr specified
+                pivotyear = 2000;           %assumed pivotyear if not defined
                 option = 2;  %exponential rate
             elseif length(obj.SLRrate)==3
-                %user has defined [ert,yr0,dslr0] see sealevelrise.m for details
+                %user has defined [dslr, yr0, dslr0] 
                 dslrvec = obj.SLRrate;
-                pivotyear = 2000;
+                pivotyear = 2000;           %assumed pivotyear if not defined
                 option = 2;  %exponential rate
             elseif length(obj.SLRrate)==4
-                %user has defined [ert,yr0,dslr0] see sealevelrise.m for details
+                %user has defined [dslr, yr0, dslr0, pivotyear]
                 dslrvec = obj.SLRrate(1:3);
-                pivotyear = obj.SLRrate(4);
+                pivotyear = obj.SLRrate(4); %extract pivotyear
                 option = 2;  %exponential rate
             elseif length(obj.SLRrate)==6
-                %user has defined [ert,yr0,dslr0] see sealevelrise.m for details
+                %user has defined [dslr, yr0, dslr0, hscale, hshape, hoffset] 
                 dslrvec = obj.SLRrate; 
-                pivotyear = 2000;
+                pivotyear = 2000;           %assumed pivotyear if not defined
                 option = 3;  %double exponential rate for Holocens & Modern   
             elseif length(obj.SLRrate)==7
-                %user has defined [ert,yr0,dslr0] see sealevelrise.m for details
+                %user has defined [dslr, yr0, dslr0, hscale, hshape, hoffset, pivotyear] 
                 dslrvec = obj.SLRrate(1:6); 
-                pivotyear = obj.SLRrate(7);
+                pivotyear = obj.SLRrate(7); %extract pivotyear
                 option = 3;  %double exponential rate for Holocens & Modern      
             elseif isnan(obj.SLRrate)
+                %user has defined own function for slr called by sealevelrise.m
                 dslrvec = obj.SLRrate;
                 pivotyear = startyr/y2s; 
                 option = 4;  %allow user to define slr function
@@ -255,7 +257,7 @@ classdef WaterLevels < muiPropertyUI
             mtime = (0:dt:nstep*dt)*y2s;
             [HWL,MSL,LWL] = newWaterLevels(obj,mtime,rnpobj.StartYear*y2s);
             
-            %clear any existing plot
+            %generate new tab plot
             tabcb =  @(src,evdat)tabPlot(obj,src,mobj);
             ax = tabfigureplot(obj,src,tabcb,false); %rotate button not required
             
