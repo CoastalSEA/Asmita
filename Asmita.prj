@@ -1,5 +1,5 @@
 <deployment-project plugin="plugin.apptool" plugin-version="1.0">
-  <configuration build-checksum="1643727744" file="D:\Work\Tools\MATLAB\MUImodels2\muiApps\Asmita\Asmita.prj" location="D:\Work\Tools\MATLAB\MUImodels2\muiApps\Asmita" name="Asmita" target="target.mlapps" target-name="Package App">
+  <configuration build-checksum="4188105931" file="D:\Work\Tools\MATLAB\MUImodels2\muiApps\Asmita\Asmita.prj" location="D:\Work\Tools\MATLAB\MUImodels2\muiApps\Asmita" name="Asmita" target="target.mlapps" target-name="Package App">
     <param.appname>Asmita</param.appname>
     <param.authnamewatermark>Ian Townend</param.authnamewatermark>
     <param.email>i.townend@soton.ac.uk</param.email>
