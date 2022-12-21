@@ -27,5 +27,5 @@
 
 %%
 % See also the <matlab:doc('asmita_functions') additional functions> used in 
-% Asmita and the <matlab:open_manual manual>, which provides further details 
+% Asmita and the <matlab:asm_open_manual manual>, which provides further details 
 % of setup and configuration of the model.

@@ -1,8 +1,8 @@
 %% Asmita Examples
 % A number of models are provided to illustrate a range of possible
 % applications. The details of each model set-up are given in the 
-% <matlab:open_manual manual>. The mat files for the demonstration models can be found in
-% the example folder <matlab:example_folder here>. The models are:
+% <matlab:asm_open_manual manual>. The mat files for the demonstration models can be found in
+% the example folder <matlab:asm_example_folder here>. The models are:
 %%
 % * Humber 3EM - 3 element model of delta, channel and flat, including an
 % intervention during the run period.

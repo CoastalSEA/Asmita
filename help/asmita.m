@@ -69,10 +69,10 @@
 % Wang ZB, Karssen B, Fokkink RJ, Langerak A, 1998, A dynamical/empirical model for the long-term morphological development of estuaries, In: 8th International Biennial Conference on Physics of Estuaries and Coastal Seas, 1996, The Hague, pp. 279-286. 
 
 %% Manual
-% The <matlab:open_manual manual> provides further details of setup and 
+% The <matlab:asm_open_manual manual> provides further details of setup and 
 % configuration of the model.
 % The mat files for the demonstration models can be found in
-% the example folder <matlab:example_folder here>.
+% the example folder <matlab:asm_example_folder here>.
 
 %% See Also
 % <matlab:doc('muitoolbox') muitoolbox>, <matlab:doc('dstoolbox') dstoolbox>.

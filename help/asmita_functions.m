@@ -89,5 +89,5 @@
 
 %% See Also
 % The <matlab:doc('asmita_classes') additional classes> used in Asmita and
-% the <matlab:open_manual manual>, which provides further details of setup and 
+% the <matlab:asm_open_manual manual>, which provides further details of setup and 
 % configuration of the model.

@@ -76,7 +76,7 @@
 % infilled.
 
 %% See Also
-% The <matlab:open_manual manual> provides further details of setup and 
+% The <matlab:asm_open_manual manual> provides further details of setup and 
 % configuration of the model.
 %%
 % Townend IH, Wang ZB, Rees JG, 2007, Millennial to annual volume changes in the Humber Estuary, Proc.R.Soc.A, 463, 837-854.
