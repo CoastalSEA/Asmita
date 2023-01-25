@@ -251,9 +251,7 @@ classdef Element < muiPropertyUI
                 warndlg('Cancelled, NO element deleted')
                 return
             end
-            obj(idx) = [];
-            setClassObj(mobj,'Inputs','Element',obj);
-            
+
             %if already created update advection and dispersion
             estobj = getClassObj(mobj,'Inputs','Estuary');
             advobj = getClassObj(mobj,'Inputs','Advection');
@@ -261,6 +259,7 @@ classdef Element < muiPropertyUI
                 if ~isempty(estobj.Dispersion)                    
                     delEleDispersion(estobj,mobj,idx);
                 end
+                %
                 if isa(advobj,'Advection')
                     delEleAdvection(advobj,mobj,idx);
                 end
@@ -271,9 +270,15 @@ classdef Element < muiPropertyUI
                 delIntEle(intobj,mobj,idx);
             end
             warndlg({'Element DELETED';'Properties also removed from:';...
-              ' - Dispersion';
+              ' - Dispersion';...
               ' - Advection';...
-              ' - Interventions'});            
+              ' - Interventions';...
+              'Check that the Dispersion and Advection matrices are correctly assigned'});     
+            
+            %now remove elements (full array used in delEleAdvection to
+            %construct graphs and find adjacent elements)
+            obj(idx) = [];
+            setClassObj(mobj,'Inputs','Element',obj);
         end
 
 %% 

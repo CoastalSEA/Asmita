@@ -457,7 +457,7 @@ classdef Advection < matlab.mixin.Copyable
             %specified for any edge.
             flowpathID = g_flowpath.Nodes.EleID;
             newEdgeWeight = g_flowpath.Edges.Weight;
-            %find Edge for each dynamic drift input ans assign update
+            %find Edge for each dynamic drift input and assign update
             for j=1:length(newDrift)
                 if inEleID(j,1)==0      %an input to node (j,2)                      
                     outID = find(flowpathID==inEleID(j,2));
@@ -648,23 +648,60 @@ classdef Advection < matlab.mixin.Copyable
         function delEleAdvection(obj,mobj,idx)
             %delete advection properties for element(idx)
             if ~isempty(obj.RiverFlows)
+                Adv = obj.RiverFlows;
+                AdvIn = obj.RiverIn;
+                AdvOut = obj.RiverOut;
+                inoutxt = {'Sea';'River(s)'};
+                eleobj  = getClassObj(mobj,'Inputs','Element');
+                nodetxt = setnodetext(eleobj,inoutxt);
+                flowGraph = matrix2graph(Adv,AdvIn,AdvOut,nodetxt);
                 obj = setAdvectionType(obj,'River');
-                obj = deleteAnAdvection(obj,idx);
-                obj = setAdvectionProps(obj,'River');
+                obj = deleteAnAdvection(obj,eleobj,flowGraph,idx);
+                obj = setAdvectionProps(obj,'River',idx);
             end
             %
             if ~isempty(obj.DriftFlows)
+                Qs = obj.DriftFlows;
+                QsIn = obj.DriftIn;
+                QsOut = obj.DriftOut;
+                inoutxt = {'Downdrift','Updrift'};
+                eleobj  = getClassObj(mobj,'Inputs','Element');             
+                nodetxt = setnodetext(eleobj,inoutxt);
+                driftGraph = matrix2graph(Qs,QsIn,QsOut,nodetxt);
                 obj = setAdvectionType(obj,'Drift');
-                obj = deleteAnAdvection(obj,idx);
-                obj = setAdvectionProps(obj,'Drift');
+                obj = deleteAnAdvection(obj,eleobj,driftGraph,idx);
+                obj = setAdvectionProps(obj,'Drift',idx);
             end
             %
             %assign updated flow field to the specified flow type
             setClassObj(mobj,'Inputs','Advection',obj);
+
             %--------------------------------------------------------------
-            function obj = deleteAnAdvection(obj,idx)
+            function obj = deleteAnAdvection(obj,eleobj,flowGraph,idx)
+                %check if end member is being deleted and move input/output
+                %to adjacent element
+                flowpathID = flowGraph.Nodes.EleID; %flow path for advection
+                idin = find(obj.ExternalAdvIn>0); %element connected to outside environment
+                if idx==idin
+                    inID = find(flowpathID==eleobj(idx).EleID); %incoming path
+                    idg = flowpathID(successors(flowGraph,inID));
+                    if ~isempty(idg) && idg>0
+                        obj.ExternalAdvIn(idg) =  obj.ExternalAdvIn(idin);
+                    end
+                end
                 obj.ExternalAdvIn(idx) = [];
+
+                %nele = length(obj.ExternalAdvOut);
+                idout = find(obj.ExternalAdvOut>0); %element connected to outside environment
+                if idx==idout
+                    outID = find(flowpathID==eleobj(idx).EleID); %outgoing path
+                    idg = flowpathID(predecessors(flowGraph,outID));
+                    if ~isempty(idg) && idg>0
+                        obj.ExternalAdvOut(idg) =  obj.ExternalAdvOut(idout);
+                    end
+                end
                 obj.ExternalAdvOut(idx) = [];
+
                 obj.InternalAdv(idx,:) = [];
                 obj.InternalAdv(:,idx) = [];
             end
@@ -750,22 +787,28 @@ classdef Advection < matlab.mixin.Copyable
         end
 
 %%
-        function obj = setAdvectionProps(obj,AdvType)
+        function obj = setAdvectionProps(obj,AdvType,idx)
             %assign the internal advection property values to the
             %specified set of flow type properties (River, Drift, Qtp)
             idin = 2; idout = 1;
             switch AdvType
                 case 'River'
+                    obj.RiverIn(idx,:) = [];
                     obj.RiverIn(:,idin) = obj.ExternalAdvIn;
+                    obj.RiverOut(idx,:) = [];
                     obj.RiverOut(:,idout) = obj.ExternalAdvOut;
                     obj.RiverFlows = obj.InternalAdv;                    
                 case 'Drift'
+                    obj.DriftIn(idx,:) = [];
                     obj.DriftIn(:,idin) = obj.ExternalAdvIn;
+                    obj.DriftOut(idx,:) = [];
                     obj.DriftOut(:,idout) = obj.ExternalAdvOut;
                     obj.DriftFlows = obj.InternalAdv;                    
                 case 'Qtp'
                     idin = 1; idout = 2;
+                    obj.TidalIn(idx,:) = [];
                     obj.TidalPumpingIn(:,idin) = obj.ExternalAdvIn;
+                    obj.TidalOut(idx,:) = [];
                     obj.TidalPumpingOut(:,idout) = obj.ExternalAdvOut;
                     obj.TidalPumpingFlows = obj.InternalAdv;
             end
@@ -887,9 +930,7 @@ classdef Advection < matlab.mixin.Copyable
             flowNodes = g_landward.Edges.EndNodes;
             flowWeight = g_landward.Edges.Weight;
             qtpWeight = zeros(size(flowWeight));
-            
-            
-            
+
             isexternal = ismatch(RchType,extype);
             if any(isexternal)
                 qtp = [qtp;0]; qtp0 = [0;qtp0];

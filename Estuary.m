@@ -378,7 +378,24 @@ classdef Estuary < muiPropertyUI
         function delEleDispersion(obj,mobj,idx)
             %delete dispersion properties for element(idx)
             % used when element deleted
-            obj.ExternalDisp(idx) = [];
+            Disp = obj.Dispersion;
+            ExtDisp = obj.ExternalDisp;
+            inoutxt = {'Sea';'Rivers'};
+            eleobj  = getClassObj(mobj,'Inputs','Element');
+            nodetxt = setnodetext(eleobj,inoutxt);
+            dispGraph = matrix2graph(Disp,ExtDisp,[],nodetxt);            
+            flowpathID = dispGraph.Nodes.EleID;   %flow path for advection
+
+            idin = find(obj.ExternalDisp(:,1)>0); %element connected to outside environment
+            if idx==idin
+                inID = find(flowpathID==eleobj(idx).EleID);
+                idg = flowpathID(successors(dispGraph,inID)); %next element
+                if ~isempty(idg) && idg>0
+                    obj.ExternalDisp(idg,1) =  obj.ExternalDisp(idin);
+                end
+            end
+
+            obj.ExternalDisp(idx,:) = [];
             obj.Dispersion(idx,:) = [];
             obj.Dispersion(:,idx) = [];
             setClassObj(mobj,'Inputs','Estuary',obj);
