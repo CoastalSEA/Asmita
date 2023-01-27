@@ -233,8 +233,7 @@ classdef Element < muiPropertyUI
             
             warndlg({'Element ADDED';
               'Do not forget to update Dispersion and Advection'});            
-        end
-               
+        end              
 %%
         function delElement(mobj)
             %delete an element from the model
@@ -280,7 +279,6 @@ classdef Element < muiPropertyUI
             obj(idx) = [];
             setClassObj(mobj,'Inputs','Element',obj);
         end
-
 %% 
         function initialiseElements(mobj)
             %initialise Transient properties
@@ -303,8 +301,7 @@ classdef Element < muiPropertyUI
             [obj.BioProdVolume] =  null{:};
             [obj.transEleType] = obj(:).EleType;           
             [obj.eqScaling] = unity{:}; %initialise default values
-            [obj.EleWLchange] = null{:};
-            
+            [obj.EleWLchange] = null{:};        
 
             setClassObj(mobj,'Inputs','Element',obj);
         end           
@@ -514,8 +511,6 @@ classdef Element < muiPropertyUI
             if ok<1, return; end
             elename = eleList{eleid};
         end
-%%
-
 %%
         function displayProperties(obj,src)
             %table for summary of element properties.
