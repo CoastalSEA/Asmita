@@ -59,7 +59,7 @@
 % * *Drift>Drift  Inputs*: this component can only be added once some channel elements have been setup in the model. If no rivers are defined, the dialog box requires the Channel id number, along with the flow rate and the concentration density of the rivers sediment load. 
 % * *Drift>Drift Advection*: dialogue table to define drift advection connectivity.
 % * *Drift>Drift Timeseries*: to add a drift times series first define a
-% source input element using ????????????????
+% source input element. The user is then prompted for a text file with time series data to define drift rates as volumes of sediment per year (m3/year). This can either be a single input drift which is then passed through the network, based on the partitioning given by the initial advection matrix definition. Alternatively, a rate can be specified for selected links in the path. 
 % * *Drift>Delete Input*: select the source to be deleted from the list of channels with river inputs.
 %
 % * *Interventions>Add or Edit*: select element from list of elements and then use table to add interventions. Selection of elements is in a continuous loop. Select Cancel from the element list box to finish adding interventions. 
@@ -99,7 +99,9 @@
 % * *Statistics*: initialiss the Statistics UI to select data and run a range of standard statistical methods.
 
 %% Help
-% * *Help*: access the online documentation for Asmita.
+% * *Help>Documentation*: access the online documentation for Asmita.
+% * *Help>Manual*: access the manual pdf file.
+% * *Help>Theory*: access papers that explain the background theory.
 
 %% See Also
 % The <matlab:asm_open_manual manual> provides further details of setup and 

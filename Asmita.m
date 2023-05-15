@@ -180,7 +180,8 @@ classdef Asmita < muiModelUI
             menu.Analysis(1).Callback = repmat({@obj.analysisMenuOptions},[1,2]);
             
             %% Help menu --------------------------------------------------
-            menu.Help(1).Callback = {@obj.Help}; %make model specific?
+            menu.Help.List = {'Documentation','Manual','Theory 1','Theory 2'};
+            menu.Help.Callback = repmat({@obj.Help},[1,4]);
             
         end
         
@@ -451,8 +452,17 @@ classdef Asmita < muiModelUI
         end
 
         %% Help menu ------------------------------------------------------
-        function Help(~,~,~)
-            doc asmita                              
+        function Help(~,src,~)
+            switch src.Text
+                case 'Documentation'
+                    doc asmita   
+                case 'Manual'
+                    asm_open_manual;
+                case 'Theory 1'
+                    asm_coe_part1;
+                case 'Theory 2'
+                    asm_coe_part2;
+            end
         end    
     end
 %%
