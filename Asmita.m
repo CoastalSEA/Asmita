@@ -15,8 +15,8 @@ classdef Asmita < muiModelUI
 % 
     properties  (Access = protected)
         %implement properties defined as Abstract in muiModelUI
-        vNumber = '3.1'
-        vDate   = 'June 2022'
+        vNumber = '3.2'
+        vDate   = 'June 2023'
         modelName = 'Asmita'   
         %Properties defined in muiModelUI that need to be defined in setGui
         % ModelInputs  %classes required by model: used in isValidModel check 
@@ -39,10 +39,8 @@ classdef Asmita < muiModelUI
         %NB: Rivers can only connect to 'Channel' - hard coded in River class.
         %Drift uses EXtypes to limit assignment of drift inputs.
         %Reach uses 'FloodDelta' as a key word.
-        %Saltmarsh, ASMinterface and ASM_model use 'Saltmarsh' and 'Tidalflat'. 
-        
+        %Saltmarsh, ASMinterface and ASM_model use 'Saltmarsh' and 'Tidalflat'.        
         %Estuary uses 'Delta' to find all external delta elements ie not inc. FloodDelta. 
-
     end
     
     methods (Static)
