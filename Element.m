@@ -130,6 +130,13 @@ classdef Element < muiPropertyUI
                 userdata = [{obj.EleType}',{obj.EleName}',num2cell([obj.Erodible]')];                           
             end
             obj = eleTable(obj,mobj,userdata);
+            %check that element names are unique
+            while ~isunique({obj(:).EleName})
+                hw = warndlg('Element names must be unique','Elements');
+                uiwait(hw);
+                userdata = [{obj.EleType}',{obj.EleName}',num2cell([obj.Erodible]')];     
+                obj = eleTable(obj,mobj,userdata);
+            end
             
             setClassObj(mobj,'Inputs','Element',obj);
         end
