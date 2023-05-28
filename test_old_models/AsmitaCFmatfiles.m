@@ -1,5 +1,10 @@
 classdef AsmitaCFmatfiles < matlab.unittest.TestCase
-    % Test the running of Asmita against selected test cases
+    % Test the running of Asmita against selected test cases using the
+    % AsmitaOO Date files for comparison.
+    % UserCase defines which test data set to load
+    % testModel is used for the UI model selection
+    % testFile defines the results to be used in the comparison
+
     properties(TestParameter)
             UserCase = {'HumberTestData',...
                         'AmelanderTestData',...
@@ -22,15 +27,14 @@ classdef AsmitaCFmatfiles < matlab.unittest.TestCase
     end
 %%
     methods (Test)
-        %asmitaCFmatfiles is an instance of the class AsmitCFmatfiles
-        %UserCase defines which test data set to load
-        %testFile defines the results to be used in the comparison
+        %asmitaCFmatfiles is an instance of the class AsmitCFmatfiles        
         %the original AsmitaOO files have the same name and are held in a
-        %subfoler: AsmitaOO Data files.
-        %called from UserUnitTesting by selecting the relevant test case 
+        %subfolder: AsmitaOO Data files.
+        %called from UserUnitCFmatTesting by selecting the relevant testModel
+        %the last set of model results in the testFile are used for the cf
         
         function RunModelTest(asmitaCFmatfiles,testModel)
-            %compare with actual soluation from a file saved for the model
+            %compare with actual solution from a file saved for the model
             testdataset = load(asmitaCFmatfiles.testFile{testModel});
             lobj = testdataset.sobj;
             useCase = length(lobj.Cases.DataSets.AsmitaModel);
@@ -45,7 +49,7 @@ classdef AsmitaCFmatfiles < matlab.unittest.TestCase
             
             clear useCase dst lobj testdataset
             
-            %load exepcted results from TestData file
+            %load expected results from TestData file
             testdataset = load([pwd,'\AsmitaOO Data files\',asmitaCFmatfiles.UserCase{testModel},'.mat']);
             %first 3 properties for all time steps, all elements 
             expSolution = testdataset.expSolution; %file with sub-set saved

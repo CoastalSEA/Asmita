@@ -86,6 +86,18 @@
 % * *userprismcoeffs.m*
 % - parameters to define volume-prism relationships of the form:
 % volume = alpha*prism^beta or volume = alpha*tidal range^beta
+%
+% * *asmita_command_line_run.m*
+% - function to run Asmita App using the supplied model path and model mat
+% file name.
+
+%% Scripts
+%%
+% * *asmita_command_line_script.m*
+% - script to run a model, which is specified in the script, extract some results and plots them. The script includes some sample code to modify a selection of model properties before running the model.
+% * *asmita_command_line_loop_script.m*
+% - script to select multiple models, run them in a loop, extract some
+% results and plot them. Uses the properties defined in the source mat file of each model.
 
 %% See Also
 % The <matlab:doc('asmita_classes') additional classes> used in Asmita and

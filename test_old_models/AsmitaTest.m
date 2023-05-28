@@ -1,5 +1,9 @@
 classdef AsmitaTest <  matlab.unittest.TestCase
     % Test the running of Asmita against selected test cases
+    % UserCase defines which test data set to load
+    % testModel is used for the UI model selection
+    % testFile defines the model to be run for comparison
+
     properties(TestParameter)
             UserCase = {'H1EMTestData',...
                         'HumberTestData',...
@@ -29,8 +33,6 @@ classdef AsmitaTest <  matlab.unittest.TestCase
 %%
     methods (Test)
         %asmitaTest is an instance of the class AsmitaTest
-        %UserCase defines which test data set to load
-        %testFile and testModel define the model to run for comparison
         %called from UserUnitTesting by selecting the relevant test case 
         
         function RunModelTest(asmitaTest,testModel)

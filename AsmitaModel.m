@@ -104,20 +104,28 @@ classdef AsmitaModel < muiDataSet
             setRunParam(obj,mobj); %this only saves the core set
             setIncParam(obj,mobj); %add any additional Classes included in run
             
-            msg = sprintf('ASMITA processing, please wait');
-            hw = waitbar(0,msg);
-            %run model
-            for jt = 1:obj.RunSteps
-                InitTimeStep(obj,mobj,jt)
-                RunTimeStep(obj,mobj)
-                PostTimeStep(obj,mobj,eledsp,rchdsp);
-                waitbar(jt/obj.RunSteps);
-                %to report time step during run use the following
-                msg = sprintf('ASMITA processing, step %d of %d',...
-                                                         jt,obj.RunSteps);
-                waitbar(jt/obj.RunSteps,hw,msg);                
+            if mobj.SupressPrompts  %supress prompts if true
+                %run model without displaying waitbar
+                for jt = 1:obj.RunSteps
+                    InitTimeStep(obj,mobj,jt)
+                    RunTimeStep(obj,mobj)
+                    PostTimeStep(obj,mobj,eledsp,rchdsp);         
+                end                
+            else
+                msg = sprintf('ASMITA processing, please wait');
+                hw = waitbar(0,msg);
+                %run model
+                for jt = 1:obj.RunSteps
+                    InitTimeStep(obj,mobj,jt)
+                    RunTimeStep(obj,mobj)
+                    PostTimeStep(obj,mobj,eledsp,rchdsp);
+                    %to report time step during run use the following
+                    msg = sprintf('ASMITA processing, step %d of %d',...
+                                                             jt,obj.RunSteps);
+                    waitbar(jt/obj.RunSteps,hw,msg);                
+                end
+                close(hw);
             end
-            close(hw);
 
             %now assign results to object properties  
             if rnpobj.StartYear>0

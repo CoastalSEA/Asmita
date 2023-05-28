@@ -15,8 +15,8 @@ classdef Asmita < muiModelUI
 % 
     properties  (Access = protected)
         %implement properties defined as Abstract in muiModelUI
-        vNumber = '3.2'
-        vDate   = 'June 2023'
+        vNumber = '3.3'
+        vDate   = 'July 2023'
         modelName = 'Asmita'   
         %Properties defined in muiModelUI that need to be defined in setGui
         % ModelInputs  %classes required by model: used in isValidModel check 
@@ -72,7 +72,9 @@ classdef Asmita < muiModelUI
             obj.DataUItabs.Stats = {'General','Taylor'};  
             
             modelLogo = 'Asmita_logo.jpg';  %default splash figure - edit to alternative
-            initialiseUI(obj,modelLogo); %initialise menus and tabs  
+            if ~obj.SupressPrompts  %supress prompts if true
+                initialiseUI(obj,modelLogo); %initialise menus and tabs  
+            end
             asmitaInputStruct(obj);
         end    
         
