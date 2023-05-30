@@ -79,8 +79,12 @@ function [exmatrix,exchIn,exchOut,nodetxt] = graph2matrix(flowgraph,nele)
     %if the matrix is a subset of the network expand to full matrix
     %based on the number of elements required equal to nele
     if nargin>1 && ~isempty(nele) && nele>matrixsze
-        if isempty(exchIn) || all(exchIn==0,'all') ||...
-                                isempty(exchOut) || all(exchOut==0,'all')
+        if isempty(exchIn) || all(exchIn==0,'all')% ||...
+                            %removed the following because failed when
+                            %running Yangtze 30EM because Qtp arrays change
+                            %size when caught by this check. Model runs ok
+                            %without the chec, as does Severn 16EM.
+                            %  isempty(exchOut) || all(exchOut==0,'all')
             %one or more external exchanges not defined or zero                
             return; 
         end 

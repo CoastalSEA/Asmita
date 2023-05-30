@@ -15,6 +15,7 @@ function asm = asm_oo2mui()
 %   source code of AsmitaOO and the mui version of Asmita need to be edited
 %   at the 'cd' commands below 
 % SEE ALSO
+%   CALLS: update_exchanges, 
 %   AsmitaOO and muiApp/Asmita
 %
 % Author: Ian Townend
@@ -52,7 +53,7 @@ function asm = asm_oo2mui()
 %     cd 'D:\Work\Tools\MATLAB\MUImodels2'
 %     muisetpaths
 %     cd 'D:\Work\Tools\MATLAB\MUImodels2\muiApps\Asmita'
-    addpath('D:\Work\Tools\MATLAB\MUImodels2\muiApps\Asmita')
+%     addpath('D:\Work\Tools\MATLAB\MUImodels2\muiApps\Asmita')
     %open an instance of the mui version of Asmita in silent mode    
     asm = Asmita(true);  %true flag runs Asmita in silent mode 
     
@@ -225,11 +226,11 @@ function asm = asm_oo2mui()
     update_exchanges(asm);  %update the exchange arrays to be n*2 
     
     %save new model to mat file
-    asm.Info.PathName = 'D:\Work\Tools\MATLAB\MUImodels2\muiApps\Asmita\test_models\muiASM model files';
+    asm.Info.PathName = 'D:\Matlab Code\MUImodels\muiApps\Asmita\test_old_models\muiASM model files';
     asm.Info.FileName = sfile(4:end);
     saveAfile(asm);
     closeMainFig(asm) 
-    rmpath('D:\Work\Tools\MATLAB\MUImodels2\muiApps\Asmita')
+    %rmpath('D:\Work\Tools\MATLAB\MUImodels2\muiApps\Asmita')
 end
 %%
 function update_exchanges(mobj)

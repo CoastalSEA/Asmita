@@ -4,7 +4,7 @@ function asmitaOO_structfile()
 % NAME
 %   asmitaOO_structfile.m
 % PURPOSE
-%   save AsmitaOO projects as a struct called 'inp' htat uses the same
+%   save AsmitaOO projects as a struct called 'inp' that uses the same
 %   class handles and property names as sobj
 % USAGE
 %   asmitaOO_structfile()
@@ -22,8 +22,8 @@ function asmitaOO_structfile()
 %--------------------------------------------------------------------------
 %
     %load the AsmitaOO version of the model    
-    asmOOpath = 'D:\Work\Tools\MATLAB\AsmitaOO';
-    addpath(asmOOpath)
+%     asmOOpath = 'D:\Work\Tools\MATLAB\AsmitaOO';
+%     addpath(asmOOpath)
 
     [sfile,spath] = uigetfile({'*.mat','MAT-files (*.mat)'},'Open AsmitaOO mat file');
     if sfile==0, return; end
@@ -31,6 +31,7 @@ function asmitaOO_structfile()
     load([spath,sfile],'sobj');
     fnames = fieldnames(sobj);  
     
+    inp.ProjectInfo = sobj.ProjectInfo;
     for ii=1:length(fnames)
         lobj = sobj.(fnames{ii});
         if ~isempty(lobj)
@@ -43,11 +44,11 @@ function asmitaOO_structfile()
         end
     end
     
-    rmpath(asmOOpath)
+%     rmpath(asmOOpath)
     clear sobj
     
     sfile = sprintf('inp%s',sfile);
-    save(['D:\Work\Tools\MATLAB\MUImodels2\muiApps\Asmita\test_models\AsmitaOO inp files\',sfile],'inp');
+    save(['D:\Matlab Code\MUImodels\muiApps\Asmita\test_old_models\AsmitaOO inp files\',sfile],'inp');
     msgbox(sprintf('File saved as %s',sfile));
 end
 %%
