@@ -4,7 +4,7 @@ function UserUnitTesting()
     %silent mode and runs model for selected case and compares the results
     %with the file in muiASM TestData.
 
-    %setting App paths - not needed
+    %setting App paths
     appinfo = matlab.apputil.getInstalledAppInfo;
     idx = find(strcmp({appinfo.name},'Asmita'));
     aspath = appinfo(idx(1)).location;
@@ -18,9 +18,19 @@ function UserUnitTesting()
                             'ListString',listtext);
     if ok==0, return; end %user selected cancel
 
-    import matlab.unittest.selectors.HasParameter
-    s1 = matlab.unittest.TestSuite.fromFile(astest,...
-        HasParameter('Name',listtext{selection}));
+    % Create a test suite from a file
+    suite = matlab.unittest.TestSuite.fromFile(astest); 
 
-    s1.run
+    % Select tests that have a parameter named 'Name' with the value listtext{selection}
+    import matlab.unittest.selectors.HasParameter
+    selector = HasParameter('Name',listtext{selection});
+    selectedTest = suite.selectIf(selector);
+
+    % Run the selected tests with the new property values
+    run(selectedTest)
+    
+%     import matlab.unittest.selectors.HasParameter
+%     s1 = matlab.unittest.TestSuite.fromFile(astest,"ExternalParameters",param,...
+%         HasParameter('Name',listtext{selection}));
+%     s1.run  
 end

@@ -42,7 +42,8 @@ function UserSaveTestData
     clear sobj
 
     %tidy up
-    delete(mobj.mUI.Figure);
     delete(mobj);    %delete the class object
     clear mobj
+
+    getdialog(sprintf('File: %s has been saved',sfile))
 end
