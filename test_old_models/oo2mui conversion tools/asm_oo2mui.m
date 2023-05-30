@@ -22,46 +22,34 @@ function asm = asm_oo2mui()
 % CoastalSEA (c) Oct 2021
 %--------------------------------------------------------------------------
 %
-    [sfile,spath] = uigetfile({'*.mat','MAT-files (*.mat)'},'Open AsmitaOO mat file');
+    %check is App paths are set
+    appinfo = matlab.apputil.getInstalledAppInfo;
+    idx = find(strcmp({appinfo.name},'Asmita'));
+    aspath = appinfo(idx(1)).location;
+    s = pathsep;
+    pathStr = [s, path, s];
+    onPath  = contains(pathStr, [s, aspath, s], 'IgnoreCase', ispc); %ignores case on Windows pc 
+    if ~onPath
+        warndlg('Asmita App paths not set. Run App and close to set paths')
+        return;
+    end
+
+    [sfile,spath] = uigetfile({'*.mat','MAT-files (*.mat)'},'Open AsmitaOO_inp mat file');
     if sfile==0, return; end
 
-    %load the AsmitaOO version of the model    
-%     asmOOpath = 'D:\Work\Tools\MATLAB\AsmitaOO';
-%     cd 'D:\Work\Tools\MATLAB\AsmitaOO'
-%     addpath(asmOOpath)
-%     rmpath('D:\Work\Tools\MATLAB\MUImodels2\muiApps\Asmita')
-    
     load([spath,sfile],'inp');
-    %following is now in asmitaOO_structfile.m to avoid path conflict
-    %betwwen AsmitaOO and mui version
-%     fnames = fieldnames(sobj);      
-%     for ii=1:length(fnames)
-%         lobj = sobj.(fnames{ii});
-%         if ~isempty(lobj)
-%             propnames = getPropertyNames(lobj);
-%             for jj=1:length(lobj)
-%                 for kk=1:length(propnames)                
-%                     inp.(fnames{ii})(jj).(propnames{kk}) = lobj(jj).(propnames{kk});
-%                 end
-%             end
-%         end
-%     end
-%     
-%     rmpath(asmOOpath)
-%     clear sobj asmOOpath
-%     
-%     cd 'D:\Work\Tools\MATLAB\MUImodels2'
-%     muisetpaths
-%     cd 'D:\Work\Tools\MATLAB\MUImodels2\muiApps\Asmita'
-%     addpath('D:\Work\Tools\MATLAB\MUImodels2\muiApps\Asmita')
     %open an instance of the mui version of Asmita in silent mode    
-    asm = Asmita(true);  %true flag runs Asmita in silent mode 
+    asm = Asmita(false);  %cannot run in silent mode because need to initialise tabs
     
     %now unpack old model and load into new model
     if ~isempty(inp.ProjectInfo)
         asm.Info.ProjectName  = inp.ProjectInfo.ProjectName;
         asm.Info.ProjectDate = inp.ProjectInfo.ProjectDate;
+    else
+        asm.Info = muiProject;    %initialise project information            
     end
+    asm.Cases = muiCatalogue; %initialise Catalogue
+
     %assume constants are unchanged
     
     %handle each of the old classes in turn
@@ -77,9 +65,9 @@ function asm = asm_oo2mui()
                         'M4amplitude','M4phase'};
                     for j= 1:length(sameprops)
                         wlv.(sameprops{j}) = old.(sameprops{j});
-                    end
-                    wlv.TidalAmp = old.TidalRange/2;      %tidal amplitude (m)
-                    wlv.NumCycles = old.RangeCycles.Num;  %number of cycles to include
+                    end 
+                    wlv.TidalAmp = old.TidalRange/2;       %tidal amplitude (m)
+                    wlv.NumCycles = old.RangeCycles.Num;   %number of cycles to include
                     wlv.CycleAmp = old.RangeCycles.Amp';   %vector of cycle amplitudes (m)
                     wlv.CyclePeriod = old.RangeCycles.Per';%vector of cycle periods (yrs)
                     wlv.CyclePhase = old.RangeCycles.Pha'; %vector of cycle phases (yrs)
@@ -226,11 +214,10 @@ function asm = asm_oo2mui()
     update_exchanges(asm);  %update the exchange arrays to be n*2 
     
     %save new model to mat file
-    asm.Info.PathName = 'D:\Matlab Code\MUImodels\muiApps\Asmita\test_old_models\muiASM model files';
-    asm.Info.FileName = sfile(4:end);
+    asm.Info.PathName = [pwd,filesep];
+    asm.Info.FileName = [sfile(1:end-4),'mui'];
     saveAfile(asm);
     closeMainFig(asm) 
-    %rmpath('D:\Work\Tools\MATLAB\MUImodels2\muiApps\Asmita')
 end
 %%
 function update_exchanges(mobj)
@@ -263,6 +250,7 @@ end
 function obj = saveAfile(obj)
     %prompt user to Save As in selected folder
     pname = obj.Info.PathName;
+    fname = obj.Info.FileName;
     ispath = false;
     if ~isempty(pname)   %check if already using a path
         try
@@ -274,7 +262,7 @@ function obj = saveAfile(obj)
     end
 
     [sfile,spath] = uiputfile({'*.mat','MAT-files (*.mat)'}, ...
-                   'Save Asmita work file');
+                   'Save Asmita work file',fname);
     if isequal(sfile,0)|| isequal(spath,0)
         return     %user selected cancel
     else

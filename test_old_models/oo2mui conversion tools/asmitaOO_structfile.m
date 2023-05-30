@@ -21,9 +21,20 @@ function asmitaOO_structfile()
 % CoastalSEA (c) Oct 2021
 %--------------------------------------------------------------------------
 %
-    %load the AsmitaOO version of the model    
-%     asmOOpath = 'D:\Work\Tools\MATLAB\AsmitaOO';
-%     addpath(asmOOpath)
+    %check whether App path is set and if so warn and quit 
+    appinfo = matlab.apputil.getInstalledAppInfo;
+    idx = find(strcmp({appinfo.name},'Asmita'));
+    aspath = appinfo(idx(1)).location;
+    s = pathsep;
+    pathStr = [s, path, s];
+    onPath  = contains(pathStr, [s, aspath, s], 'IgnoreCase', ispc); %ignores case on Windows pc 
+    if onPath
+        warndlg('Remove Asmita App paths before running OO2inp script')
+        return;
+    end
+
+    asmOOpath = 'D:\OneDrive\Software_Tools\Tools\MATLAB\AsmitaOO';
+    addpath(asmOOpath)
 
     [sfile,spath] = uigetfile({'*.mat','MAT-files (*.mat)'},'Open AsmitaOO mat file');
     if sfile==0, return; end
@@ -44,11 +55,11 @@ function asmitaOO_structfile()
         end
     end
     
-%     rmpath(asmOOpath)
+    rmpath(asmOOpath)
     clear sobj
     
-    sfile = sprintf('inp%s',sfile);
-    save(['D:\Matlab Code\MUImodels\muiApps\Asmita\test_old_models\AsmitaOO inp files\',sfile],'inp');
+    sfile = sprintf('%s_inp.mat',sfile(1:end-4));
+    save([pwd,filesep,sfile],'inp');
     msgbox(sprintf('File saved as %s',sfile));
 end
 %%
