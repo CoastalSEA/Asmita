@@ -8,6 +8,9 @@ function UserUnitTesting()
     appinfo = matlab.apputil.getInstalledAppInfo;
     idx = find(strcmp({appinfo.name},'Asmita'));
     aspath = appinfo(idx(1)).location;
+    if isempty(idx)                         %asmita path not found
+        warndlg('Asmita App not installed'); return;
+    end
     testpath = [aspath,[filesep,'Asmita',filesep,'test_models']];
     datapath = [testpath,[filesep,'muiASM TestData']];
     modelpath = [testpath,[filesep,'muiASM model files']];

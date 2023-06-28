@@ -231,6 +231,7 @@ classdef River < matlab.mixin.Copyable
             warning('on','MATLAB:linearinter:noextrap');
             tsvarnames = gettimeseriesnames(ts1);
             flow = ts1.RiverFlow.Data;
+            if flow==0, flow = 1e-6; end  %flow used to construct graph so must exist
             if length(tsvarnames)<2
                 conc = obj(iriv).RiverConc;
             else

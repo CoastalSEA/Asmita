@@ -9,22 +9,24 @@ function asm = asm_oo2mui()
 % USAGE
 %   asm_oo2mui()
 % NOTES
-%   user is prompted to select an input mat file and the converted project
-%   is saved to a new mat file
-%   in order to read the correct properties for each class the paths for
-%   source code of AsmitaOO and the mui version of Asmita need to be edited
-%   at the 'cd' commands below 
-% SEE ALSO
-%   CALLS: update_exchanges, 
-%   AsmitaOO and muiApp/Asmita
+%   user is prompted to select an 'inp' mat file and the converted project
+%   is saved to a new mat file. When using the Asmita App the paths to the
+%   App need to be set (run App and close).
+% SEE ALSO 
+%   use asmitaOO_structfile.m to create a struct from the original asmitaOO
+%   mat file. The ouput of asmitaOO_structfile is an 'inp' mat file
+%   AsmitaOO and muiApp/Asmita.
 %
 % Author: Ian Townend
-% CoastalSEA (c) Oct 2021
+% CoastalSEA (c) Oct 2021 and May 2023
 %--------------------------------------------------------------------------
 %
     %check is App paths are set
     appinfo = matlab.apputil.getInstalledAppInfo;
     idx = find(strcmp({appinfo.name},'Asmita'));
+    if isempty(idx)                         %asmita path not found
+        warndlg('Asmita App not installed'); return;
+    end
     aspath = appinfo(idx(1)).location;
     s = pathsep;
     pathStr = [s, path, s];
@@ -215,7 +217,7 @@ function asm = asm_oo2mui()
     
     %save new model to mat file
     asm.Info.PathName = [pwd,filesep];
-    asm.Info.FileName = [sfile(1:end-4),'mui'];
+    asm.Info.FileName = [sfile(1:end-7),'mui'];
     saveAfile(asm);
     closeMainFig(asm) 
 end

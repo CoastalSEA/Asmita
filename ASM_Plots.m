@@ -128,6 +128,9 @@ classdef ASM_Plots < muiPlots
                     switch obj.UIset.callButton %and Tab Button used
                         case 'New'              %create new 2D plot
                             new2Dplot(obj);
+                            if strcmp(obj.UIset.callTab,'Time')
+                                addPivotButton(obj);
+                            end
                         case 'Add'              %add variable to 2D plot
                             if strcmp(obj.UIset.Type,'bar')
                                 addBarplot(obj);
@@ -213,6 +216,17 @@ classdef ASM_Plots < muiPlots
                 obj.TickLabels.YTickLabel = obj.Data.Y;
                 obj.Data.Y =1:length(obj.Data.Y);
             end
+        end
+%%
+        function addPivotButton(obj)
+            %add button to allow user to set pivot year
+            hf = obj.Plot.CurrentFig;
+            pvtcb =  @(src,evdat)asmita_plot_pivot_year(src,evdat);
+            uicontrol('Parent',hf,'Style','pushbutton',...
+                'String','pivot','Tag','FigButton',...
+                'TooltipString','Set pivot year',...
+                'Units','normalized','Position',[0.88 0.95 0.10 0.044],...
+                'Callback',pvtcb);           
         end
 %%
 %--------------------------------------------------------------------------

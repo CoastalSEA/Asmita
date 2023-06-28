@@ -15,7 +15,7 @@ classdef Asmita < muiModelUI
 % 
     properties  (Access = protected)
         %implement properties defined as Abstract in muiModelUI
-        vNumber = '3.3'
+        vNumber = '3.31'
         vDate   = 'July 2023'
         modelName = 'Asmita'   
         %Properties defined in muiModelUI that need to be defined in setGui

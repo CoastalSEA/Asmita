@@ -644,7 +644,8 @@ classdef Reach < handle
                 flowpathID = g_flowpath.Nodes.EleID(1:end-1);
                 eletype = g_flowpath.Nodes.Type(1:end-1); %remove Rivers node                
                 rchtypes = mobj.GeoType(mobj.RCtypes);    %reach element types
-                ich = ismatch(eletype,rchtypes); ich(1) = true;
+                ich = ismatch(eletype,rchtypes); 
+                ich(1) = true;                            %add outside
                 for i=1:length(flowpathID)
                     upstreamids = predecessors(g_flowpath,i);            
                     if ~isempty(upstreamids)

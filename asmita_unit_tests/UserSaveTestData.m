@@ -9,6 +9,9 @@ function UserSaveTestData
     appinfo = matlab.apputil.getInstalledAppInfo;
     idx = find(strcmp({appinfo.name},'Asmita'));
     aspath = appinfo(idx(1)).location;
+    if isempty(idx)                         %asmita path not found
+        warndlg('Asmita App not installed'); return;
+    end
     testpath = [aspath,[filesep,'Asmita',filesep,'asmita_unit_tests']];
     userPath = [testpath,[filesep,'muiASM TestData',filesep]];
     testPath = [testpath,[filesep,'muiASM model files',filesep]];

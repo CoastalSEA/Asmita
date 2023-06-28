@@ -319,7 +319,7 @@ classdef Saltmarsh < muiPropertyUI
                 z(i,1:idep) = z(i-1,1:idep)+(msl(i)-msl(i-1)); %change tidalflat
                 for j=idep+1:length(z)                    
                     bm = sm.Bc*[depth(j);depth(j)^2;1];
-                    sumKB = sum(sm.kbm.*(bm.*(bm>0)));  
+                    sumKB = sum(sm.userkbm.*(bm.*(bm>0)))/cn.y2s;  
                     wsb = bioenhancedsettling(obj,depth(j),sm.aws);
                     if isdecay
                         %apply a linear decay in concentration across 
@@ -499,7 +499,7 @@ classdef Saltmarsh < muiPropertyUI
             def = {num2str(kbm0)};
             dlg_ans = inputdlg(prompt,dlg_title,1,def);
             if isempty(dlg_ans), ct = []; return; end  
-            obj.SpeciesProduct = str2num(dlg_ans{1}); %#ok<ST2NM>
+            obj.SpeciesProduct = str2num(dlg_ans{1})'; %#ok<ST2NM>
             sm.userkbm = obj.SpeciesProduct;         %values in years
             %
             sm.Qm0 = 0.00018;       %estimate of sediment load used by Morris,2006
