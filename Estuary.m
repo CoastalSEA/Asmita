@@ -27,8 +27,10 @@ classdef Estuary < muiPropertyUI
                           'Flood delta acts as a Reach (1/0)'};
         %abstract properties in muiPropertyUI for tab display
         TabDisplay   %structure defines how the property table is displayed 
-        Dispersion = []          %dispersin matrix, d (m/s) - uses upper triangle 
+        Dispersion = []          %dispersion matrix, d (m/s) - uses upper triangle 
         ExternalDisp = []        %array of external exchanges 
+        HorizExchange            %time varying horizontal exchange, used by
+                                 %setting exchange in dispersion matrix to NaN 
     end
     
     properties
@@ -57,6 +59,7 @@ classdef Estuary < muiPropertyUI
             %values defined in UI function setTabProperties used to assign
             %the tabname and position on tab for the data to be displayed
             obj = setTabProps(obj,mobj);  %muiPropertyUI function
+            obj.HorizExchange = table(0,0,'VariableNames',{'Year','Exchange'});
         end 
     end
 %%  
@@ -108,7 +111,15 @@ classdef Estuary < muiPropertyUI
             %assign updated instance
             setClassObj(mobj,'Inputs','Estuary',obj);               
         end     
-
+%%
+        function setExchangeRates(mobj)
+            %prompt user to define time dependent horizontal exchange rates
+            msgtxt = 'Estuary properties not yet defined';
+            obj = getClassObj(mobj,'Inputs','Estuary',msgtxt);
+            if isempty(obj), return; end
+            obj = exchTable(obj);
+            setClassObj(mobj,'Inputs','Estuary',obj);
+        end
 %%
 %--------------------------------------------------------------------------
 %       INITIALISE
@@ -163,7 +174,7 @@ classdef Estuary < muiPropertyUI
                 return
             end
             
-            rncobj  = getClassObj(mobj,'Inputs','RunConditions');
+            rncobj = getClassObj(mobj,'Inputs','RunConditions');
             if rncobj.IncDynamicElements
                 dispgraph = obj.DispersionGraph;
                 [d,exchIn] = graph2matrix(dispgraph);
@@ -171,6 +182,17 @@ classdef Estuary < muiPropertyUI
             else
                 dExt = obj.ExternalDisp(:,1);
                 d = obj.Dispersion;
+                idx = isnan(d);
+                if any(idx,'all')
+                    %use the initial value if the graph has not already
+                    %been set in updateDispersionGraph
+                    dispgraph = obj.DispersionGraph;
+                    [d,~] = graph2matrix(dispgraph);
+                    idx = isnan(d);
+                    if any(idx,'all')
+                        d(idx) = obj.HorizExchange.Exchange(1);
+                    end
+                end
             end
             d = d + d';
             D = -d;
@@ -181,8 +203,9 @@ classdef Estuary < muiPropertyUI
         end
         
 %%
-        function updateDispersionGraph(mobj)
-            %initialise and update dynamic graphs based on modified conditions (if any)            
+        function updateDispersionGraph(mobj,tsyear)
+            %initialise and update dynamic graphs based on modified conditions (if any)       
+            %tsyear is current time-step in years defined in AsmitaModel
             obj  = getClassObj(mobj,'Inputs','Estuary');
             if isempty(obj)
                 return;
@@ -190,8 +213,17 @@ classdef Estuary < muiPropertyUI
             
             if isempty(obj.DispersionGraph) && ~isempty(obj.Dispersion)
                 obj.DispersionGraph = Estuary.initialiseDispersionGraph(mobj);
-            else
+            end
+            idx = isnan(obj.Dispersion);
+            if any(idx,'all')
                 %add code to update
+                Disp = getExchangeRates(obj,tsyear);
+                ExtDisp = obj.ExternalDisp;
+                inoutxt = {'Sea';'Rivers'};
+                eleobj  = getClassObj(mobj,'Inputs','Element');
+                nodetxt = setnodetext(eleobj,inoutxt);
+
+                obj.DispersionGraph = matrix2graph(Disp,ExtDisp,[],nodetxt);
             end
             setClassObj(mobj,'Inputs','Estuary',obj);
         end
@@ -399,6 +431,33 @@ classdef Estuary < muiPropertyUI
             obj.Dispersion(idx,:) = [];
             obj.Dispersion(:,idx) = [];
             setClassObj(mobj,'Inputs','Estuary',obj);
+        end
+%%
+        function obj = exchTable(obj) 
+            %generate UI table for user to edit and add to element interventions
+            oldtable = obj.HorizExchange;
+            title = 'Dynamic horizontal exchanges';
+            header = 'Enter horizontal exchanges for each year required:';
+            but.Text = {'Save','Add','Cancel'}; %labels for tab button definition
+            newtable = tablefigureUI(title,header,oldtable,true,but,[0.1,0.6]);
+            if isempty(newtable), return; end 
+            newtable = sortrows(newtable);
+            %remove row if year has not been defined
+            newtable = rmmissing(newtable,'DataVariables',{'Year'});
+            %if user has not edited all NaN values amend to zeros
+            newtable = fillmissing(newtable,'constant',0);
+            
+            obj.HorizExchange = newtable;
+        end
+%%
+        function d = getExchangeRates(obj,tsyear)
+            %dynamic exchange rates are being used use time step to check
+            %whether values need updating.
+            d = obj.Dispersion;
+            idd = isnan(d);
+
+            idx = find(obj.HorizExchange.Year<=tsyear,1,'last');            
+            d(idd) = obj.HorizExchange.Exchange(idx);            
         end
     end
 end

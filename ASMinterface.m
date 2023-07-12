@@ -78,20 +78,31 @@ classdef ASMinterface < handle
             % volumes hence use sign(n) rather than n>0 
             dvm = sign(n).*sm.*dwl;  
             %
-            elenames = getEleProp(eleobj,'EleName');
+%             elenames = getEleProp(eleobj,'EleName');
 %             table(dwl,conc,dvf,dvb,dvm,ve,vm,sm,Gam,dd,B,'RowNames',elenames)
             %
             vm = vm + dvm + dvf - dvb; %total change (moving surface)
             vf = vf + dvf - dvb;       %morphological change (fixed surface)
             vb = vb + dvb;             %saltmarsh organic sedimentation
             
+            %depth values
+            dm = vm./sm; df = vf./sm; de = ve./sm;
+
             %check that elements have not infilled
             if any(vm(:)<=0)      %when elements go to zero retain small
                 vf(vm<=0) = 999;  %value to prevent matrix becoming poorly 
-                vm(vm<=0) = 999;  %conditioned          
-            end                      
+                vm(vm<=0) = 999;  %conditioned     
+                dm(vm<=0) = 0;
+                df(vm<=0) = 0;
+            end               
             
-            dm = vm./sm; df = vf./sm; de = ve./sm;
+            %check that elements have not been removed (zero area)
+            if any(sm(:)<=0)
+                dm(sm<=0) = 0;
+                df(sm<=0) = 0;
+                de(sm<=0) = 0;
+            end
+
             % assign results
             for i=1:nele
                 eleobj(i).MovingVolume = vm(i);

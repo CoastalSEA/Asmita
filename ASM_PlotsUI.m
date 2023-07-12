@@ -128,8 +128,11 @@ classdef ASM_PlotsUI < muiDataUI
                     case 'Element'
                         setval = sel_uic{2}.Value;  %current dataset selection
                         dataset = dsnames{setval};
-                        sel_uic{i}.String = cobj.Data.(dataset).Dimensions.EleName;
-                        sel_uic{i}.Value = 1;   
+                        if length(sel_uic{i}.String)~=length(cobj.Data.(dataset).Dimensions.EleName) ||...
+                                ~isempty(setdiff(sel_uic{i}.String,cobj.Data.(dataset).Dimensions.EleName))
+                            sel_uic{i}.String = cobj.Data.(dataset).Dimensions.EleName;
+                            sel_uic{i}.Value = 1; 
+                        end
                     case 'RunTime'
                         runtime = cobj.Data.(dataset).RowNames;
                         runtime.Format = 'dd-MMM-yyyy HH:mm:ss';

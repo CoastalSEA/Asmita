@@ -17,16 +17,16 @@ classdef ASM_model < ASMinterface
 %--------------------------------------------------------------------------
 %     
     properties (Transient) %inherited from ASMinterface:
-        % eqScaling   %scaling of equilibirum relative to initial value
         % export      %summation of net export over run (for mass balance)
+        % import      %summation of net import over run (for mass balance)
         % intervent   %summation of interventions over run (for mass balance)
-        % dWLvolume   %summation of volume changes due to water level change
+        % dWLvolume   %summation of volume changes due to water level change (for mass balance)
         % SedMbal     %sediment mass balance updated at each time step
         % WatMbal     %water mass balance updated at each time step
         % UniqueYears   %array of years for imposed changes
         % AnnualChange  %array of imposed volume and area changes for each element
         % DQ          %matix of dispersion and advection updated each time step
-        % dqIn        %vector of 
+        % dqIn        %vector of input dispersion and advection updated at each time step
     end
     
     methods (Access = private)
@@ -61,7 +61,10 @@ classdef ASM_model < ASMinterface
             LWL = Reach.getReachEleProp(mobj,'LWlevel');
             %
             %equilibrium surface area taken as intial area (ie fixed)
-            EqSA = getEleProp(eleobj,'InitialSurfaceArea');
+            % EqSA = getEleProp(eleobj,'InitialSurfaceArea');
+
+            %equilibrium surface area taken as intial area + interventions
+            EqSA = getEleProp(eleobj,'MovingSurfaceArea');
             %Equilibrium depth over marsh elements
             rncobj  = getClassObj(mobj,'Inputs','RunConditions');
             if rncobj.IncSaltmarsh
@@ -73,14 +76,21 @@ classdef ASM_model < ASMinterface
             for i=1:length(eleobj)
                 alpha = etypalpha.(eletype{i});
                 beta = etypbeta.(eletype{i});
-                isTReq = ~logical(eqType.(eletype{i})); %switch to true if tidal range equilbrium
+                isTReq = ~logical(eqType.(eletype{i})); %switch to true if tidal range equilibrium
                 eleobj(i).EqSurfaceArea = EqSA(i);
                 switch eletype{i}
                     case 'Saltmarsh'
-                        if Deq(i)>0
+                        if Deq(i)>=0
+                            %depth within species range
                             eleobj(i).EqVolume = EqSA(i)*Deq(i);
-                        else
+                        elseif Deq(i)==-1
+                            %no water depth over marsh
+                            eleobj(i).EqVolume = 0;
+                        elseif Deq(i)==-2
+                            %depth greater than maximum species depth
                             eleobj(i).EqVolume = alpha*prism(i)^beta;
+                        else 
+                            eleobj(i).EqVolume = 0;
                         end
                     otherwise
                         if isTReq %appplies to any element type (eg tidalflat)

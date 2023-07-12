@@ -27,7 +27,7 @@
 %%
 % *NB*: to export the data from a Case for use in another application 
 % (eg text file, Excel, etc), use the *Project>Cases>Edit Data Set* option 
-% to make a selection and then use the ‘Copy to Clipboard’ button to paste 
+% to make a selection and then use the â€˜Copy to Clipboardâ€™ button to paste 
 % the selection to the clipboard.
 
 %% Setup
@@ -35,6 +35,10 @@
 % * *Estuary>Water Levels*: dialogue to define water levels, and forcing conditions such as rate of sea level rise and changes in tidal range.
 % * *Estuary>Dispersion*: dialogue table to define the horizontal exchange
 % matrix, which is used to determine the element connectivity.
+% * *Estuary>Dynamic exchanges*: option to define time varying horizontal
+% exchanges. Applied to all dispersion links defined as NaN in the
+% horizontal exchange matrix (currently only an option for a single time
+% series).
 % * *Estuary>Model Constants*: A number of constants are used in the model. Generally, the default values are appropriate but these can be adjusted and saved with the project if required.
 %
 % * *Element>Define Elements*: when setting up a new model a listing of the different types of element allows the user to define the number of each type element to include in the model (elements can subsequently be added or deleted). Once a set of elements have been defined the user is prompted to edit the default names for each element, change the element type and choose to make the element non-erodible (for cases where the element can infill with sediment but if cannot erode.
@@ -90,7 +94,7 @@
 % * *Run Parameters>Edit Eq. Coefficients List*: the coefficient sets are defined in userprismcoeffs.m. If a new set of coefficients is added, the name of the set can be added
 
 %% Run
-% * *Check Input*: checks mass balance of any advection flows included and that sufficient components have been defined for the model to run. This is not a full diagnostic check, so it does not ensure that the model output is valid – simply that the model will run.
+% * *Check Input*: checks mass balance of any advection flows included and that sufficient components have been defined for the model to run. This is not a full diagnostic check, so it does not ensure that the model output is valid â€“ simply that the model will run.
 % * *Run Model*: runs model, prompts for a Case description, which is added to the listing on the Cases tab.
 % * *Derive Output*: initialises the Derive Output UI to select and define manipulations of the data or call external functions and load the result as new data set.
 

@@ -433,8 +433,7 @@ classdef Element < muiPropertyUI
             obj = getClassObj(mobj,'Inputs','Element');
             rncobj = getClassObj(mobj,'Inputs','RunConditions');
             
-            vm0 = getEleProp(obj,'InitialVolume');
-%             ASM_model.asmitaEqFunctions(mobj);
+            vm0 = getEleProp(obj,'InitialVolume');            
             ve = getEleProp(obj,'EqVolume');
             if rncobj.ScaleValues
                 scale = num2cell(vm0./ve);
@@ -443,6 +442,16 @@ classdef Element < muiPropertyUI
                 unity = num2cell(ones(1,length(obj)));
                 [obj.eqScaling] = unity{:};
             end
+            
+            %override scaling for saltmarsh elements so that the
+            %equilibrium depth is always based on the specied productivity
+            eletype = getEleProp(obj,'transEleType');
+            ism = contains(eletype,{'Saltmarsh','Storage'});
+            if any(ism)
+                unity = num2cell(ones(1,sum(ism)));
+                [obj(ism).eqScaling] = unity{:};
+            end
+
             setClassObj(mobj,'Inputs','Element',obj);
         end        
 %%

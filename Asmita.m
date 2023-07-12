@@ -15,7 +15,7 @@ classdef Asmita < muiModelUI
 % 
     properties  (Access = protected)
         %implement properties defined as Abstract in muiModelUI
-        vNumber = '3.31'
+        vNumber = '3.32'
         vDate   = 'July 2023'
         modelName = 'Asmita'   
         %Properties defined in muiModelUI that need to be defined in setGui
@@ -130,10 +130,11 @@ classdef Asmita < muiModelUI
                 'Rivers','Drift','Interventions','Hydraulics','Run Parameters'};                                  
             menu.Setup(1).Callback = repmat({'gcbo;'},[1,8]);
             menu.Setup(1).Separator = {'off','off','on','off','off','off','off','on'};%separator preceeds item
+
             % submenu for Estuary data
             menu.Setup(2).List = {'System Parameters','Water Levels', ...
-                         'Dispersion','Model Constants'};
-            menu.Setup(2).Callback = repmat({@obj.estuaryProps},[1,4]);
+                         'Dispersion','Dynamic Exchanges','Model Constants'};
+            menu.Setup(2).Callback = repmat({@obj.estuaryProps},[1,5]);
 
             % submenu for Element data
             menu.Setup(3).List = {'Define Elements','Element Parameters',...
@@ -305,6 +306,8 @@ classdef Asmita < muiModelUI
                 case 'Dispersion'
                     Estuary.setDispersion(obj);
                     tabname = 'Network';
+                case 'Dynamic Exchanges'
+                    Estuary.setExchangeRates(obj);
                 case 'Model Constants'
                     obj.Constants = setInput(obj.Constants);
             end

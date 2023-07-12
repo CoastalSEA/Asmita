@@ -134,6 +134,7 @@ classdef Saltmarsh < muiPropertyUI
             sm = getEleProp(eleobj,'MovingSurfaceArea');
             vm = getEleProp(eleobj,'MovingVolume');
             depth = vm./sm;          % water depth in element
+            if any(sm(:)==0), depth(sm==0) = 0; end
             %vertical exchange for marsh   
             ws = getEleProp(eleobj,'VerticalExchange');
             %compute equilibirum depth based on local concentration
@@ -143,14 +144,21 @@ classdef Saltmarsh < muiPropertyUI
 
             nsm = length(ism);
             for jsm = 1:nsm   
-                if idp(ism(jsm))     %true when within marsh species range                     
-                    wsj = bioenhancedsettling(obj,depth(ism(jsm)),ws(ism(jsm)));
-                    qm = wsj .*cem(ism(jsm))./depth(ism(jsm));    %sediment delivery to marsh 
-                    Deq(ism(jsm)) = morris_eqdepth(obj,cn,qm,dslr); %equilibrium depth
+                if idp(ism(jsm))     %true when within marsh species range   
+                    if depth(ism(jsm))>0
+                        %water depth over marsh is within marsh species range
+                        wsj = bioenhancedsettling(obj,depth(ism(jsm)),ws(ism(jsm)));
+                        qm = wsj .*cem(ism(jsm))./depth(ism(jsm));      %sediment delivery to marsh 
+                        Deq(ism(jsm)) = morris_eqdepth(obj,cn,qm,dslr); %equilibrium depth
+                    else                        
+                        %depth of marsh has gone to zero
+                        Deq(ism(jsm)) = -1;
+                    end
                 else
+                    %when depth greater than maximum species depth
                     %force equilibrium to the bare flat prism based value 
                     %in ASM_model.asmitaEqFunctions
-                    Deq(ism(jsm)) = 0; 
+                    Deq(ism(jsm)) = -2; 
                 end
             end
         end
