@@ -28,29 +28,28 @@ classdef RunConditions < muiPropertyUI
                           ' Include tidal pumping ',...
                           ' Include dynamic hydraulics'};
         %abstract properties in muiPropertyUI for tab display
-        TabDisplay   %structure defines how the property table is displayed 
-        DriftTSC              %timeseries collection of drift rate (m3/year)
-        IncDynamicElements = false %not active but needed because used in code        
+        TabDisplay               %structure defines how the property table is displayed 
+        DriftTSC                 %timeseries collection of drift rate (m3/year)               
     end
     
     properties
-        ScaleValues = false     %flag to include scaling of initial values
+        ScaleValues = false      %flag to include scaling of initial values
         IncInterventions = false %flag to include user defined interventions
-        IncRiver = false        %flag to include river advections
-        RiverOffset = false     %flag to correct equilbirium values for river flow
-        IncRiverTS = false     %flag to include river time series inputs
-        IncDrift = false        %flag to include drift advections
-        DriftOffset = false     %flag to correct equilbirium values for drift
-        IncDriftTS = false      %flag to include drift time series inputs
-        IncSaltmarsh = false    %flag to include saltmarsh biological productivity
-        IncTidalPumping = false %flag to include tidal pumping
-        IncDynHydraulics = false%flag to include hydraulics data from CSTmodel
-%         IncDynamicElements = false %flag to enable elements to change type and connectivity        
+        IncRiver = false         %flag to include river advections
+        RiverOffset = false      %flag to correct equilbirium values for river flow
+        IncRiverTS = false       %flag to include river time series inputs
+        IncDrift = false         %flag to include drift advections
+        DriftOffset = false      %flag to correct equilbirium values for drift
+        IncDriftTS = false       %flag to include drift time series inputs
+        IncSaltmarsh = false     %flag to include saltmarsh biological productivity
+        IncTidalPumping = false  %flag to include tidal pumping
+        IncDynHydraulics = false %flag to include hydraulics data from CSTmodel       
     end   
     
     properties (Transient)
-        Adv2Inc                 %advections to include in model run
-        Adv2Offset              %advections to offset in initial equilibrium              
+        Adv2Inc                  %advections to include in model run
+        Adv2Offset               %advections to offset in initial equilibrium    
+        IncDynamicElements       %not set by user but used in code if dispersion set to NaN
     end
 %%   
     methods (Access=protected)

@@ -352,7 +352,7 @@ classdef Element < muiPropertyUI
             eletype = getEleProp(obj,'transEleType');
             %assign concentration
             finetypes = mobj.GeoType(mobj.FNtypes);
-            idx = find(ismatch(eletype,finetypes)); %could be repalces with matches
+            idx = find(ismatch(eletype,finetypes)); %could be repalced with matches
             
             estobj = getClassObj(mobj,'Inputs','Estuary');
             for i=1:nele
@@ -470,8 +470,7 @@ classdef Element < muiPropertyUI
             else
                 ASM_model.setDQmatrix(mobj,rncobj.Adv2Offset);
                 [B,dd] = ASM_model.BddMatrices(mobj);
-                eqCorV = (B\dd).^(1./n);
-                
+                eqCorV = (B\dd).^(1./n);                
             end
             %now assign offset to elements 
             assignum = num2cell(eqCorV);

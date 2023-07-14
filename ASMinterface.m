@@ -46,7 +46,8 @@ classdef ASMinterface < handle
             sm = getEleProp(eleobj,'MovingSurfaceArea');
             n  = getEleProp(eleobj,'TransportCoeff');
             cb = getEleProp(eleobj,'BedConcentration');            
-            
+            ws = getEleProp(eleobj,'transVertExch');
+
             %get concentration before updating volumes
             conc = ASM_model.asmitaConcentrations(mobj);
 
@@ -63,9 +64,14 @@ classdef ASMinterface < handle
             dvf  = (B*Gam-dd)./cb*robj.delta;
             %adjust for biomass change in volume
             rncobj = getClassObj(mobj,'Inputs','RunConditions');
+            estobj  = getClassObj(mobj,'Inputs','Estuary');
             if rncobj.IncSaltmarsh
                 Bk = Saltmarsh.BioProduction(mobj);
                 dvb = diag(sign(n))*(Bk*vm)*robj.delta;
+                if rncobj.IncDynamicElements && ws(estobj.ExchLinks(:,2))==0
+                    %no biological production for elements with ws=0
+                    dvb(estobj.ExchLinks(:,2)) = 0;
+                end
             else
                 dvb = zeros(size(dvf));
             end
@@ -77,9 +83,14 @@ classdef ASMinterface < handle
             % change in water volume - applies to both sediment and water
             % volumes hence use sign(n) rather than n>0 
             dvm = sign(n).*sm.*dwl;  
+            if rncobj.IncDynamicElements && ws(estobj.ExchLinks(:,2))==0
+                %no volume change for elements with ws=0
+                dvm(estobj.ExchLinks(:,2)) = 0;
+            end
+
             %
-%             elenames = getEleProp(eleobj,'EleName');
-%             table(dwl,conc,dvf,dvb,dvm,ve,vm,sm,Gam,dd,B,'RowNames',elenames)
+            % elenames = getEleProp(eleobj,'EleName');
+            % table(dwl,conc,dvf,dvb,dvm,ve,vm,sm,Gam,dd,B,'RowNames',elenames)
             %
             vm = vm + dvm + dvf - dvb; %total change (moving surface)
             vf = vf + dvf - dvb;       %morphological change (fixed surface)
@@ -194,6 +205,7 @@ classdef ASMinterface < handle
 %%
         function setVertExch(mobj,robj)
             %set vertical exchange model parameters
+            rncobj  = getClassObj(mobj,'Inputs','RunConditions');
             eleobj = getClassObj(mobj,'Inputs','Element');
             nele = length(eleobj);
             vm = getEleProp(eleobj,'MovingVolume');
@@ -201,24 +213,35 @@ classdef ASMinterface < handle
             ve = getEleProp(eleobj,'EqVolume');
             cb = getEleProp(eleobj,'BedConcentration');
             n  = getEleProp(eleobj,'TransportCoeff');
-            ws = getEleProp(eleobj,'VerticalExchange');
-            %adjust vertical exchange if saltmarsh included
-            rncobj  = getClassObj(mobj,'Inputs','RunConditions');
+
+            %reset transVertExch to initial value because ws used to 
+            %calculate B and dd to get unconstrained dvf
+            [eleobj.transVertExch] = eleobj(:).VerticalExchange;
+
+            %adjust ws if dynamic element with time varying exchange            
+            estobj  = getClassObj(mobj,'Inputs','Estuary');
+            if rncobj.IncDynamicElements
+                tsyear = robj.DateTime/mobj.Constants.y2s;
+                idx = find(estobj.DynamicExchange.Year<=tsyear,1,'last');             
+                eleobj(estobj.ExchLinks(:,2)).transVertExch = ...
+                                    estobj.DynamicExchange.Vertical(idx);  
+            end  
+
+            %adjust vertical exchange if saltmarsh included (function uses
+            %transVertExch based on initial VerticalExchange settings 
+            %modified if DynamicElements are active, ie the inorganic values)
             if rncobj.IncSaltmarsh
-                ws = Saltmarsh.BioSettlingRate(mobj);
-            end
-            %reset transVertExch to initial value (or as modified by bio)
-            %because ws used to calculate B and dd to get unconstrained dvf
-            for i=1:nele
-                eleobj(i).transVertExch = ws(i);
+                wsbio = num2cell(Saltmarsh.BioSettlingRate(mobj));
+                [eleobj.transVertExch] = wsbio{:};
             end
 
             %unadjusted morphological change in volume 
-            [B,dd] = ASM_model.BddMatrices(mobj);
+            [B,dd] = ASM_model.BddMatrices(mobj); %uses transVertExch
             Gam  = (ve./vm).^n;
             dvf  = (B*Gam-dd)./cb*robj.delta;
             
             %check if any erosion is greater than available sediment
+            ws = getEleProp(eleobj,'transVertExch');
             vf = getEleProp(eleobj,'FixedVolume');            
             noero = ~getEleProp(eleobj,'Erodible'); %ie if Erodible false            
             %when noero true and SedChange>0 ie erodiing

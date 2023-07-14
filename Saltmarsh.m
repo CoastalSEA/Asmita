@@ -135,7 +135,7 @@ classdef Saltmarsh < muiPropertyUI
             vm = getEleProp(eleobj,'MovingVolume');
             depth = vm./sm;          % water depth in element
             if any(sm(:)==0), depth(sm==0) = 0; end
-            %vertical exchange for marsh   
+            %vertical exchange for marsh (initial inorganic values)  
             ws = getEleProp(eleobj,'VerticalExchange');
             %compute equilibirum depth based on local concentration
             idp = depth<=max(dmx);   %element depth is within max marsh depth               
@@ -173,7 +173,7 @@ classdef Saltmarsh < muiPropertyUI
             eleobj = getClassObj(mobj,'Inputs','Element');
             vm = getEleProp(eleobj,'MovingVolume');
             ve = getEleProp(eleobj,'EqVolume');
-            ws = getEleProp(eleobj,'VerticalExchange');
+            ws = getEleProp(eleobj,'transVertExch');
             sm = getEleProp(eleobj,'MovingSurfaceArea');
             eletype = getEleProp(eleobj,'EleType');
             obj  = getClassObj(mobj,'Inputs','Saltmarsh');

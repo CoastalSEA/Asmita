@@ -203,8 +203,10 @@ classdef AsmitaModel < muiDataSet
             WaterLevels.setWaterLevels(mobj,obj);
             %initialise dispersion Reach Graph (calls Element.initialiseElements)
             Estuary.initialiseDispersionGraph(mobj); 
-            %initialise advection graphs (River and Drift)
+            %initialise advection graphs (River and Drift) and use of
+            %dynamic exchange
             rncobj = getClassObj(mobj,'Inputs','RunConditions');
+            rncobj.IncDynamicElements = false;
             advobj = Advection.initialiseTransients(mobj);
             if rncobj.IncRiver
                 advobj.RiverGraph = Advection.initialiseRiverGraph(mobj);
@@ -453,9 +455,9 @@ classdef AsmitaModel < muiDataSet
                  dt = rnpobj.TimeStep;          %defined time step in years
                  min_dt = obj.MinimumTimeStep; 
                  numtstep = rnpobj.NumSteps*dt/dt1;
-                 if dt1<min_dt                     
+                 if dt1<dt                     
                      msg = sprintf('Time step check suggests value of %g\nUsing this value will require %g timesteps\nSpecified value is %g',...
-                                dt1,numtstep,dt);
+                                    dt1,numtstep,dt);
                      chktitle = 'Check time step';
                      button = questdlg(msg,chktitle,'Use corrected',...
                          'Use specified','Abort','Abort');

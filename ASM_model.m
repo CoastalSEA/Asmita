@@ -59,7 +59,7 @@ classdef ASM_model < ASMinterface
             prism = Reach.getReachEleProp(mobj,'UpstreamPrism');
             HWL = Reach.getReachEleProp(mobj,'HWlevel');
             LWL = Reach.getReachEleProp(mobj,'LWlevel');
-            %
+            
             %equilibrium surface area taken as intial area (ie fixed)
             % EqSA = getEleProp(eleobj,'InitialSurfaceArea');
 
