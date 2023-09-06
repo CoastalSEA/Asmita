@@ -446,6 +446,10 @@ classdef Estuary < muiPropertyUI
         function obj = exchTable(obj) 
             %generate UI table for user to edit and add to element interventions
             oldtable = obj.DynamicExchange;
+            if isempty(oldtable)
+                oldtable = table(0,1e-6,0,'VariableNames',{'Year','Horizontal','Vertical'});
+            end
+            
             title = 'Dynamic horizontal exchanges';
             header = 'Enter horizontal exchanges for each year required:';
             but.Text = {'Save','Add','Cancel'}; %labels for tab button definition

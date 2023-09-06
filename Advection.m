@@ -337,6 +337,12 @@ classdef Advection < matlab.mixin.Copyable
                 return;
             end
             
+            if isempty(rncobj.IncDynamicElements)
+                %initialised at run time but not when river or drift flow
+                %tab is used before model has been run
+                rncobj.IncDynamicElements = false;
+            end
+
             %check whether river or drift use timeseries
             isdynamic = false;
             switch AdvType

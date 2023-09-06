@@ -119,12 +119,16 @@ classdef ASM_PlotsUI < muiDataUI
                         sel_uic{i}.UserData = sel_uic{i}.Value; %used to track changes
                     case 'Dataset'
                         sel_uic{i}.String = dsnames; %**
-                        sel_uic{i}.UserData = sel_uic{i}.Value; %used to track changes
+                        sel_uic{i}.UserData = sel_uic{i}.Value; %used to track changes                        
                     case 'Variable' 
                         setval = sel_uic{2}.Value;  %current dataset selection
-                        dataset = dsnames{setval};
+                        dataset = dsnames{setval};                        
+                        if length(sel_uic{i}.String)~=length(cobj.Data.(dataset).VariableDescriptions)
+                            sel_uic{i}.Value = 1;
+                        else
+                            sel_uic{i}.UserData = sel_uic{i}.Value; %used to track changes
+                        end
                         sel_uic{i}.String = cobj.Data.(dataset).VariableDescriptions;
-                        sel_uic{i}.UserData = sel_uic{i}.Value; %used to track changes
                     case 'Element'
                         setval = sel_uic{2}.Value;  %current dataset selection
                         dataset = dsnames{setval};
@@ -135,7 +139,11 @@ classdef ASM_PlotsUI < muiDataUI
                         end
                     case 'RunTime'
                         runtime = cobj.Data.(dataset).RowNames;
-                        runtime.Format = 'dd-MMM-yyyy HH:mm:ss';
+                        if isduration(runtime)
+                            %convert durations to datetime from year 0
+                            runtime = datetime(0,1,1,0,0,0)+runtime;
+                        end
+                        runtime.Format = 'dd-MMM-yyyy HH:mm:ss';     
                         %shifts are need to ensure that selected value is
                         %within record so getProperty finds a record
                         startime = dateshift(runtime(1),'end','day')-minutes(1);
@@ -143,7 +151,7 @@ classdef ASM_PlotsUI < muiDataUI
                         setTimeSlider(obj,src,startime,endtime);
                         sel_uic{i}.Min = deciyear(startime);
                         sel_uic{i}.Max = deciyear(endtime);
-                        sel_uic{i}.Value = deciyear(startime);
+                        sel_uic{i}.Value = deciyear(startime);                                           
                     case 'Type'
                         sel_uic{i}.String = S.Type;
                     otherwise

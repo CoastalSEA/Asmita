@@ -145,6 +145,9 @@ classdef EqCoeffParams < muiPropertyUI
                     userdata{i,3} = obj.beta.(rownames{i});
                     userdata{i,4} = obj.eqtype.(rownames{i});
                 end
+
+                fmtdata = @(x) sprintf('% .3e',x);
+                userdata(:,2) = cellfun(fmtdata, userdata(:,2), 'UniformOutput',0);
                 
                 Table = uitable('Parent',src, ...
                     'ColumnName', colnames, ...

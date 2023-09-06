@@ -141,7 +141,7 @@ classdef WaterLevels < muiPropertyUI
             tr = obj.TidalAmp*2;
         end
 %%
-        function initialWL(obj,startyr)
+        function initialWL(obj,startyr) %#ok<INUSD> 
             %initialise the water level calculation
             %startyr is the start year of the simulation in seconds
             tr = obj.TidalRange;
@@ -150,13 +150,13 @@ classdef WaterLevels < muiPropertyUI
             obj.LWaterLevel = obj.MSL0 - tr*trfc/(1+trfc);
             %tidal range amplitude offset at start of run due to imposed cycles
             obj.dtr0 = 0;
-            if obj.CycleAmp(1)>0
-                amp = obj.CycleAmp;
-                om1 = obj.AngularPeriod; %get fcn converts input to s^-1
-                om2 = obj.AngularPhase;
-                %adjustment to tidal range at t=0
-                obj.dtr0 = real(sum(amp.*exp(1i*(om1*startyr+om2))));
-            end
+            % if obj.CycleAmp(1)>0
+            %     amp = obj.CycleAmp;
+            %     om1 = obj.AngularPeriod; %get fcn converts input to s^-1
+            %     om2 = obj.AngularPhase;
+            %     %adjustment to tidal range at t=0
+            %     obj.dtr0 = real(sum(amp.*exp(1i*(om1*startyr+om2))));
+            % end
         end
 %%
         function [HW,MSL,LW] = newWaterLevels(obj,mtime,startyr)
@@ -238,8 +238,11 @@ classdef WaterLevels < muiPropertyUI
             dtr = real(sum(amp.*exp(1i*(om1*realtime+om2)))); %change in tidal range at t
             obj.MeanSeaLevel = msl;    
             %new water levels 
-            obj.HWaterLevel = msl-obj.dtr0 + (tr+dtr)/(1+trfc); %0.5tr if trfc=1           
-            obj.LWaterLevel = msl-obj.dtr0 - (tr+dtr)*trfc/(1+trfc);
+            % obj.HWaterLevel = msl-obj.dtr0 + (tr+dtr)/(1+trfc); %0.5tr if trfc=1           
+            % obj.LWaterLevel = msl+obj.dtr0 - (tr+dtr)*trfc/(1+trfc);
+            obj.HWaterLevel = msl+(tr+dtr)/(1+trfc); %0.5tr if trfc=1           
+            obj.LWaterLevel = msl-(tr+dtr)*trfc/(1+trfc);
+
             %difference with old water levels
             obj.dHWchange = obj.HWaterLevel-HWm1;
             obj.dLWchange = obj.LWaterLevel-LWm1;  

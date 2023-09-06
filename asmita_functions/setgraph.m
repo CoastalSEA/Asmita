@@ -89,7 +89,7 @@ function setgraph(mobj,src,~)
     hg.NodeCData = ntype;
     
     %add control buttons
-    hpan = findobj(src,'Style','pushbutton','Tag','panbut');
+    hpan = findobj(src,'Style','pushbutton','-regexp','Tag','panbut');
     if isempty(hpan)
         uicontrol('Parent',src, ...
             'Style', 'pushbutton', 'String', 'Pan',...
@@ -97,14 +97,14 @@ function setgraph(mobj,src,~)
             'Units','normalized', ...
             'Position', [0.02 0.94 0.06 0.05], ...
             'Callback', @(src,evtdat)panButton(h_ax,src,evtdat),...
-            'Tag','panbutxt');    
+            'Tag','panbut_on');    
         uicontrol('Parent',src, ...
             'Style', 'pushbutton', 'String', 'Off',...
             'TooltipString','Pan/zoom status. Turn "off" when finished',...
             'Units','normalized', ...
             'Position', [0.08 0.94 0.06 0.05], ...
-            'Callback', 'zoom(gcbf,''off'');pan(gcbf,''off'')', ...
-            'Tag','panbut'); 
+            'Callback', @(src,evtdat)onoffButton(src,evtdat), ...
+            'Tag','panbut_off'); 
     end
     %
     hb = findobj(src,'Style','pushbutton','Tag','FigButton');
@@ -136,15 +136,31 @@ function setgraph(mobj,src,~)
     end
 end 
 %%
-function panButton(h_ax,~,~)            
+function panButton(h_ax,src,~)            %#ok<INUSD> 
     %Create push button to enable pan and zoom
     hCM = uicontextmenu;
     uimenu('Parent',hCM,'Label','Switch to zoom',...
-        'Callback','zoom(gcbf,''on'')');
+        'Callback',@(src,evtdat)zoomButton(src,evtdat));
     hPan = pan;
     setAllowAxesPan(hPan,h_ax,true);
-    hPan.UIContextMenu = hCM;
+    hPan.UIContextMenu = hCM;    
+    hon = findobj(h_ax.Parent.Children,'Tag','panbut_on');
+    hon.String = 'Pan';
     pan('on')
+    hoff = findobj(h_ax.Parent.Children,'Tag','panbut_off');
+    hoff.String = 'On';
+end
+%% 
+function zoomButton(src,~)
+    hzm = findobj(src.Parent.Parent.Children,'Tag','panbut_on');
+    hzm.String = 'Zoom';
+    zoom('on');    
+end
+%%
+function onoffButton(src,~)
+    zoom(gcbf,'off');
+    pan(gcbf,'off');
+    src.String = 'Off';
 end
 %%
 function driftSwitch(h_ax,src,~)

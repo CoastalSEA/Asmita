@@ -65,6 +65,7 @@ classdef ASM_model < ASMinterface
 
             %equilibrium surface area taken as intial area + interventions
             EqSA = getEleProp(eleobj,'MovingSurfaceArea');
+            
             %Equilibrium depth over marsh elements
             rncobj  = getClassObj(mobj,'Inputs','RunConditions');
             if rncobj.IncSaltmarsh
@@ -80,17 +81,29 @@ classdef ASM_model < ASMinterface
                 eleobj(i).EqSurfaceArea = EqSA(i);
                 switch eletype{i}
                     case 'Saltmarsh'
-                        if Deq(i)>=0
+                        if Deq(i)>0
                             %depth within species range
                             eleobj(i).EqVolume = EqSA(i)*Deq(i);
-                        elseif Deq(i)==-1
+                        elseif Deq(i)==0
                             %no water depth over marsh
                             eleobj(i).EqVolume = 0;
-                        elseif Deq(i)==-2
-                            %depth greater than maximum species depth
-                            eleobj(i).EqVolume = alpha*prism(i)^beta;
-                        else 
-                            eleobj(i).EqVolume = 0;
+                        elseif Deq(i)==-1
+                            %depth greater than maximum species depth, 
+                            %or root to Morris equation not found.
+                            %  eleobj(i).EqVolume = alpha*prism(i)^beta;
+                            %  assume Wm=Sm/L and simple tirangular x-section                            
+                            msgtxt = 'Saltmarsh parameters not defined';
+                            smobj = getClassObj(mobj,'Inputs','Saltmarsh',msgtxt);
+                            dmx = max(smobj.MaxSpDepth);                            
+                            eleobj(i).EqVolume = dmx*EqSA(i)/2;
+                            %alaternative would be to switch to a
+                            %relationship that was prism or tidal range
+                            %dependent. Need to work out how to scale to be
+                            %the upper part of the flat (ie > dmx). NB: in
+                            %this formulation the coefficients need to be
+                            %adjusted to suit site.                       
+                            % sf = dmx/(HWL(i)-LWL(i));
+                            % eleobj(i).EqVolume = sf*alpha*(HWL(i)-LWL(i))^beta;
                         end
                     otherwise
                         if isTReq %appplies to any element type (eg tidalflat)
