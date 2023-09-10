@@ -71,7 +71,9 @@ classdef ASM_model < ASMinterface
             if rncobj.IncSaltmarsh
                 Deq = Saltmarsh.EqDepth(mobj); 
             else
-                Deq = zeros(size(eletype));
+                %marsh element present but biology not active so use
+                %specified equilibrium volume for marsh flat.
+                Deq = -ones(size(eletype));
             end                     
             %assign equilibrium volume to each element 
             for i=1:length(eleobj)
@@ -89,21 +91,16 @@ classdef ASM_model < ASMinterface
                             eleobj(i).EqVolume = 0;
                         elseif Deq(i)==-1
                             %depth greater than maximum species depth, 
-                            %or root to Morris equation not found.
-                            %  eleobj(i).EqVolume = alpha*prism(i)^beta;
-                            %  assume Wm=Sm/L and simple tirangular x-section                            
-                            msgtxt = 'Saltmarsh parameters not defined';
-                            smobj = getClassObj(mobj,'Inputs','Saltmarsh',msgtxt);
-                            dmx = max(smobj.MaxSpDepth);                            
-                            eleobj(i).EqVolume = dmx*EqSA(i)/2;
-                            %alaternative would be to switch to a
-                            %relationship that was prism or tidal range
-                            %dependent. Need to work out how to scale to be
-                            %the upper part of the flat (ie > dmx). NB: in
-                            %this formulation the coefficients need to be
-                            %adjusted to suit site.                       
-                            % sf = dmx/(HWL(i)-LWL(i));
-                            % eleobj(i).EqVolume = sf*alpha*(HWL(i)-LWL(i))^beta;
+                            %or root to Morris equation not found. NB: in 
+                            %this formulation the eq.coefficients need to 
+                            %be adjusted to suit site. 
+                            eleobj(i).EqVolume = alpha*(HWL(i)-LWL(i))^beta;
+                            %alternative is to assume Wm=Sm/L and simple 
+                            %triangular x-section                            
+                            % msgtxt = 'Saltmarsh parameters not defined';
+                            % smobj = getClassObj(mobj,'Inputs','Saltmarsh',msgtxt);
+                            % dmx = max(smobj.MaxSpDepth);                            
+                            % eleobj(i).EqVolume = dmx*EqSA(i)/2;
                         end
                     otherwise
                         if isTReq %appplies to any element type (eg tidalflat)

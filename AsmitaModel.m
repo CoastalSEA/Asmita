@@ -153,7 +153,9 @@ classdef AsmitaModel < muiDataSet
             edst = dstable(obj.EleData{:},'RowNames',modeltime,'DSproperties',eledsp);
             eleobj = getClassObj(mobj,'Inputs','Element');
             elementname = getEleProp(eleobj,'EleName');
-            edst.Dimensions.EleName = [elementname;'All'];     %element names used in model run
+            %element names used in model run and the All cases
+            edst.Dimensions.EleName = [elementname;'All water elements';...
+                                                'All sediment elements'];  
                        
             %assign metadata about model
             edst.Source = metaclass(obj).Name;
@@ -410,13 +412,15 @@ classdef AsmitaModel < muiDataSet
                     eleprop = getEleProp(eleobj,vname{i});
                     if i>3
                         %append mean of all elements
-                        meanele = mean(eleprop,1);
-                        obj.EleData{i}(jr,:) = [eleprop;meanele];
+                        meanwet = mean(eleprop(M>0),1);
+                        meansed = mean(eleprop(M<0),1);
+                        obj.EleData{i}(jr,:) = [eleprop;meanwet;meansed];
                     else
                         %append the sum of all elements adjusted for 
                         %water/sediment volumes using sign(n)
-                        sumele = sum(M.*eleprop,1);
-                        obj.EleData{i}(jr,:) = [eleprop;sumele];
+                        sumwet = sum(eleprop(M>0),1);
+                        sumsed = sum(eleprop(M<0),1);
+                        obj.EleData{i}(jr,:) = [eleprop;sumwet;sumsed];
                     end
                 end
                 
@@ -617,6 +621,11 @@ classdef AsmitaModel < muiDataSet
             vmw = sum(vm(:,idx),2);
             vfw = sum(vf(:,idx),2);
             vew = sum(ve(:,idx),2);
+
+            if ~isreal(vmw) || ~isreal(vfw) || ~isreal(vew)
+                warndlg('Data is not real - check timestep')
+                return;
+            end
             
             %plot the water elements            
             plot(t,vmw,'DisplayName','Moving')
