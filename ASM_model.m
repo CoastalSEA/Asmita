@@ -94,7 +94,7 @@ classdef ASM_model < ASMinterface
                             %or root to Morris equation not found. NB: in 
                             %this formulation the eq.coefficients need to 
                             %be adjusted to suit site. 
-                            eleobj(i).EqVolume = alpha*(HWL(i)-LWL(i))^beta;
+                            eleobj(i).EqVolume = alpha.*(HWL(i)-LWL(i))^beta;
                             %alternative is to assume Wm=Sm/L and simple 
                             %triangular x-section                            
                             % msgtxt = 'Saltmarsh parameters not defined';
@@ -102,6 +102,19 @@ classdef ASM_model < ASMinterface
                             % dmx = max(smobj.MaxSpDepth);                            
                             % eleobj(i).EqVolume = dmx*EqSA(i)/2;
                         end
+                    case {'Beachface','Shoreface','Spit','DeltaFlat'}
+                        %scale the beach equilbrium as a function of the
+                        %drift rate.
+                        if rncobj.IncDrift && rncobj.IncDriftTS
+                            advobj = getClassObj(mobj,'Inputs','Advection');
+                            [DriftRatio,initGraph] = getFlowRatio(advobj,mobj,'Drift');                            
+                            elename = getEleProp(eleobj,'EleName');
+                            DriftRatio = DriftRatio(strcmp(initGraph.Nodes.Name,elename(i)));
+                        else
+                            DriftRatio = 1;
+                        end
+                        eleVol = getEleProp(eleobj,'InitialVolume');
+                        eleobj(i).EqVolume = eleVol(i)*alpha.*DriftRatio^beta;
                     otherwise
                         if isTReq %appplies to any element type (eg tidalflat)
                             eleobj(i).EqVolume = alpha*(HWL(i)-LWL(i))^beta;

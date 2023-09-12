@@ -373,7 +373,7 @@ classdef Advection < matlab.mixin.Copyable
             end
             
             if strcmp(AdvType,'Drift')
-                %convert drfit rates from m3/yr to concentration equivalent
+                %convert drift rates from m3/yr to concentration equivalent
                 %flow rate
                 [q,qIn,qOut] = getDriftFlow(obj,mobj,q,qIn,qOut);
             end
@@ -389,12 +389,14 @@ classdef Advection < matlab.mixin.Copyable
             if isempty(obj)
                 return;
             end
+            
             rivobj  = getClassObj(mobj,'Inputs','River');
             rncobj = getClassObj(mobj,'Inputs','RunConditions');
             %only check need to update if river is included
             if rncobj.IncRiver && ~isempty(obj.RiverGraph) && ~isempty(rivobj)
                 obj.RiverGraph = getflowpath(obj,mobj,rivobj,tsyear);                
             end
+            
             dftobj  = getClassObj(mobj,'Inputs','Drift');
             %only check need to update if drift is included
             if rncobj.IncDrift && ~isempty(obj.DriftGraph) && ~isempty(dftobj)
@@ -438,12 +440,13 @@ classdef Advection < matlab.mixin.Copyable
                                 g_flowpath = Advection.newDriftPath(g_flowpath,...
                                                         inflow,inEleID);
                             else %source value dictates flow along path
+                                inEleGraph = find(g_flowpath.Nodes.EleID==inEleID)-1;
                                 isbalance = true;   %ie update whole network 
                                 %get the matrix and exchages for the input graph
                                 [~,InFlow] = graph2matrix(g_flowpath);
-                                if any(InFlow(inEleID,2)~=inflow) 
+                                if any(InFlow(inEleGraph,2)~=inflow) 
                                     %update if any input has changed
-                                    InFlow(inEleID,2) = inflow; %assigne changes to [nx2] input array
+                                    InFlow(inEleGraph,2) = inflow; %assigne changes to [nx2] input array
                                     g_flowpath = rescale_graph(g_flowpath,...
                                                         InFlow,isbalance);
                                 end
@@ -754,6 +757,23 @@ classdef Advection < matlab.mixin.Copyable
             obj = setAdvectionType(obj,AdvType);
             ok = checkAdvMassBalance(obj);
         end
+%%  
+        function initGraph = getInitialFlowGraph(obj,mobj,AdvType)
+            %return a graph of the initial flow settings for AdvType
+            [qin,qout,q] = getAdvectionProps(obj,AdvType);
+            inoutxt = {'Downdrift','Updrift'};
+            eleobj  = getClassObj(mobj,'Inputs','Element');
+            nodetxt = setnodetext(eleobj,inoutxt);
+            initGraph = matrix2graph(q,qin,qout,nodetxt);
+        end
+%%
+		function [flowRatio,initGraph] = getFlowRatio(obj,mobj,AdvType)
+            %find the ratio of the current flow rates to the initial values
+            drifts = obj.DriftGraph.Edges.Weight;
+            initGraph = getInitialFlowGraph(obj,mobj,AdvType);
+            initdrifts = initGraph.Edges.Weight;
+            flowRatio = drifts./initdrifts;        
+        end
     end
 %%
     methods (Static,Hidden)
@@ -768,7 +788,7 @@ classdef Advection < matlab.mixin.Copyable
 %       PRIVATE UTILITIES
 %--------------------------------------------------------------------------      
     methods (Access=private)
-        function userdata = getAdvectionProps(obj,AdvType)
+        function [FlowIn,FlowOut,IntFlows] = getAdvectionProps(obj,AdvType)
             %return initial conditions of specified flow type as userdata
             switch AdvType
                 case 'River'
@@ -786,10 +806,10 @@ classdef Advection < matlab.mixin.Copyable
             end
             %create a matrix comprising the internal flows and any inputs
             %and outputs, with dimensions [nele+2 x nele+2]
-            userdata = zeros(size(IntFlows));
-            userdata(end,2:end-1) = FlowIn;
-            userdata(2:end-1,1) = FlowOut;
-            userdata(2:end-1,2:end-1) = IntFlows;
+%             userdata = zeros(size(IntFlows));
+%             userdata(end,2:end-1) = FlowIn;
+%             userdata(2:end-1,1) = FlowOut;
+%             userdata(2:end-1,2:end-1) = IntFlows;
         end
 
 %%

@@ -48,7 +48,7 @@ switch UserSelection
         alpha.Storage = 1;
         alpha.FloodDelta = 7000;      %Powell etal (2006)   
         alpha.EbbDelta = 5.0e-3;      %reworked W&A(1976) data
-        alpha.DeltaFlat = 0.08;       %same as tidal flats
+        alpha.DeltaFlat = 1;    
         alpha.Beachface = 1;
         alpha.Shoreface = 1;
         alpha.Spit = 1;
@@ -59,7 +59,7 @@ switch UserSelection
         beta.Storage = 1;
         beta.FloodDelta = 0.37;       %Powell etal (2006) 
         beta.EbbDelta = 1.23;         %reworked W&A(1976) data
-        beta.DeltaFlat = 1.08;        %same as tidal flats
+        beta.DeltaFlat = 1;   
         beta.Beachface = 1;
         beta.Shoreface = 1;
         beta.Spit = 1;

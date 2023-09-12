@@ -299,8 +299,9 @@ classdef Element < muiPropertyUI
             [obj.MovingVolume] = obj(:).InitialVolume;
             [obj.EqVolume] = obj(:).InitialVolume;
             [obj.FixedVolume] = obj(:).InitialVolume;
-            [obj.MovingSurfaceArea] = obj(:).InitialSurfaceArea;            
-            [obj.FixedSurfaceArea] = obj(:).InitialSurfaceArea;
+            [obj.MovingSurfaceArea] = obj(:).InitialSurfaceArea; 
+            [obj.EqSurfaceArea] = obj(:).InitialSurfaceArea; 
+            % [obj.FixedSurfaceArea] = obj(:).InitialSurfaceArea;
             [obj.MovingDepth] = initdepth{:};
             [obj.EqDepth] = initdepth{:};
             [obj.FixedDepth] = initdepth{:};
@@ -444,7 +445,7 @@ classdef Element < muiPropertyUI
             end
             
             %override scaling for saltmarsh elements so that the
-            %equilibrium depth is always based on the specied productivity
+            %equilibrium depth is always based on the specified productivity
             eletype = getEleProp(obj,'transEleType');
             ism = contains(eletype,{'Saltmarsh','Storage'});
             if any(ism)
