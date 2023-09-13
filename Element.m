@@ -47,21 +47,23 @@ classdef Element < muiPropertyUI
     end    
 
     properties (Transient)
-        MovingVolume            %Volumes and areas during run time
-        MovingSurfaceArea       %Moving values include water volume change
-        MovingDepth             %Element depth relative to moving surface
-        FixedVolume             %and morphological change
-        FixedSurfaceArea        %Fixed values only include morphological change
-        FixedDepth              %Element depth relative to fixed surface
-        EqVolume                %Equilbrium volume calculated at run time
-        EqSurfaceArea           %Equilbrium volume calculated at run time
-        EqDepth                 %Element equilibrium depth
+        %Volumes,depths and surface areas during run time
+        MovingVolume            %Moving values include water volume change 
+        FixedVolume             %Fixed values only include morphological change  
+        EqVolume                %Equilbrium volume calculated at run time  
+        MovingDepth             %Element depth relative to moving surface        
+        FixedDepth              %Element depth relative to fixed surface              
+        EqDepth                 %Element equilibrium depth        
+        SurfaceArea             %variable surface area (variations within basin area)
+        EqSurfaceArea           %Equilbrium surface area calculated at run time
+        %other transient element properties
         EqConcentration         %element specific equilbrium concentration
         EleConcentration        %actual concentration in element during run
         transVertExch           %vertical exchange during run including adjustments
         EleWLchange             %water level change that applies to element (hw or lw)
         eqScaling               %scaling of equilibrium relative to initial value
         eqAdvOffSet             %correction to account for advection at t=0
+        eqFixedInts             %sum of non-erodible interventions
         BioProdVolume           %cumulative biological production volume
         transEleType            %transient element type (can change during run)
     end    
@@ -295,24 +297,30 @@ classdef Element < muiPropertyUI
             
             initdepth = num2cell([obj(:).InitialVolume]./[obj(:).InitialSurfaceArea]); 
             null = num2cell(zeros(1,length(obj)));  
+            null2 = num2cell(zeros(2,length(obj)),1);  
             unity = num2cell(ones(1,length(obj)));
             [obj.MovingVolume] = obj(:).InitialVolume;
-            [obj.EqVolume] = obj(:).InitialVolume;
             [obj.FixedVolume] = obj(:).InitialVolume;
-            [obj.MovingSurfaceArea] = obj(:).InitialSurfaceArea; 
-            [obj.EqSurfaceArea] = obj(:).InitialSurfaceArea; 
-            % [obj.FixedSurfaceArea] = obj(:).InitialSurfaceArea;
+            [obj.EqVolume] = obj(:).InitialVolume;
             [obj.MovingDepth] = initdepth{:};
-            [obj.EqDepth] = initdepth{:};
             [obj.FixedDepth] = initdepth{:};
-            [obj.transVertExch] = obj(:).VerticalExchange;
+            [obj.EqDepth] = initdepth{:};
+            [obj.SurfaceArea] = obj(:).InitialSurfaceArea;            
+            [obj.EqSurfaceArea] = obj(:).InitialSurfaceArea;     
+            %initialise default values
+            %[obj.EqConcentration]         %set in setEqConcentration
+            %[obj.EleConcentration]        %set in setEleConcentration
+            [obj.transVertExch] = obj(:).VerticalExchange;     
+            [obj.EleWLchange] = null{:};   
+            [obj.eqScaling] = unity{:}; 
+            %[obj.eqAdvOffSet] = unity{:}; %set in setEleAdvOffsets 
+            [obj.eqFixedInts] = null2{:}; 
             [obj.BioProdVolume] =  null{:};
-            [obj.transEleType] = obj(:).EleType;           
-            [obj.eqScaling] = unity{:}; %initialise default values
-            [obj.EleWLchange] = null{:};        
+            [obj.transEleType] = obj(:).EleType;                
 
             setClassObj(mobj,'Inputs','Element',obj);
-        end           
+        end      
+
 %%
         function setEleProp(mobj,varname,prop)
             %assign prop to an element variable name
@@ -328,13 +336,12 @@ classdef Element < muiPropertyUI
         function setEquilibrium(mobj)
             %Set equilibrium volumes for all elements
             %calls AsmitaModel.asmitaEqFunctions(mobj) so that alternatives
-            %can be used by overloading in the AsmitaModel class
-            %scaling to initial values
+            %can be used by overloading in the AsmitaModel class            
             obj = getClassObj(mobj,'Inputs','Element');
-            eqScaling = getEleProp(obj,'eqScaling');
+            eqScaling = getEleProp(obj,'eqScaling'); %scaling to initial values
             %update unadjusted equilibrium volumes to account for changes
             %in tidal prism
-            ASM_model.asmitaEqFunctions(mobj);  %updates Element.EqVolume
+            ASM_model.asmitaEqFunctions(mobj);       %updates Element.EqVolume
             %correction for advection            
             eqAdvCor = getEleProp(obj,'eqAdvOffSet');            
             %set adjusted values of equilibrium volume

@@ -464,7 +464,7 @@ classdef Reach < handle
         function obj = setLWproperties(obj,eleobj)
             %set the LW channel based properties of reach
             V = getEleProp(eleobj,'MovingVolume');
-            S = getEleProp(eleobj,'MovingSurfaceArea');
+            S = getEleProp(eleobj,'SurfaceArea');
             eLe = getEleProp(eleobj,'Length');
             eleID = getEleProp(eleobj,'EleID');
 
@@ -581,7 +581,7 @@ classdef Reach < handle
             %called for each reach
             eleobj = getClassObj(mobj,'Inputs','Element');
             V = getEleProp(eleobj,'MovingVolume');
-            S = getEleProp(eleobj,'MovingSurfaceArea');
+            S = getEleProp(eleobj,'SurfaceArea');
             n = getEleProp(eleobj,'TransportCoeff');
             eletype = getEleProp(eleobj,'EleType');
             idxReachEle = obj.ReachEleID;

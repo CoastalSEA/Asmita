@@ -64,7 +64,7 @@ classdef ASM_model < ASMinterface
             % EqSA = getEleProp(eleobj,'InitialSurfaceArea');
 
             %equilibrium surface area taken as intial area + interventions
-            EqSA = getEleProp(eleobj,'MovingSurfaceArea');
+            EqSA = getEleProp(eleobj,'EqSurfaceArea');
             
             %Equilibrium depth over marsh elements
             rncobj  = getClassObj(mobj,'Inputs','RunConditions');
@@ -80,21 +80,20 @@ classdef ASM_model < ASMinterface
                 alpha = etypalpha.(eletype{i});
                 beta = etypbeta.(eletype{i});
                 isTReq = ~logical(eqType.(eletype{i})); %switch to true if tidal range equilibrium
-                eleobj(i).EqSurfaceArea = EqSA(i);
                 switch eletype{i}
                     case 'Saltmarsh'
                         if Deq(i)>0
                             %depth within species range
-                            eleobj(i).EqVolume = EqSA(i)*Deq(i);
+                            EqVol = EqSA(i)*Deq(i);
                         elseif Deq(i)==0
                             %no water depth over marsh
-                            eleobj(i).EqVolume = 0;
+                            EqVol = 0;
                         elseif Deq(i)==-1
                             %depth greater than maximum species depth, 
                             %or root to Morris equation not found. NB: in 
                             %this formulation the eq.coefficients need to 
                             %be adjusted to suit site. 
-                            eleobj(i).EqVolume = alpha.*(HWL(i)-LWL(i))^beta;
+                            EqVol = alpha.*(HWL(i)-LWL(i))^beta;
                             %alternative is to assume Wm=Sm/L and simple 
                             %triangular x-section                            
                             % msgtxt = 'Saltmarsh parameters not defined';
@@ -103,25 +102,37 @@ classdef ASM_model < ASMinterface
                             % eleobj(i).EqVolume = dmx*EqSA(i)/2;
                         end
                     case {'Beachface','Shoreface','Spit','DeltaFlat'}
-                        %scale the beach equilbrium as a function of the
-                        %drift rate.
-                        if rncobj.IncDrift && rncobj.IncDriftTS
+                        %scale beach equilbrium as function of drift rate, 
+                        %or tidal range
+                        if rncobj.IncDrift && rncobj.IncDriftTS && ~isTReq
+                            %for time varying drift rate use changes in drift rate
                             advobj = getClassObj(mobj,'Inputs','Advection');
-                            [DriftRatio,initGraph] = getFlowRatio(advobj,mobj,'Drift');                            
+                            [DR,initGraph] = getFlowRatio(advobj,mobj,'Drift'); %DR is struct of ratio (q/q0), diff (difference, q-q0) and diffratio (difference/initial value - dq/q0)                           
                             elename = getEleProp(eleobj,'EleName');
-                            DriftRatio = DriftRatio(strcmp(initGraph.Nodes.Name,elename(i)));
+                            DiffRatio = DR.diffratio(strcmp(initGraph.Nodes.Name,elename(i)));
+                            eleVol = getEleProp(eleobj,'InitialVolume');
+                            EqVol = eleVol(i)*(1+alpha.*DiffRatio^beta);
+                        elseif isTReq
+                            %for constant drift rate use tidal range if eqtype=0
+                            EqVol = alpha*(HWL(i)-LWL(i))^beta;
                         else
-                            DriftRatio = 1;
-                        end
-                        eleVol = getEleProp(eleobj,'InitialVolume');
-                        eleobj(i).EqVolume = eleVol(i)*alpha.*DriftRatio^beta;
+                            %for constant drift rate use tidal range if eqtype=1
+                            EqVol = alpha*prism(i)^beta;
+                        end                        
                     otherwise
                         if isTReq %appplies to any element type (eg tidalflat)
-                            eleobj(i).EqVolume = alpha*(HWL(i)-LWL(i))^beta;
+                            EqVol = alpha*(HWL(i)-LWL(i))^beta;
                         else
-                            eleobj(i).EqVolume = alpha*prism(i)^beta;
+                            EqVol = alpha*prism(i)^beta;
                         end
                 end
+                %impose any fixed interventions
+                EqVol = EqVol+eleobj(i).eqFixedInts(1); %1 - volume changes
+                if EqVol<0, EqVol=0; end
+                eleobj(i).EqVolume = EqVol;
+                %EqSA = EqSA+eleobj(i).eqFixedInts(2); %2 -surface area changes
+                %if EqSA<0, EqSA=0; end
+                %eleobj(i).EqSurfaceArea = EqSA;
             end
             setClassObj(mobj,'Inputs','Element',eleobj);
         end 

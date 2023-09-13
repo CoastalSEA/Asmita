@@ -268,7 +268,7 @@ classdef Estuary < muiPropertyUI
             finetypes = mobj.GeoType(mobj.FNtypes);
             ifn = ismatch(eletype,finetypes); %could replacae with matches
             vm = getEleProp(eleobj,'MovingVolume');
-            sm = getEleProp(eleobj,'MovingSurfaceArea');
+            sm = getEleProp(eleobj,'SurfaceArea');
             cb = getEleProp(eleobj,'BedConcentration');
             ws = getEleProp(eleobj,'VerticalExchange');
             n  = getEleProp(eleobj,'TransportCoeff');

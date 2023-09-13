@@ -379,7 +379,7 @@ classdef AsmitaModel < muiDataSet
              if rncobj.IncTidalPumping
                 Advection.setTidalPumping(mobj);
              end
-             %update equilibirum volumes due to changes in tidal prism
+             %update equilibrium volumes due to changes in tidal prism
              Element.setEquilibrium(mobj);
              %update equilibrium concentrations: only needed if cE varied during run
              % Element.setEqConcentration(mobj);
@@ -410,17 +410,17 @@ classdef AsmitaModel < muiDataSet
                     %sorting depends on variable list in DSproperties
                     %element properties
                     eleprop = getEleProp(eleobj,vname{i});
-                    if i>3
-                        %append mean of all elements
-                        meanwet = mean(eleprop(M>0),1);
-                        meansed = mean(eleprop(M<0),1);
-                        obj.EleData{i}(jr,:) = [eleprop;meanwet;meansed];
-                    else
+                    if contains(vname(i),'Volume') || contains(vname(i),'Area')
                         %append the sum of all elements adjusted for 
                         %water/sediment volumes using sign(n)
                         sumwet = sum(eleprop(M>0),1);
                         sumsed = sum(eleprop(M<0),1);
-                        obj.EleData{i}(jr,:) = [eleprop;sumwet;sumsed];
+                        obj.EleData{i}(jr,:) = [eleprop;sumwet;sumsed];                        
+                    else
+                        %append mean of all elements
+                        meanwet = mean(eleprop(M>0),1);
+                        meansed = mean(eleprop(M<0),1);
+                        obj.EleData{i}(jr,:) = [eleprop;meanwet;meansed];
                     end
                 end
                 
@@ -532,7 +532,7 @@ classdef AsmitaModel < muiDataSet
             dsp.Variables = struct(...                      
                 'Name',{'MovingVolume','FixedVolume','EqVolume',...                           
                            'MovingDepth','FixedDepth','EqDepth',...
-                           'MovingSurfaceArea','BioProdVolume',...
+                           'SurfaceArea','BioProdVolume',...
                            'EleConcentration','EleWLchange'},...                           
                 'Description',{'Moving Volume','Fixed Volume','Equilibrium Volume',...
                            'Moving Depth','Fixed Depth','Equilibrium Depth',...

@@ -19,6 +19,7 @@ classdef ASMinterface < handle
         WatMbal     %water mass balance updated at each time step
         UniqueYears   %array of years for imposed changes
         AnnualChange  %array of imposed volume and area changes for each element
+        isFixed       %array of logical flags, true if change is non-erodible
         DQ          %matix of dispersion and advection updated each time step
         dqIn        %vector of input dispersion and advection updated at each time step
     end
@@ -43,7 +44,7 @@ classdef ASMinterface < handle
             vf = getEleProp(eleobj,'FixedVolume');
             ve = getEleProp(eleobj,'EqVolume');
             vb = getEleProp(eleobj,'BioProdVolume');
-            sm = getEleProp(eleobj,'MovingSurfaceArea');
+            sa = getEleProp(eleobj,'SurfaceArea');
             n  = getEleProp(eleobj,'TransportCoeff');
             cb = getEleProp(eleobj,'BedConcentration');            
             ws = getEleProp(eleobj,'transVertExch');
@@ -72,8 +73,9 @@ classdef ASMinterface < handle
                     %no biological production for elements with ws=0
                     dvb(estobj.ExchLinks(:,2)) = 0;
                 end
+                [dv_ero,ds_ero] = Saltmarsh.getEdgeErosion(mobj,robj);
             else
-                dvb = zeros(size(dvf));
+                dvb = zeros(size(dvf)); dv_ero = 0; ds_ero = 0;
             end
             %
             % if ~isempty(vis0)
@@ -82,7 +84,7 @@ classdef ASMinterface < handle
             
             % change in water volume - applies to both sediment and water
             % volumes hence use sign(n) rather than n>0 
-            dvm = sign(n).*sm.*dwl;  
+            dvm = sign(n).*sa.*dwl;  
             if rncobj.IncDynamicElements && ws(estobj.ExchLinks(:,2))==0
                 %no volume change for elements with ws=0
                 dvm(estobj.ExchLinks(:,2)) = 0;
@@ -92,24 +94,28 @@ classdef ASMinterface < handle
             % elenames = getEleProp(eleobj,'EleName');
             % table(dwl,conc,dvf,dvb,dvm,ve,vm,sm,Gam,dd,B,'RowNames',elenames)
             %
-            vm = vm + dvm + dvf - dvb; %total change (moving surface)
-            vf = vf + dvf - dvb;       %morphological change (fixed surface)
-            vb = vb + dvb;             %saltmarsh organic sedimentation
-            
+            vm = vm +dvm +dvf -dvb +dv_ero; %total change (moving surface)
+            vf = vf +dvf -dvb +dv_ero;      %morphological change (fixed surface)
+            vb = vb +dvb;                   %saltmarsh organic sedimentation
+                                            %vm modifies bioproduction in
+                                            %next time step            
             %check that elements have not infilled
             if any(vm(:)<=0)      %when elements go to zero retain small
                 vf(vm<=0) = 999;  %value to prevent matrix becoming poorly 
                 vm(vm<=0) = 999;  %conditioned     
             end       
+            
+            %update surace areas
+            sa = ASM_model.asmitaAreaChange(mobj,robj,ds_ero);
 
             %depth values
-            dm = vm./sm; df = vf./sm; de = ve./sm;
+            dm = vm./sa; df = vf./sa; de = ve./sa;
             
             %check that elements have not been removed (zero area)
-            if any(sm(:)<=0)
-                dm(sm<=0) = 0;
-                df(sm<=0) = 0;
-                de(sm<=0) = 0;
+            if any(sa(:)<=0)
+                dm(sa<=0) = 0;
+                df(sa<=0) = 0;
+                de(sa<=0) = 0;
             end
 
             % assign results
@@ -131,13 +137,26 @@ classdef ASMinterface < handle
             % sprintf('t = %g; Sediment Balance %g; Water Balance %g',t,smb,wmb)
             setClassObj(mobj,'Inputs','Element',eleobj);
         end
-        
+
+%%
+        function sa = asmitaAreaChange(mobj,robj,ds_ero)
+            %calculate the changes in surface area over a timestep
+            eleobj = getClassObj(mobj,'Inputs','Element');
+            sa = getEleProp(eleobj,'SurfaceArea');
+            se = getEleProp(eleobj,'EqSurfaceArea');
+
+            %at the moment only a correction for marsh erosion is made
+
+            erose = num2cell(sa+ds_ero);
+            [eleobj.SurfaceArea] = erose{:};
+            setClassObj(mobj,'Inputs','Element',eleobj);
+        end
 %%
         function [B,dd] = BddMatrices(mobj)
             %compute the solution matrix B and vector dd (ie B*gamma-dd)
             %get model parameters
             eleobj = getClassObj(mobj,'Inputs','Element');
-            sm = getEleProp(eleobj,'MovingSurfaceArea');
+            sm = getEleProp(eleobj,'SurfaceArea');
             ws = getEleProp(eleobj,'transVertExch');
             n = getEleProp(eleobj,'TransportCoeff');
             cE = getEleProp(eleobj,'EqConcentration');
@@ -281,7 +300,7 @@ classdef ASMinterface < handle
             LWL = Reach.getReachEleProp(mobj,'LWlevel');
             %
             %equilibirum surface area taken as intial area (ie fixed)
-            EqSA = getEleProp(eleobj,'InitialSurfaceArea');
+            EqSA = getEleProp(eleobj,'SurfaceArea');
             %Equilibirum depth over marsh elements
             rncobj  = getClassObj(mobj,'Inputs','RunConditions');
             if rncobj.IncSaltmarsh
@@ -321,7 +340,7 @@ classdef ASMinterface < handle
             
             vm = getEleProp(eleobj,'MovingVolume');
             ve = getEleProp(eleobj,'EqVolume');
-            sm = getEleProp(eleobj,'MovingSurfaceArea');
+            sm = getEleProp(eleobj,'SurfaceArea');
             %
             ws = getEleProp(eleobj,'transVertExch');
             n = getEleProp(eleobj,'TransportCoeff');
@@ -384,7 +403,7 @@ classdef ASMinterface < handle
             vm = getEleProp(eleobj,'MovingVolume');
             vb = getEleProp(eleobj,'BioProdVolume');
             dV = Interventions.getIntProp(mobj,'transVolChange');
-            sm = getEleProp(eleobj,'MovingSurfaceArea');
+            sm = getEleProp(eleobj,'SurfaceArea');
             dwl = getEleProp(eleobj,'EleWLchange');
             [~,dExt] = Estuary.getDispersion(mobj); %uses ReachGraph
             [~,qIn,qOut] = Advection.getAdvectionFlow(mobj,'River'); %water flux in m3/s

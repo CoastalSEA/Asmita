@@ -12,7 +12,7 @@ classdef Advection < matlab.mixin.Copyable
     %    
     properties               %user defined variables at start of run                      
         RiverFlows = []        %advection matrix, q (m3/s)
-        RiverIn = [0,0]           %array of external flows into estuary
+        RiverIn = [0,0]            %array of external flows into estuary
         RiverOut = [0,0]           %array of external flows out of estuary
         DriftFlows = []        %matrix of littoral drift flows, qs (m3/s)
         DriftIn = [0,0]            %array of littoral flows into system
@@ -29,9 +29,9 @@ classdef Advection < matlab.mixin.Copyable
     end
     
     properties (Access=private, Transient)
-        InternalAdv = []         %advection matrix, q (m3/s)
-        ExternalAdvIn = 0        %matrix of external flows into estuary
-        ExternalAdvOut = 0       %matrix of external flows out of estuary        
+        InternalAdv = []       %advection matrix, q (m3/s)
+        ExternalAdvIn = 0      %matrix of external flows into estuary
+        ExternalAdvOut = 0     %matrix of external flows out of estuary        
     end
     
     methods  (Access={?River,?Drift})
@@ -757,6 +757,7 @@ classdef Advection < matlab.mixin.Copyable
             obj = setAdvectionType(obj,AdvType);
             ok = checkAdvMassBalance(obj);
         end
+
 %%  
         function initGraph = getInitialFlowGraph(obj,mobj,AdvType)
             %return a graph of the initial flow settings for AdvType
@@ -766,14 +767,20 @@ classdef Advection < matlab.mixin.Copyable
             nodetxt = setnodetext(eleobj,inoutxt);
             initGraph = matrix2graph(q,qin,qout,nodetxt);
         end
+
 %%
-		function [flowRatio,initGraph] = getFlowRatio(obj,mobj,AdvType)
+        function [R,initGraph] = getFlowRatio(obj,mobj,AdvType)
             %find the ratio of the current flow rates to the initial values
+            %R is struct of ratio (q/q0), diff (difference, q-q0) and 
+            %diffratio (difference/initial value, dq/q0)                          
             drifts = obj.DriftGraph.Edges.Weight;
             initGraph = getInitialFlowGraph(obj,mobj,AdvType);
             initdrifts = initGraph.Edges.Weight;
-            flowRatio = drifts./initdrifts;        
+            R.ratio = drifts./initdrifts;        
+            R.diff = drifts-initdrifts;
+            R.diffratio = R.diff./initdrifts;
         end
+
     end
 %%
     methods (Static,Hidden)

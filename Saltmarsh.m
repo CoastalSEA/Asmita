@@ -22,8 +22,8 @@ classdef Saltmarsh < muiPropertyUI
                           'Species productivity (m2/kg/yr)',...
                           'Settling cofficient, alpha (m/s)',...
                           'Settling exponent, beta (-)',...
-                          'Minimum edge erosion rate (m/yr)',...
-                          'Maximum edge erosion rate (m/yr)'};
+                          'Edge erosion rate (m/yr)',...
+                          'Include marsh flat erosion (0/1)'};
         %abstract properties in muiPropertyUI for tab display
         TabDisplay   %structure defines how the property table is displayed 
     end
@@ -36,8 +36,8 @@ classdef Saltmarsh < muiPropertyUI
         SpeciesProduct      %species productivity (m2/kg/yr)
         SettlingAlpha       %coefficient for biomass enhanced settling rate (m/s)
         SettlingBeta        %exponent for biomass enhanced settling offset (-)
-        MinEdgeErosion=0;   %minimum lateral erosion of marsh(m/yr) (only used with variable area)
-        MaxEdgeErosion=0;   %maximum lateral erosion of marsh(m/yr) (ditto) 
+        EdgeErosion=0;      %lateral erosion of marsh(m/yr)
+        FlatErosion=false;  %flag to allow erosion of marsh surface (0/1)
     end    
     
     properties (Transient)
@@ -131,7 +131,7 @@ classdef Saltmarsh < muiPropertyUI
             ism = find(strcmp(eletype,'Saltmarsh'));
             Deq = zeros(length(eletype),1); 
             %
-            sm = getEleProp(eleobj,'MovingSurfaceArea');
+            sm = getEleProp(eleobj,'SurfaceArea');
             vm = getEleProp(eleobj,'MovingVolume');
             depth = vm./sm;          % water depth in element
             if any(sm(:)==0), depth(sm==0) = 0; end  %trap infinity
@@ -176,18 +176,23 @@ classdef Saltmarsh < muiPropertyUI
             vm = getEleProp(eleobj,'MovingVolume');
             ve = getEleProp(eleobj,'EqVolume');
             ws = getEleProp(eleobj,'transVertExch');
-            sm = getEleProp(eleobj,'MovingSurfaceArea');
+            sm = getEleProp(eleobj,'SurfaceArea');
             eletype = getEleProp(eleobj,'EleType');
             obj  = getClassObj(mobj,'Inputs','Saltmarsh');
+            isEro = obj.FlatErosion;
             depth = vm./sm; % water depth in element
             gma = ve./vm;   % <1 import and >1 export
             ism = find(strcmp(eletype,'Saltmarsh'));
             nsm = length(ism);
             for k=1:nsm
-                if gma(ism(k))<= 1
+                if gma(ism(k))> 1 && isEro
+                    %marsh eroding (export) and erosion allowed
+                    ws(ism(k)) = bioenhancedsettling(obj,depth(ism(k)),ws(ism(k)));
+                elseif gma(ism(k))<= 1
+                    %marsh accreting (import)
                     ws(ism(k)) = bioenhancedsettling(obj,depth(ism(k)),ws(ism(k)));
                 else
-                    %prevent erosion if gma>1
+                    %prevent erosion if gma>1 and erosion not allowed
                     %this is applied even if no biological production provided smflg=1
                     %so erosion of marsh elements is constrained regardless of biology.
                     %if smflg=0 this routine is not called and the specified values
@@ -213,7 +218,49 @@ classdef Saltmarsh < muiPropertyUI
             kBm = getEleSpeciesProduct(obj,eleobj,cn);
             Blim = diag(bmx*(kBm.*(Bm>0))');
         end
-        
+%%
+        function [dv_ero,ds_ero] = getEdgeErosion(mobj,robj)
+            %compute change in marsh and flat volumes due to edge erosion
+            obj = getClassObj(mobj,'Inputs','Saltmarsh');            
+            if obj.EdgeErosion==0
+                dv_ero = 0; ds_ero = 0;
+                return; 
+            end
+            ero = obj.EdgeErosion/mobj.Constants.y2s;
+            dmx = max(obj.MaxSpDepth);
+            %get transient Element properties for area and volume
+            eleobj = getClassObj(mobj,'Inputs','Element');
+            %get model parameters
+            ve = getEleProp(eleobj,'EqVolume');            
+            se = getEleProp(eleobj,'EqSurfaceArea');
+            Le = getEleProp(eleobj,'Length');
+            n  = getEleProp(eleobj,'TransportCoeff');
+            eletype = getEleProp(eleobj,'transEleType');
+            elename = getEleProp(eleobj,'EleName');
+            %use network definition to find adjacency
+            estobj = getClassObj(mobj,'Inputs','Estuary');
+            estgraph = estobj.DispersionGraph;
+            ism = strcmp(eletype,'Saltmarsh');
+            dt = robj.delta;           %time step in seconds
+            ds_ero = -ero*ism.*Le*dt;  %reduce area by erosion area
+            dv_ero = ds_ero*dmx/2;     %reduce volume using half max marsh depth
+
+            %find adjacent flats and apply the opposite change
+            MarshNodes = matches(estgraph.Edges.EndNodes(:,2),elename(ism));
+            flatNames = estgraph.Edges.EndNodes(MarshNodes,1);
+            ismf = matches(elename,flatNames); %flats adjacent to marsh            
+            ds_ero(ismf) = -ds_ero(ism);
+            %if flats are sediment volumes eroded marsh volumes are removed
+            %from the flat volume
+            dv_ero(ismf) = -sign(n(ism)).*dv_ero(ism);
+
+            %update the equilibrium values
+            erove = num2cell(ve+dv_ero);
+            erose = num2cell(se+ds_ero);
+            [eleobj.EqVolume] = erove{:};  
+            [eleobj.EqSurfaceArea] = erose{:};
+            setClassObj(mobj,'Inputs','Element',eleobj);
+        end
 %% ------------------------------------------------------------------------
 % Static functions for plots and animations to display aspects of model setup
 %--------------------------------------------------------------------------
@@ -413,7 +460,7 @@ classdef Saltmarsh < muiPropertyUI
             
             %get model parameters
             vm = getEleProp(eleobj,'MovingVolume');
-            sm = getEleProp(eleobj,'MovingSurfaceArea');
+            sm = getEleProp(eleobj,'SurfaceArea');
             eletype = getEleProp(eleobj,'EleType');
             nele = length(eletype);
             ism = find(strcmp(eletype,'Saltmarsh'));
@@ -630,7 +677,7 @@ classdef Saltmarsh < muiPropertyUI
             eleobj = getClassObj(mobj,'Inputs','Element',msgtxt);
             if ~isempty(eleobj)
                 vm = getEleProp(eleobj,'MovingVolume');
-                sm = getEleProp(eleobj,'MovingSurfaceArea');
+                sm = getEleProp(eleobj,'SurfaceArea');
                 eletype = getEleProp(eleobj,'EleType');
                 elename = getEleProp(eleobj,'EleName');                
                 ism = find(strcmp(eletype,'Saltmarsh')); 
