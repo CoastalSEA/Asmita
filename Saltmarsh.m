@@ -131,10 +131,10 @@ classdef Saltmarsh < muiPropertyUI
             ism = find(strcmp(eletype,'Saltmarsh'));
             Deq = zeros(length(eletype),1); 
             %
-            sm = getEleProp(eleobj,'SurfaceArea');
+            sa = getEleProp(eleobj,'SurfaceArea');
             vm = getEleProp(eleobj,'MovingVolume');
-            depth = vm./sm;          % water depth in element
-            if any(sm(:)==0), depth(sm==0) = 0; end  %trap infinity
+            depth = vm./sa;          % water depth in element
+            if any(sa(:)==0), depth(sa==0) = 0; end  %trap infinity
             %vertical exchange for marsh (initial inorganic values)  
             ws = getEleProp(eleobj,'VerticalExchange');
             %compute equilibrium depth based on local concentration
@@ -150,8 +150,11 @@ classdef Saltmarsh < muiPropertyUI
                         %water depth over marsh is within marsh species range
                         wsj = bioenhancedsettling(obj,depth(ism(jsm)),ws(ism(jsm)));
                         qm = wsj.*cem(ism(jsm))./depth(ism(jsm));       %sediment delivery to marsh 
-                        Deq(ism(jsm)) = morris_eqdepth(obj,cn,qm,dslr); %equilibrium depth
-                        if Deq(ism(jsm))==0, Deq(ism(jsm)) = -1; end
+                        deq = morris_eqdepth(obj,cn,qm,dslr); %equilibrium depth
+                        if isempty(deq),                            
+                            deq = -1; %catch case when root not found
+                        end 
+                        Deq(ism(jsm)) = deq;                        
                     else                        
                         %depth of marsh has gone to zero
                         Deq(ism(jsm)) = 0;
@@ -176,11 +179,11 @@ classdef Saltmarsh < muiPropertyUI
             vm = getEleProp(eleobj,'MovingVolume');
             ve = getEleProp(eleobj,'EqVolume');
             ws = getEleProp(eleobj,'transVertExch');
-            sm = getEleProp(eleobj,'SurfaceArea');
+            sa = getEleProp(eleobj,'SurfaceArea');
             eletype = getEleProp(eleobj,'EleType');
             obj  = getClassObj(mobj,'Inputs','Saltmarsh');
             isEro = obj.FlatErosion;
-            depth = vm./sm; % water depth in element
+            depth = vm./sa; % water depth in element
             gma = ve./vm;   % <1 import and >1 export
             ism = find(strcmp(eletype,'Saltmarsh'));
             nsm = length(ism);
@@ -268,7 +271,7 @@ classdef Saltmarsh < muiPropertyUI
             %examine influence of biomass production rates on equilibrium depth
             %produces three graphs and displays the resultant eq.depth
             %get input parameters             
-            [obj,wlvobj,eleobj,cn] = Saltmarsh.getInputData(mobj);
+            [obj,wlvobj,eleobj,cn,estobj] = Saltmarsh.getInputData(mobj);
             if isempty(obj) || isempty(wlvobj), return; end
             %--------------------------------------------------------------
             % Store original values of kbm so that they can be restored
@@ -295,20 +298,31 @@ classdef Saltmarsh < muiPropertyUI
                     biom(jd)=0;
                 end
             end
-            %--------------------------------------------------------------
-            % Restore original values of kbm
-            obj.SpeciesProduct = kbm0;
-            %--------------------------------------------------------------            
+           
             % Plot results
             Dslr = sm.dslr*cn.y2s*1000;     %units of mm/year
             Qm1 = sm.qm1*cn.y2s;            %units of yr^-1     
-            ptxt = struct('kbm',sm.userkbm,'dp0',sm.dp0,'dp1',sm.dp1,...
-                        'Qm0',sm.Qm0,'Qm1',Qm1,'Dslr',Dslr,'bm1',sm.bm1,...
-                        'minslr',minslr,'maxslr',minslr*nint);
-            bioInfluencePlot(obj,cn,slr,deq,biom,ptxt);
+            
+            eletype = getEleProp(eleobj,'EleType');
+            ism = strcmp(eletype,'Saltmarsh');
+            ws = getEleProp(eleobj,'VerticalExchange');
+            wsm = mean(ws(ism));           %average vertical exchange over marsh
+            cE = num2str([estobj.EqConcCoarse,estobj.EqConcFine]*cn.rhos);
+
+            ptxt = struct('kbm',sm.userkbm,'dp1',sm.dp1,...
+                        'Qm1',Qm1,'Dslr',Dslr,'bm1',sm.bm1,...
+                        'minslr',minslr,'maxslr',minslr*nint,...
+                        'wsm',wsm,'cE',cE);
+            bioInfluencePlot(obj,cn,slr,deq,biom,ptxt);            
             % Advise state of marsh if elements defined
             marshElementCheck(obj,mobj)
+
+            %--------------------------------------------------------------
+            % Restore original values of kbm
+            obj.SpeciesProduct = kbm0;
+            %-------------------------------------------------------------- 
         end
+
 %%
         function BiomassDistributionPlot(mobj)
             %plot the distribution of each species on the bare flat profile
@@ -331,6 +345,68 @@ classdef Saltmarsh < muiPropertyUI
             end
             bioDistributionPlot(obj,y,z,biomass,depth,a,[]);
         end
+
+%%
+        function SensitivityPlot(mobj)
+            %generate plot of equilibirum depth as a function of rate of
+            %sea level rise and sediment load
+            [obj,wlvobj,eleobj,cn,estobj] = Saltmarsh.getInputData(mobj);
+            if isempty(obj) || isempty(wlvobj), return; end
+            %--------------------------------------------------------------
+            % Store original values of kbm so that they can be restored
+            kbm0 = obj.SpeciesProduct;     %species productivity (m2/kg/yr)
+            %-------------------------------------------------------------- 
+            [sm,~] = initialiseSaltmarshModel(obj,wlvobj,eleobj,cn,mobj);
+
+            %compute eq.depth for range of sed load and slr
+            npnt = 500;
+            qm = linspace(1e-4,1,npnt);    %units of per year
+            dslr = linspace(1e-3,0.1,npnt);  %units of m/yr
+            for i=1:npnt
+                for j=1:npnt
+                    Deq= morris_eqdepth(obj,cn,qm(i)/cn.y2s,dslr(j)/cn.y2s);
+                    if isempty(Deq), Deq = 0; end
+                    deq(i,j) = Deq; %#ok<AGROW> 
+                end
+            end
+
+            slrX = mobj.Inputs.WaterLevels.SLRrate;
+            %generate plot
+            [X,Y] = meshgrid(dslr,qm);
+            hf = figure('Name','Eq. Depth plot','Tag','PlotFig');
+            ax = axes(hf);
+            contourf(X,Y,deq)
+            ax.XScale = 'log';
+            ax.YScale = 'log';
+            cb = colorbar;
+            cb.Label.String = 'Equilibrium depth';
+            
+            hold on
+            plot(slrX,sm.qm1*cn.y2s,'or')
+            hold off
+            
+            xlabel('Rate of sea level rise (m/yr)')
+            ylabel('Sediment loading (1/yr)')
+            title('Load-rate sensitivity plot')            
+            
+            %add button for properties used to create plot
+            eletype = getEleProp(eleobj,'EleType');
+            ism = strcmp(eletype,'Saltmarsh');
+            ws = getEleProp(eleobj,'VerticalExchange');
+            wsm = mean(ws(ism));           %average vertical exchange over marsh
+            cE = num2str([estobj.EqConcCoarse,estobj.EqConcFine]*cn.rhos);
+            sed = table({'Marsh vertical exchange';'Equilibrium concentration'},...
+                                                           {wsm;cE});
+            sed.Properties.VariableNames =  {'Property','Value'};   
+
+            addDataButton(obj,hf,sed);
+
+            %--------------------------------------------------------------
+            % Restore original values of kbm
+            obj.SpeciesProduct = kbm0;
+            %-------------------------------------------------------------- 
+        end
+
 %%
         function MarshFlatAnimation(mobj)
             %animation of the development of marsh from initial bare flat
@@ -460,14 +536,14 @@ classdef Saltmarsh < muiPropertyUI
             
             %get model parameters
             vm = getEleProp(eleobj,'MovingVolume');
-            sm = getEleProp(eleobj,'SurfaceArea');
+            sa = getEleProp(eleobj,'SurfaceArea');
             eletype = getEleProp(eleobj,'EleType');
             nele = length(eletype);
             ism = find(strcmp(eletype,'Saltmarsh'));
             nsm = length(ism);
             nsp = obj.NumSpecies;
             
-            depth =vm./sm;
+            depth =vm./sa;
             Bc = morris_biocoeffs(obj);
             n1  = ones(nele,1);
             dd  = [depth depth.^2 n1];
@@ -508,7 +584,6 @@ classdef Saltmarsh < muiPropertyUI
             ws = getEleProp(eleobj,'VerticalExchange');
             ism = strcmp(eletype,'Saltmarsh');
             ifl = strcmp(eletype,'Tidalflat');
-            ich = strcmp(eletype,'Channel');
             if any(ism) 
                 awm = mean(ws(ism));
             else       %no saltmarsh elements defined
@@ -561,22 +636,19 @@ classdef Saltmarsh < muiPropertyUI
             obj.SpeciesProduct = str2num(dlg_ans{1}); %#ok<ST2NM>
             sm.userkbm = obj.SpeciesProduct;         %values in years
             %
-            sm.Qm0 = 0.00018;       %estimate of sediment load used by Morris,2006
-            if mean(sm.userkbm)< 1.0e-10*cn.y2s
-                sm.Qm0 = 0.0018;    %adjustment needed if kbm very low, Morris, 2007
-            end
-            qm0 = sm.Qm0/cn.y2s;    %initial value of qm (s^-1)
-            dp0 = morris_eqdepth(obj,cn,qm0,sm.dslr);
-            if dp0<=0
-                dmn = obj.MinSpDepth;          %minimum depth for each species (m)
-                dmx = obj.MaxSpDepth;          %maximum depth for each species (m)
-                dp0 = mean((dmn+dmx)/2);  
-            end
+            dmn = obj.MinSpDepth;          %minimum depth for each species (m)
+            dmx = obj.MaxSpDepth;          %maximum depth for each species (m)
+            dp0 = mean((dmn+dmx)/2);  
+
             ct = obj.MarshDepthConc; %concentration over marsh as a function of depth
             cem = interp1q(ct.Depth,ct.Concentration,dp0);            
             wsm = bioenhancedsettling(obj,dp0,sm.aws);
             qm0 = wsm*cem/dp0;
             sm.dp0 = morris_eqdepth(obj,cn,qm0,sm.dslr);
+            if isempty(sm.dp0)
+                warndlg('Depth not found in initialiseSaltmarshModel. Set d=0')
+                sm.dp0 = 0; 
+            end
             %--------------------------------------------------------------
             % Calculate depth, dp1, sediment loading, qm1, biomass
             % coefficients Bc, total biomass at equilibrium depth, bm1
@@ -602,7 +674,7 @@ classdef Saltmarsh < muiPropertyUI
             smtm = smt(1:idxmarsh);
             dpmm = dpm(1:idxmarsh);
             
-            figure('Name','Biomass Plot','Tag','PlotFig');
+            hf = figure('Name','Biomass Plot','Tag','PlotFig');
             %--------------------------------------------------------------
             subplot(2,2,1)                     %flat and marsh - top left
             yyaxis left
@@ -658,17 +730,54 @@ classdef Saltmarsh < muiPropertyUI
             line('XData',[tx.Dslr/1000 tx.maxslr],'YData',[tx.bm1 tx.bm1],'Color','r','Linestyle',':');
             line('XData',[tx.Dslr/1000 tx.Dslr/1000],'YData',[0 tx.bm1],'Color','r','Linestyle',':');
             
-            out_str1 = sprintf('Default sediment loading, qm = %5.3d yr-1 and slr = %g mm/yr give an equilibrium depth of %5.3f m',...
-                tx.Qm0,tx.Dslr,tx.dp0);
-            out_str2 = sprintf('Concentrations over marsh give a sediment loading, qm = %5.3d yr-1, and a depth of %5.3f m',...
+            out_str = sprintf('Concentrations over marsh give a sediment loading, qm = %5.3f yr-1, and a depth of %5.3f m',...
                 tx.Qm1,tx.dp1);
-            out_str3 = sprintf('Species productivity values used: %g %g %g',tx.kbm);
-            out_str = sprintf('%s\n%s\n%s',out_str1,out_str2,out_str3);
             annotation('textbox','String',out_str,'FitBoxToText','on',...
                 'HorizontalAlignment','left', 'VerticalAlignment','middle',...
-                'Position',[0.6,0.8,0.28,0.06],'LineStyle','none');            
-            title(sprintf('Equilibrium conditions as a function of sea level rise\n'));
+                'Position',[0.57,0.55,0.30,0.1],'LineStyle','none');            
+            title(sprintf('Equilibrium as function of sea level rise'));
+
+            sed = table({'Marsh vertical exchange';'Equilibrium concentration'},...
+                                                           {tx.wsm;tx.cE});
+            sed.Properties.VariableNames =  {'Property','Value'};   
+
+            addDataButton(obj,hf,sed);
         end
+
+ %%
+        function addDataButton(obj,hf,sedprops)
+            %add button to allow user to access saltmarsh data used for plot
+            usertable = getPropertiesTable(obj);
+            usertable([8,9],:) = [];
+            usertable = [usertable;sedprops];
+            usertable = table2cell(usertable);
+
+            pvtcb =  @(src,evdat)dataFigure(obj,src,evdat);
+            uicontrol('Parent',hf,'Style','pushbutton',...
+                'String','Data','Tag','FigButton',...
+                'TooltipString','Access saltmarsh settings',...
+                'Units','normalized','Position',[0.88 0.96 0.10 0.035],...
+                'UserData',usertable,...
+                'Callback',pvtcb);           
+        end      
+
+%%
+        function dataFigure(~,src,~)
+            %generate data table for data button used in bioInfluencePlot
+            hf = figure('Name','Saltmarsh data','Tag','PlotFig');
+            colnames = {'Property','Value'}; 
+            Table = uitable('Parent',hf, ...
+                            'ColumnName',colnames,...
+                            'RowName', [], ....
+                            'ColumnWidth',{160,120}, ...
+                            'Data',src.UserData);  
+            Table.Position(3:4) = Table.Extent(3:4);
+            hf.Position(3:4) = Table.Extent(3:4)+2*Table.Position(1);
+            color = get(hf,'Color');
+            set(gca,'XColor',color,'YColor',color,'TickDir','out')
+            title(sprintf('Data for Figure %d',src.Parent.Number))
+        end
+
 %%
         function marshElementCheck(obj,mobj)
             %if elements have been defined, check whether marsh is
@@ -677,12 +786,12 @@ classdef Saltmarsh < muiPropertyUI
             eleobj = getClassObj(mobj,'Inputs','Element',msgtxt);
             if ~isempty(eleobj)
                 vm = getEleProp(eleobj,'MovingVolume');
-                sm = getEleProp(eleobj,'SurfaceArea');
+                sa = getEleProp(eleobj,'SurfaceArea');
                 eletype = getEleProp(eleobj,'EleType');
                 elename = getEleProp(eleobj,'EleName');                
                 ism = find(strcmp(eletype,'Saltmarsh')); 
                 nsm = length(ism);
-                dm = vm./sm;
+                dm = vm./sa;
                 dmtxt = num2str(dm(ism),'%.3f');  
                 maxdmx = max(obj.MaxSpDepth);
                 smtxt = repmat("m is < maximum species depth",nsm,1);
@@ -707,6 +816,7 @@ classdef Saltmarsh < muiPropertyUI
             y = 0:width/nint:width;
             z = a*sin(y/Ls);
         end
+
 %%
         function bioDistributionPlot(obj,y,z,biomass,depth,a,hfig)
             %plot of profile and biomass distribution for each species
@@ -720,18 +830,20 @@ classdef Saltmarsh < muiPropertyUI
             
             profilePlot(obj,y,z,a,ax1); %plot tidal flat profile and HW  
             ax1.YLim = [ax1.YLim(1),a+0.1];
-            
+                     
             style = {'-','-.','--',':'};
             green = mcolor('green');
             ax2 = axes(hfig,'Position',ax1_pos,'XAxisLocation','top',...
                 'YAxisLocation','right','Color','none');
             ax2.XDir = 'reverse';
-            ax2.YLim = ax1.YLim;
-            ax2.YTickLabel = string(a-ax1.YTick);
-            zd = a-depth;
+            ax2.YDir = 'reverse';
+            ax2.YLim = sort(a-ax1.YLim);
+            ax2.YTick = sort(a-ax1.YTick);            
+            ax2.YTickLabel = sort(string(a-ax1.YTick));
+            zd = depth;
             
             line(biomass(1,:),zd,'Parent',ax2,'Color',green,...
-                              'LineStyle','-','DisplayName','Species 1')
+                              'LineStyle','-','DisplayName','Species 1')          
             hold on            
             for j=2:obj.NumSpecies
                 spectxt = sprintf('Species %d',j);
@@ -830,7 +942,7 @@ classdef Saltmarsh < muiPropertyUI
     end
  %%
     methods (Static,Access=private)
-        function [obj,wl,ele,cn] = getInputData(mobj)
+        function [obj,wl,ele,cn,est] = getInputData(mobj)
             %initialise saltmarsh, water levels and constants
             msgtxt = 'Saltmarsh parameters not defined';
             obj = getClassObj(mobj,'Inputs','Saltmarsh',msgtxt);
@@ -839,6 +951,8 @@ classdef Saltmarsh < muiPropertyUI
             msgtxt = 'Elements not defined';
             ele = getClassObj(mobj,'Inputs','Element',msgtxt);
             cn = getConstantStruct(mobj.Constants);
+            msgtxt = 'Estuary not defined';
+            est = getClassObj(mobj,'Inputs','Estuary',msgtxt);
         end
     end       
 end

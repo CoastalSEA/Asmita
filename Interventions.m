@@ -14,10 +14,10 @@ classdef Interventions < matlab.mixin.Copyable
     %  
     properties
         ElementID      %should be a copy of Element.EleID (cross-check)
-        Year = {0}     %values for each elemet are stored in a cell array
-        VolumeChange = {0}
-        SurfaceAreaChange = {0}
-        isNonErodible = {0}
+        Year      %values for each elemet are stored in a cell array
+        VolumeChange 
+        SurfaceAreaChange 
+        isNonErodible 
     end
     
     properties (Transient)
@@ -182,10 +182,10 @@ classdef Interventions < matlab.mixin.Copyable
             %check which elements have interventions and allow user selection
             [idx,legtxt,ok] = selectInterventionSet(intobj,mobj);
             if ok<1, return; end
-                tim = intobj(idx).Year{:};
-                Vol = cumsum(intobj(idx).VolumeChange{:});
-                Surf = cumsum(intobj(idx).SurfaceAreaChange{:});
-                isfix = intobj(idx).isNonErodible{:};
+                tim = intobj(idx).Year;
+                Vol = cumsum(intobj(idx).VolumeChange);
+                Surf = cumsum(intobj(idx).SurfaceAreaChange);
+                isfix = intobj(idx).isNonErodible;
             else
                 [tim,vals,isnero] = sortInterventions(intobj);
                 Vol = sum(vals(:,:,1),1)';
@@ -267,12 +267,12 @@ classdef Interventions < matlab.mixin.Copyable
     methods (Access=private)
         function obj = intTable(obj,eleid,elename) 
             %generate UI table for user to edit and add to element interventions
-            userdata = {obj(eleid).Year{1},...
-                        obj(eleid).VolumeChange{1},...
-                        obj(eleid).SurfaceAreaChange{1},...
-                        obj(eleid).isNonErodible{1}};
+            userdata = {obj(eleid).Year,...
+                        obj(eleid).VolumeChange,...
+                        obj(eleid).SurfaceAreaChange,...
+                        obj(eleid).isNonErodible};
             colnames = {'Year','Volume','SurfaceArea','NonErodible'};
-            nyr = length(obj(eleid).Year{1});
+            nyr = length(obj(eleid).Year);
             
             %create row index
             rownames{nyr,1} = '';
@@ -290,10 +290,10 @@ classdef Interventions < matlab.mixin.Copyable
             %if user has not edited all NaN values amend to zeros
             newtable = fillmissing(newtable,'constant',0);
             
-            obj(eleid).Year = {newtable.Year};
-            obj(eleid).VolumeChange = {newtable.Volume};
-            obj(eleid).SurfaceAreaChange = {newtable.SurfaceArea};
-            obj(eleid).isNonErodible = {newtable.NonErodible};
+            obj(eleid).Year = newtable.Year;
+            obj(eleid).VolumeChange = newtable.Volume;
+            obj(eleid).SurfaceAreaChange = newtable.SurfaceArea;
+            obj(eleid).isNonErodible = newtable.NonErodible;
         end
 %%
         function [idx,legtxt,ok] = selectInterventionSet(obj,mobj)
@@ -304,8 +304,8 @@ classdef Interventions < matlab.mixin.Copyable
             count = 0;
             intid = [];
             for i=1:length(obj)                
-                if any(obj(i).VolumeChange{1}~=0) || ...
-                                        any(obj(i).SurfaceAreaChange{1}~=0) 
+                if any(obj(i).VolumeChange~=0) || ...
+                                        any(obj(i).SurfaceAreaChange~=0) 
                     count = count+1;
                     intid(count) = i;                     %#ok<AGROW>
                     eleid = obj(i).ElementID;
@@ -391,17 +391,17 @@ classdef Interventions < matlab.mixin.Copyable
             nintele = length(obj);  %number of elements with interventions
             uyrs = [];
             for i=1:nintele
-                uyrs = cat(1,uyrs,obj(i).Year{1});
+                uyrs = cat(1,uyrs,obj(i).Year);
             end
             uyrs = unique(uyrs);  %returns sorted order
             nyr  = length(uyrs);
             vals = zeros(nintele,nyr,2);
             isnero = zeros(nintele,nyr);
             for i=1:nintele
-                year = obj(i).Year{1};
-                vols = obj(i).VolumeChange{1};
-                area = obj(i).SurfaceAreaChange{1};
-                flag = obj(i).isNonErodible{1};
+                year = obj(i).Year;
+                vols = obj(i).VolumeChange;
+                area = obj(i).SurfaceAreaChange;
+                flag = obj(i).isNonErodible;
                 for j=1:nyr
                     if any(year==uyrs(j))
                         vals(i,j,1) = sum(vols(year==uyrs(j)));

@@ -143,8 +143,8 @@ classdef Asmita < muiModelUI
                                   
             % submenu for Saltmarsh data
             menu.Setup(4).List = {'Species Parameters','Equilibrium Marsh Depth',...
-                'Biomass Distribution','Marsh-flat Animation'};
-            menu.Setup(4).Callback = repmat({@obj.saltmarshProps},[1,4]);
+                'Biomass Distribution','Load-Rate Sensitivity','Marsh-flat Animation'};
+            menu.Setup(4).Callback = repmat({@obj.saltmarshProps},[1,5]);
             
             % submenu for River data
             menu.Setup(5).List = {'River Inputs','River Advection',...
@@ -341,6 +341,8 @@ classdef Asmita < muiModelUI
                     Saltmarsh.EqDepthBiomassPlot(obj);
                 case 'Biomass Distribution'
                     Saltmarsh.BiomassDistributionPlot(obj);
+                case 'Load-Rate Sensitivity'
+                    Saltmarsh.SensitivityPlot(obj);
                 case 'Marsh-flat Animation'
                     Saltmarsh.MarshFlatAnimation(obj);
             end

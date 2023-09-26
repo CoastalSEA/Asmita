@@ -69,19 +69,24 @@ function asmita_plot_pivot_year(src,~)
     xend = x(end,1);       %
 
     %check values to use with user
-    promptxt = {'Initial value','Pivot year','X-start','X-end'};
-    defaults = {num2str(y0),char(x0),char(x0),char(xend)};
+    promptxt = {'Initial value','Pivot year','Scale factor','X-start','X-end'};
+    defaults = {num2str(y0),char(x0),'1',char(x0),char(xend)};
     answers = inputdlg(promptxt,'asmplot',1,defaults);
     if isempty(answers), return; end          %user cancelled
     y0 = str2double(answers{1});              %intial value
     x0 = datetime(answers{2});                %pivot year
-    xst = datetime(answers{3});               %start year
-    xnd = datetime(answers{4});               %end year
+    sf = str2double(answers{3});              %scale factor
+    xst = datetime(answers{4});               %start year
+    xnd = datetime(answers{5});               %end year
     %update lines based on defined initial value and pivot year
     for i=1:nline
         ypivot = interp1(x(:,i),y(:,i),x0,'Linear');
         yoffset = y0-ypivot;
-        plines(i).YData = y(:,i)+yoffset;
+        if sf==1
+            plines(i).YData = y(:,i)+yoffset;
+        else
+            plines(i).YData = (y(:,i)-ypivot)*sf+y0;
+        end
     end
     
     if ~isduration(ax2.XLim)
