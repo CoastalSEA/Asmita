@@ -19,7 +19,8 @@ classdef RunProperties < muiPropertyUI
         PropertyLabels = {' Time Step (years)',...
                           ' Number of Time Steps',...
                           ' Output Interval (No. of time steps)', ...
-                          ' Start Year'};
+                          ' Start Year',...
+                          ' Run time plot'};
         %abstract properties in muiPropertyUI for tab display
         TabDisplay   %structure defines how the property table is displayed 
     end
@@ -29,6 +30,7 @@ classdef RunProperties < muiPropertyUI
         NumSteps = 1         %number of time steps to be used in run
         OutInterval = 1      %number of step intervalss for output sub-sampling
         StartYear = 1900     %start year for model 
+        isRunPlot = false    %option to have a plot of volume prism and area at run time
     end    
 
 %%   

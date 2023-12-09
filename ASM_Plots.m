@@ -93,8 +93,13 @@ classdef ASM_Plots < muiPlots
                     end
             end
             
-            %get the data to be used in the plot                                         
-            ok = getPlotData(obj,mobj.Cases,dtype,legformat);
+            %get the data to be used in the plot 
+            if obj.UIset.AllEle
+                multiElePlot(obj,mobj);
+                return;
+            else
+                ok = getPlotData(obj,mobj.Cases,dtype,legformat);
+            end
             if ok<1, return; end %data not found
             
             if strcmp({'Network'},obj.UIset.callTab)
@@ -200,6 +205,8 @@ classdef ASM_Plots < muiPlots
             else
                 obj.UIsel(1).dims(2).name = 'EleName';
                 obj.UIsel(1).dims(2).value = {obj.UIsel(1).Element};
+                seltxt = obj.UIsel(1).desc;
+                obj.UIsel(1).desc = replace(seltxt,'Element',obj.UIsel(1).dims(2).value{1});
             end
         end
 %%

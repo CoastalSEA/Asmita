@@ -36,7 +36,7 @@ classdef AsmitaModel < muiDataSet
     end
     
     methods (Access = private)
-        function obj = AsmitaModel()                      % << Edit to classname
+        function obj = AsmitaModel()                      
             %class constructor
         end
     end      
@@ -90,15 +90,13 @@ classdef AsmitaModel < muiDataSet
             tstep = rnpobj.TimeStep; 
             y2s   = mobj.Constants.y2s;    %year to seconds conversion factor
             obj.delta = tstep*y2s;         %time step in seconds
-            obj.iStep = 1;                 %initialise model run step
-            obj.Time = 0;
             obj.DateTime = rnpobj.StartYear*y2s;
             obj.outInt = rnpobj.OutInterval;
             obj.RunSteps = rnpobj.NumSteps;%may be overwritten in CheckStability
             
             %iniatialise model setup 
-            obj = InitialiseModel(obj,mobj,eledsp,rchdsp);
-            if isempty(obj), return; end
+            ok = InitialiseModel(obj,mobj,eledsp,rchdsp);
+            if ok<1, return; end
             %assign the run parameters to the model instance (after
             %InitialiseModel so that ReachID are assigned to Element object
             setRunParam(obj,mobj); %this only saves the core set
@@ -116,8 +114,10 @@ classdef AsmitaModel < muiDataSet
                 hw = waitbar(0,msg);
                 %run model
                 for jt = 1:obj.RunSteps
-                    InitTimeStep(obj,mobj,jt)
-                    RunTimeStep(obj,mobj)
+                    ok = InitTimeStep(obj,mobj,jt);
+                    if ok<1, close(hw); return; end
+                    ok = RunTimeStep(obj,mobj);
+                    if ok<1, close(hw); return; end
                     PostTimeStep(obj,mobj,eledsp,rchdsp);
                     %to report time step during run use the following
                     msg = sprintf('ASMITA processing, step %d of %d',...
@@ -182,8 +182,8 @@ classdef AsmitaModel < muiDataSet
             
             %report mass balance on run completion
             asmobj = getClassObj(mobj,'Inputs','ASM_model');
-            msg = sprintf('Sediment Balance:  %.3f %%\nWater Balance:  %.3f %%',...
-                                        asmobj.SedMbal,asmobj.WatMbal);
+            msg = sprintf('Sediment Balance:  %.3f %%\nWater Balance:  %.3f %%\nMatrix checks: %s',...
+                       asmobj.SedMbal,asmobj.WatMbal,num2str(asmobj.errCode));
             if ~mobj.SupressPrompts  %supress prompts if true
                 msgbox(msg,'Run completed')
             end    
@@ -198,15 +198,14 @@ classdef AsmitaModel < muiDataSet
             %intitialise transient properties
             Element.initialiseElements(mobj); %used in setEqConcentration
             %initialise equilibrium concentration
-            Element.setEqConcentration(mobj);           
+            Element.setEqConcentration(mobj);   
             %initial water levels %can be called without initialising
             %AsmitaModel hence set a dummy model obj to initialise time
             obj.Time = 0;
             WaterLevels.setWaterLevels(mobj,obj);
             %initialise dispersion Reach Graph (calls Element.initialiseElements)
             Estuary.initialiseDispersionGraph(mobj); 
-            %initialise advection graphs (River and Drift) and use of
-            %dynamic exchange
+            %initialise advection graphs (River and Drift) and use of dynamic exchange
             rncobj = getClassObj(mobj,'Inputs','RunConditions');
             rncobj.IncDynamicElements = false;
             advobj = Advection.initialiseTransients(mobj);
@@ -237,8 +236,7 @@ classdef AsmitaModel < muiDataSet
             minclasses = mobj.ModelInputs.AsmitaModel;
             msg = 'Core inputs: '; msg0 = msg;
             for i=1:length(minclasses)
-                %when called by runModel this repeats the isvalidmodel
-                %check so woul
+                %when called by runModel this repeats the isvalidmodel check
                 lobj = getClassObj(mobj,'Inputs',minclasses{i});
                 if isempty(lobj)
                     msg0 = sprintf('%s %s, ',msg0,minclasses{i});
@@ -285,7 +283,7 @@ classdef AsmitaModel < muiDataSet
                     message{imes} = ['Run includes: ' adnclasses{j,1}];
                 end
             end
-            
+
             %check that advection is set and balances (if set) 
             advobj= getClassObj(mobj,'Inputs','Advection'); 
             if (rncobj.IncRiver || rncobj.IncDrift) && isempty(advobj)
@@ -303,7 +301,7 @@ classdef AsmitaModel < muiDataSet
     end
 %%
     methods (Access = private)
-        function obj = InitialiseModel(obj,mobj,eledsp,rchdsp)
+        function ok = InitialiseModel(obj,mobj,eledsp,rchdsp)
              %initialise ASMITA model and internal properties
              
              %NB the interplay between the following functions means that
@@ -312,17 +310,13 @@ classdef AsmitaModel < muiDataSet
              ASM_model.setASM_model(mobj);
              %some initialisation is common to several functions
              AsmitaModel.initialiseModelParameters(mobj);
-             
              rncobj = getClassObj(mobj,'Inputs','RunConditions');
              %initialise interventions even if not used (ie set to zero)
              Interventions.initialiseInterventions(mobj);
              %initialise Marsh concentration matrix if marsh included
              if rncobj.IncSaltmarsh
-                ok = Saltmarsh.initialiseMarshDepthConc(mobj);
-                 if ok<1 %error in concOverMarsh
-                     obj = [];
-                     return; 
-                 end   
+                ok = Saltmarsh.initialiseMarshDepthConc(mobj);                
+                if ok<1, return; end   %error in concOverMarsh
              end
              %initialise any river flow or drift equilibrium offset(eqCorV)
              %calls RunConditions.setAdvectionOffset and ASM_model.setDQmatrix
@@ -334,15 +328,14 @@ classdef AsmitaModel < muiDataSet
              %initialise equilibrium conditions
              Element.setEquilibrium(mobj); 
              %constraints and saltmarsh enhanced settling
-             ASM_model.setVertExch(mobj,obj);
+             ok = ASM_model.setVertExch(mobj,obj);
+             if ok<1, return; end   %error in ASMinterface.asmitaConcentrations
              %initialise element concentrations
-             Element.setEleConcentration(mobj);
+             ok = Element.setEleConcentration(mobj);
+             if ok<1, return; end   %error in ASMinterface.asmitaConcentrations
              %check time step is small enough
-             obj = CheckStability(obj,mobj);
-             if isempty(obj)
-                 obj = [];
-                 return; 
-             end
+             ok = CheckStability(obj,mobj);
+             if ok<1, return; end   %abort selected in checkStability
              %initialise mass balance
              ASM_model.MassBalance(mobj,obj);
              
@@ -350,7 +343,7 @@ classdef AsmitaModel < muiDataSet
              PostTimeStep(obj,mobj,eledsp,rchdsp); 
         end    
 %%
-         function InitTimeStep(obj,mobj,jt)
+         function ok = InitTimeStep(obj,mobj,jt)
              %initialise model parameters for next time step
              obj.iStep = jt;
              obj.Time = jt*obj.delta;
@@ -384,23 +377,26 @@ classdef AsmitaModel < muiDataSet
              %update equilibrium concentrations: only needed if cE varied during run
              % Element.setEqConcentration(mobj);
              %set dispersion and advection matrices
-             ASM_model.setDQmatrix(mobj,rncobj.Adv2Inc)
+             ok = ASM_model.setDQmatrix(mobj,rncobj.Adv2Inc);
+             if ok<1, return; end   %error in ASMinterface.asmitaConcentrations
              %non-eroding elements + saltmarsh adjustments
-             ASM_model.setVertExch(mobj,obj);
+             ok = ASM_model.setVertExch(mobj,obj);
+             if ok<1, return; end   %error in ASMinterface.asmitaConcentrations
              %update element concentrations
-             Element.setEleConcentration(mobj);
+             ok = Element.setEleConcentration(mobj);
          end
  %%
-        function RunTimeStep(obj,mobj)
+        function ok = RunTimeStep(obj,mobj)
             %run model for the time step jt
-            ASM_model.asmitaVolumeChange(mobj,obj)  
+            ok = ASM_model.asmitaVolumeChange(mobj,obj);
         end  
 %%
         function obj = PostTimeStep(obj,mobj,eledsp,rchdsp)
             %store the results for each time step
             eleobj= getClassObj(mobj,'Inputs','Element'); 
+            rnpobj= getClassObj(mobj,'Inputs','RunProperties'); 
 
-            if obj.iStep==1 || rem(obj.iStep,obj.outInt)==0
+            if obj.iStep==0 || rem(obj.iStep,obj.outInt)==0
                 jr = length(obj.StepTime)+1;
                 obj.StepTime(jr,1) = obj.Time;
                 vname = {eledsp.Variables.Name};  
@@ -430,10 +426,14 @@ classdef AsmitaModel < muiDataSet
                     rchprop = Reach.getReachProp(mobj,vname{j});
                     obj.RchData{j}(jr,:) = rchprop;  
                 end
-            end            
+            end 
+
+            if rnpobj.isRunPlot
+                checkOutPut(obj); %debug plot of water volume, area and prism
+            end
         end
 %%
-        function obj = CheckStability(obj,mobj)
+        function ok = CheckStability(obj,mobj)
              %Check model stability for given time step
              %If correction for flow equilibrium to be included this needs
              %to be done before checking model stability
@@ -441,9 +441,9 @@ classdef AsmitaModel < muiDataSet
              asmobj = getClassObj(mobj,'Inputs','ASM_model');
              rnpobj = getClassObj(mobj,'Inputs','RunProperties');
              
-             vm = getEleProp(eleobj,'MovingVolume');
-             %              
+             vm = getEleProp(eleobj,'MovingVolume');             
              DQ = asmobj.DQ;
+             ok = 1;
              %Estimate concentration in each element
              cnc = getEleProp(eleobj,'EleConcentration');
              check_dt = diag(DQ).*cnc;
@@ -471,7 +471,7 @@ classdef AsmitaModel < muiDataSet
                          case 'Use specified'
                              dt1 = dt;
                          case 'Abort'
-                             obj = [];
+                             ok = 0;
                              return;
                      end
                  end
@@ -517,7 +517,36 @@ classdef AsmitaModel < muiDataSet
                 obj.RunParam.Advection = copy(advobj);                
             end
         end
-        
+
+%%
+        function checkOutPut(obj)
+            %generate a plot of all water elements volume and surface area at runtime
+            hfig = findobj('Type','figure','Tag','RunPlotFig');
+            if isempty(hfig)
+                hfig = figure('Name','Runtime','Tag','RunPlotFig');
+            end
+            set(0, 'currentfigure', hfig); %# for figures
+            cla reset
+            vol = obj.EleData{1};
+            sa = obj.EleData{7};
+            pr = obj.RchData{2};
+            modeltime = years(0)+seconds(obj.StepTime);
+            [~,ncol] = size(sa);
+            col2use = ncol-1;
+            V = vol(:,col2use);
+            S = sa(:,col2use);
+            % P = min(pr,[],2);
+            P = sum(pr,2);
+            yyaxis left
+            plot(modeltime,V,'DisplayName','Water volume (n>0)')
+            hold on
+            plot(modeltime,P,'DisplayName','Total tidal prism')
+            hold off
+            yyaxis right
+            plot(modeltime,S,'DisplayName','Surface area (n>0)')
+            legend
+            shg
+        end
 %%
         function dsp = elementDSproperties(~) 
             %define a dsproperties struct and add the model metadata
@@ -602,9 +631,10 @@ classdef AsmitaModel < muiDataSet
     methods
         function tabPlot(obj,src,mobj) %abstract class for muiDataSet
             %generate plot for display on Q-Plot tab
-            tabcb  = @(src,evdat)tabPlot(obj,src,mobj);
-            ax = tabfigureplot(obj,src,tabcb,false);            
-            
+            tabcb  = @(src,evdat)tabPlot(obj,src,mobj);           
+            ax = tabfigureplot(obj,src,tabcb,false);           
+            delete(findall(src,'Type','subplottext'))
+
             dst = obj.Data.Element;
             t = dst.RowNames;
             if iscalendarduration(t)
@@ -613,9 +643,8 @@ classdef AsmitaModel < muiDataSet
             vm = dst.MovingVolume;
             vf = dst.FixedVolume;
             ve = dst.EqVolume;
-            
-            eleobj = getClassObj(mobj,'Inputs','Element');
-            n  = getEleProp(eleobj,'TransportCoeff');
+            n  = [obj.RunParam.Element.TransportCoeff];
+
             idx = n>0;  %elements that are defined as water volumes
             %total of all water volumens
             vmw = sum(vm(:,idx),2);
@@ -641,7 +670,7 @@ classdef AsmitaModel < muiDataSet
             %plot the sediment elements if any
             if any(n<0)
                 %totals for all sediment volums
-                % vms = sum(vm(:,~idx),2);
+                % vms = sum(vm(:,~idx),2); %no meaning for sediment volumes
                 vfs = sum(vf(:,~idx),2);
                 ves = sum(ve(:,~idx),2);
                 %

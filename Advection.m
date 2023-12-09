@@ -376,6 +376,7 @@ classdef Advection < matlab.mixin.Copyable
                 %convert drift rates from m3/yr to concentration equivalent
                 %flow rate
                 [q,qIn,qOut] = getDriftFlow(obj,mobj,q,qIn,qOut);
+                if isnan(q),  Q = NaN;  return; end %
             end
             
             %set up flow matrix
@@ -740,7 +741,8 @@ classdef Advection < matlab.mixin.Copyable
             tol = cES/100; diff = 1; count = 0; conc0 = cES;
             while diff>tol && count<10  
                 %iterate to find Qs based on convergence of concentration
-                conc = ASM_model.asmitaConcentrations(mobj,DQ,dqIn);
+                [conc,ok] = ASM_model.asmitaConcentrations(mobj,DQ,dqIn);
+                if ok<1, qs = NaN; return; end %concentration matrix illconditioned
                 qsOut = QSOut./conc/y2s;
                 qs = diag(1./conc)*QS/y2s;
                 Qs = advMatrix(obj,qs,qsOut,nele);
@@ -778,7 +780,7 @@ classdef Advection < matlab.mixin.Copyable
             initdrifts = initGraph.Edges.Weight;
             R.ratio = drifts./initdrifts;        
             R.diff = drifts-initdrifts;
-            R.diffratio = R.diff./initdrifts;
+            R.diffratio = abs(R.diff)./initdrifts;
         end
 
     end

@@ -160,8 +160,8 @@ classdef WaterLevels < muiPropertyUI
         end
 %%
         function [HW,MSL,LW] = newWaterLevels(obj,mtime,startyr)
-            %array of water levels for model times, mtime and start year 
-            %of simulation in seconds from Julian 0
+            %array of water levels for model times, mtime, and start year 
+            %of simulation, startyr, in seconds from Julian 0
             nrec = length(mtime);
             HW = zeros(nrec,1); MSL = HW; LW = HW;
             for i=1:nrec
@@ -181,8 +181,8 @@ classdef WaterLevels < muiPropertyUI
             amp = obj.CycleAmp;
             om1 = obj.AngularPeriod; %get fcn converts input to s^-1
             om2 = obj.AngularPhase;
-            z0 = obj.MSL0;  
-            y2s = muiConstants.y2s;   %factor to convert years to seconds
+            z0 = obj.MSL0; 
+            modeltime = startyr+mtime; %time in seconds from Julian 0 
             %
             if mtime==0 || isempty(obj.HWaterLevel)
                 initialWL(obj,startyr);
@@ -191,9 +191,32 @@ classdef WaterLevels < muiPropertyUI
             HWm1 = obj.HWaterLevel;   
             LWm1 = obj.LWaterLevel;
             MWm1 = obj.MeanSeaLevel;
+
+            %intitialise option for computing slr in sealevelrise function
+            [slr,obj.dslr] = getSLR(obj,modeltime,startyr);
+
+            msl = z0+slr; 
+            dtr = real(sum(amp.*exp(1i*(om1*modeltime+om2)))); %change in tidal range at t
+            obj.MeanSeaLevel = msl;    
+            %new water levels 
+            % obj.HWaterLevel = msl-obj.dtr0 + (tr+dtr)/(1+trfc); %0.5tr if trfc=1           
+            % obj.LWaterLevel = msl+obj.dtr0 - (tr+dtr)*trfc/(1+trfc);
+            obj.HWaterLevel = msl+(tr+dtr)/(1+trfc); %0.5tr if trfc=1           
+            obj.LWaterLevel = msl-(tr+dtr)*trfc/(1+trfc);
+
+            %difference with old water levels
+            obj.dHWchange = obj.HWaterLevel-HWm1;
+            obj.dLWchange = obj.LWaterLevel-LWm1;  
+            obj.dMWchange = obj.MeanSeaLevel-MWm1;            
+        end
+%%
+        function [slr,dslr] = getSLR(obj,modeltime,startyr)
+            %intitialise options for computing slr in sealevelrise function
+            %modeltime and startyr are times in seconds from Julian 0 
+            y2s = muiConstants.y2s;   %factor to convert years to seconds
             %find selected slr case - see dslrvec in sealevelrise.m for details
             if obj.SLRrate<0 
-                %user has only defined the exponential rate, ert
+                %user has only defined the exponential rate, 'ert'
                 dslrvec = [0,1900,0.001];
                 dslrvec(1) = -obj.SLRrate;  %only dslr specified
                 pivotyear = 2000;           %assumed pivotyear if not defined
@@ -228,25 +251,10 @@ classdef WaterLevels < muiPropertyUI
                 pivotyear = startyr/y2s;
                 option = 1;  %linear rate                
             end   
-            
-            realtime = startyr+mtime; %time in seconds from Julian 0            
+     
             %time inputs to sealevelrise function are in years
-            realyears = realtime/y2s; %convert to time in calender years
-            [slr,obj.dslr] = sealevelrise(realyears,pivotyear,dslrvec,option);
-                                                          
-            msl = z0+slr; 
-            dtr = real(sum(amp.*exp(1i*(om1*realtime+om2)))); %change in tidal range at t
-            obj.MeanSeaLevel = msl;    
-            %new water levels 
-            % obj.HWaterLevel = msl-obj.dtr0 + (tr+dtr)/(1+trfc); %0.5tr if trfc=1           
-            % obj.LWaterLevel = msl+obj.dtr0 - (tr+dtr)*trfc/(1+trfc);
-            obj.HWaterLevel = msl+(tr+dtr)/(1+trfc); %0.5tr if trfc=1           
-            obj.LWaterLevel = msl-(tr+dtr)*trfc/(1+trfc);
-
-            %difference with old water levels
-            obj.dHWchange = obj.HWaterLevel-HWm1;
-            obj.dLWchange = obj.LWaterLevel-LWm1;  
-            obj.dMWchange = obj.MeanSeaLevel-MWm1;            
+            realyears = modeltime/y2s; %convert to time in calender years
+            [slr,dslr] = sealevelrise(realyears,pivotyear,dslrvec,option);
         end
 %%
         function tabPlot(obj,src,mobj)

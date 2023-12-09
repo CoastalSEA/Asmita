@@ -37,7 +37,7 @@ classdef Saltmarsh < muiPropertyUI
         SettlingAlpha       %coefficient for biomass enhanced settling rate (m/s)
         SettlingBeta        %exponent for biomass enhanced settling offset (-)
         EdgeErosion=0;      %lateral erosion of marsh(m/yr)
-        FlatErosion=false;  %flag to allow erosion of marsh surface (0/1)
+        FlatErosion=true;   %flag to allow erosion of marsh surface (0/1)
     end    
     
     properties (Transient)
@@ -151,7 +151,7 @@ classdef Saltmarsh < muiPropertyUI
                         wsj = bioenhancedsettling(obj,depth(ism(jsm)),ws(ism(jsm)));
                         qm = wsj.*cem(ism(jsm))./depth(ism(jsm));       %sediment delivery to marsh 
                         deq = morris_eqdepth(obj,cn,qm,dslr); %equilibrium depth
-                        if isempty(deq),                            
+                        if isempty(deq)                          
                             deq = -1; %catch case when root not found
                         end 
                         Deq(ism(jsm)) = deq;                        
@@ -182,28 +182,34 @@ classdef Saltmarsh < muiPropertyUI
             sa = getEleProp(eleobj,'SurfaceArea');
             eletype = getEleProp(eleobj,'EleType');
             obj  = getClassObj(mobj,'Inputs','Saltmarsh');
-            isEro = obj.FlatErosion;
+            %isEro = obj.FlatErosion;
             depth = vm./sa; % water depth in element
-            gma = ve./vm;   % <1 import and >1 export
+            if any(sa==0), depth(sa==0) = 0; end
+            %gma = ve./vm;   % <1 import and >1 export
             ism = find(strcmp(eletype,'Saltmarsh'));
             nsm = length(ism);
             for k=1:nsm
-                if gma(ism(k))> 1 && isEro
-                    %marsh eroding (export) and erosion allowed
-                    ws(ism(k)) = bioenhancedsettling(obj,depth(ism(k)),ws(ism(k)));
-                elseif gma(ism(k))<= 1
-                    %marsh accreting (import)
-                    ws(ism(k)) = bioenhancedsettling(obj,depth(ism(k)),ws(ism(k)));
-                else
-                    %prevent erosion if gma>1 and erosion not allowed
-                    %this is applied even if no biological production provided smflg=1
-                    %so erosion of marsh elements is constrained regardless of biology.
-                    %if smflg=0 this routine is not called and the specified values
-                    %of ws are used
-                    Tsn  = 14.77*24*3600; %duration of spring-neap cycle (secs)
-                    ws(ism(k)) = ws(ism(k))/Tsn; %use a very small value so that matrix
-                    %calculations in asmita.m that use W or Ws remain stable
-                end
+                ws(ism(k)) = bioenhancedsettling(obj,depth(ism(k)),ws(ism(k)));
+                %original code. as gamma changes around 1 this produces a
+                %large change in ws as is switches between accretion and 
+                %erosion limited by the constraint. The above introduced to
+                %provide a smaller change.
+                % if gma(ism(k))> 1 && isEro
+                %     %marsh eroding (export) and erosion allowed
+                %     ws(ism(k)) = bioenhancedsettling(obj,depth(ism(k)),ws(ism(k)));
+                % elseif gma(ism(k))<= 1
+                %     %marsh accreting (import)
+                %     ws(ism(k)) = bioenhancedsettling(obj,depth(ism(k)),ws(ism(k)));
+                % else
+                %     %prevent erosion if gma>1 and erosion not allowed
+                %     %this is applied even if no biological production when smflg=1
+                %     %so erosion of marsh elements is constrained regardless of biology.
+                %     %if smflg=0 this routine is not called and the specified values
+                %     %of ws are used
+                %     Tsn  = 14.77*24*3600; %duration of spring-neap cycle (secs)
+                %     ws(ism(k)) = ws(ism(k))/Tsn; %use a very small value so that matrix
+                %     %calculations in asmita.m that use W or Ws remain stable
+                % end
             end            
         end
 %%
@@ -224,6 +230,8 @@ classdef Saltmarsh < muiPropertyUI
 %%
         function [dv_ero,ds_ero] = getEdgeErosion(mobj,robj)
             %compute change in marsh and flat volumes due to edge erosion
+            %dv_ero and ds_ero are additive volume changes in ASMinterface
+            %Hence reduction in area and volume are negative
             obj = getClassObj(mobj,'Inputs','Saltmarsh');            
             if obj.EdgeErosion==0
                 dv_ero = 0; ds_ero = 0;
@@ -256,7 +264,19 @@ classdef Saltmarsh < muiPropertyUI
             %if flats are sediment volumes eroded marsh volumes are removed
             %from the flat volume
             dv_ero(ismf) = -sign(n(ism)).*dv_ero(ism);
-
+            
+            %do not erode elements that are fixed or dormant if dynamic
+            rncobj = getClassObj(mobj,'Inputs','RunConditions');
+            noero = ~getEleProp(eleobj,'Erodible'); %ie if Erodible false 
+            if rncobj.IncDynamicElements && any(ws(estobj.ExchLinks(:,2))==0)
+                idb = ws(estobj.ExchLinks(:,2))==0;
+                dv_ero(estobj.ExchLinks(idb,2)) = zeros(1,sum(idb));
+                ds_ero(estobj.ExchLinks(idb,2)) = zeros(1,sum(idb));
+            elseif any(noero)
+                %element is defined as non-erosional
+                dv_ero(noero) = 0;      ds_ero(noero) = 0;
+            end
+ 
             %update the equilibrium values
             erove = num2cell(ve+dv_ero);
             erose = num2cell(se+ds_ero);
@@ -288,7 +308,7 @@ classdef Saltmarsh < muiPropertyUI
             deq = zeros(nint,1); slr = deq; biom = deq;
             for jd = 1:nint %x axis
                 slr(jd) = minslr*jd; %rate of slr in m/yr
-                [dep,~] = interpdepthload(obj,cn,sm.aws,c0,slr(jd)/cn.y2s);%uses (sm,cn,aws,qm0,dslr)
+                [dep,~] = interpdepthload(obj,cn,sm.aws,c0,slr(jd)/cn.y2s);%uses (sm,cn,aws,qm0,dslr(m/s))
                 deq(jd) = dep;
                 if dep>0                
                     dd  = [dep dep.^2 1];
@@ -360,7 +380,7 @@ classdef Saltmarsh < muiPropertyUI
 
             %compute eq.depth for range of sed load and slr
             npnt = 500;
-            qm = linspace(1e-4,1,npnt);    %units of per year
+            qm = linspace(1e-4,1,npnt);      %units of per year
             dslr = linspace(1e-3,0.1,npnt);  %units of m/yr
             for i=1:npnt
                 for j=1:npnt
@@ -370,7 +390,6 @@ classdef Saltmarsh < muiPropertyUI
                 end
             end
 
-            slrX = mobj.Inputs.WaterLevels.SLRrate;
             %generate plot
             [X,Y] = meshgrid(dslr,qm);
             hf = figure('Name','Eq. Depth plot','Tag','PlotFig');
@@ -382,7 +401,7 @@ classdef Saltmarsh < muiPropertyUI
             cb.Label.String = 'Equilibrium depth';
             
             hold on
-            plot(slrX,sm.qm1*cn.y2s,'or')
+            plot(sm.dslr*cn.y2s,sm.qm1*cn.y2s,'or')
             hold off
             
             xlabel('Rate of sea level rise (m/yr)')
@@ -395,8 +414,10 @@ classdef Saltmarsh < muiPropertyUI
             ws = getEleProp(eleobj,'VerticalExchange');
             wsm = mean(ws(ism));           %average vertical exchange over marsh
             cE = num2str([estobj.EqConcCoarse,estobj.EqConcFine]*cn.rhos);
-            sed = table({'Marsh vertical exchange';'Equilibrium concentration'},...
-                                                           {wsm;cE});
+
+            sed = table({'Marsh vertical exchange';'Equilibrium concentration';...
+                         'Rate of sea level rise (m/y)'},{wsm;cE;sm.dslr*cn.y2s});
+
             sed.Properties.VariableNames =  {'Property','Value'};   
 
             addDataButton(obj,hf,sed);
@@ -420,9 +441,12 @@ classdef Saltmarsh < muiPropertyUI
             if isempty(ct), return; end
             
             %prompt for run parameters
+            msgtxt = 'Run time parameters not defined';
+            rnpobj = getClassObj(mobj,'Inputs','RunProperties',msgtxt);
+            startyr = rnpobj.StartYear;
             answer = inputdlg({'MTL to HWL width:','No of years simulation',...
                                  'Start year','Include decay, 1=true'},...
-                                 'Saltmarsh width',1,{'500','100','1900','0'});
+                                 'Saltmarsh width',1,{'500','100',num2str(startyr),'0'});
             if isempty(answer), return; end
             width = str2double(answer{1});    
             nyears = str2double(answer{2});
@@ -431,7 +455,8 @@ classdef Saltmarsh < muiPropertyUI
             
             %get initial mud flat profile
             a = wlvobj.TidalAmp;
-            [y,z0] = getFlatProfile(obj,a,width,100); %nint=100
+            yint = 50;                                  %no of points in profile
+            [y,z0] = getFlatProfile(obj,a,width,yint);
             ymx = interp1(z0,y,(a-sm.dmx));
             
             %initialise run time parameters and water levels
@@ -439,6 +464,11 @@ classdef Saltmarsh < muiPropertyUI
             nint = length(mtime);
             mtime = mtime*cn.y2s;
             dt = 1*cn.y2s;
+            dslr = wlvobj.SLRrate;
+            if (length(dslr)>1 || dslr<0) && (styear/cn.y2s<startyr-nyears || styear/cn.y2s>startyr+nyears)
+                warndlg(sprintf('Water levels depend on slr definition\nWhen non-linear, the start year and number of year specified\n need to fall within the range of this definition.\nThe model start year is %d',startyr))
+                return
+            end
             [zHW,msl] = newWaterLevels(wlvobj,mtime,styear); 
             
             %compute saltmarsh elevations
@@ -450,14 +480,14 @@ classdef Saltmarsh < muiPropertyUI
                 cz = interp1(ct.Depth,ct.Concentration,depth);
                 %assume lower flat keeps pace with change in msl
                 z(i,1:idep) = z(i-1,1:idep)+(msl(i)-msl(i-1)); %change tidalflat
-                for j=idep+1:length(z)                    
+                for j=idep+1:yint+1                   
                     bm = sm.Bc*[depth(j);depth(j)^2;1];
                     sumKB = sum(sm.userkbm.*(bm.*(bm>0)))/cn.y2s;  
                     wsb = bioenhancedsettling(obj,depth(j),sm.aws);
                     if isdecay
                         %apply a linear decay in concentration across 
                         %the upperflat width (MTL to HWL)
-                        yi = y(i)-ymx;
+                        yi = y(j)-ymx;
                         cz(j) = cz(j)*((width-yi)/(width-ymx));
                     end
                     %see eqn (4) and (9) inTownend et al, COE 2016 paper
@@ -544,6 +574,7 @@ classdef Saltmarsh < muiPropertyUI
             nsp = obj.NumSpecies;
             
             depth =vm./sa;
+            if any(sa==0), depth(sa==0) = 0; end  %trap infinity
             Bc = morris_biocoeffs(obj);
             n1  = ones(nele,1);
             dd  = [depth depth.^2 n1];
@@ -604,10 +635,15 @@ classdef Saltmarsh < muiPropertyUI
 % Private functions for plots and animations to display aspects of model setup
 %--------------------------------------------------------------------------
         function [sm,ct] = initialiseSaltmarshModel(obj,wlvobj,eleobj,cn,mobj)
-            %Set up inputs needed by MarshFlatAnimation and EqDepthBiomass             
-            newWaterLevels(wlvobj,0,0);                
-            sm.dslr = wlvobj.SLRrate/cn.y2s;  %rate of sea level change (m/s)
-            
+            %Set up inputs needed by MarshFlatAnimation, EqDepthBiomass and 
+            %SensitivityPlot
+            msgtxt = 'Run time parameters not defined';
+            rnpobj = getClassObj(mobj,'Inputs','RunProperties',msgtxt);
+            startyr = rnpobj.StartYear*cn.y2s;
+            newWaterLevels(wlvobj,0,startyr); 
+            [~,dslr] = getSLR(wlvobj,startyr,startyr); %rate of sea level change (m/y)
+            sm.dslr = dslr/cn.y2s;                     %rate of sea level change (m/s)
+
             %intitialise transient properties            
             Element.initialiseElements(mobj);
             Element.setEqConcentration(mobj);
@@ -634,7 +670,7 @@ classdef Saltmarsh < muiPropertyUI
             dlg_ans = inputdlg(prompt,dlg_title,1,def);
             if isempty(dlg_ans), ct = []; return; end  
             obj.SpeciesProduct = str2num(dlg_ans{1}); %#ok<ST2NM>
-            sm.userkbm = obj.SpeciesProduct;         %values in years
+            sm.userkbm = obj.SpeciesProduct';         %values in years
             %
             dmn = obj.MinSpDepth;          %minimum depth for each species (m)
             dmx = obj.MaxSpDepth;          %maximum depth for each species (m)
@@ -646,8 +682,8 @@ classdef Saltmarsh < muiPropertyUI
             qm0 = wsm*cem/dp0;
             sm.dp0 = morris_eqdepth(obj,cn,qm0,sm.dslr);
             if isempty(sm.dp0)
-                warndlg('Depth not found in initialiseSaltmarshModel. Set d=0')
-                sm.dp0 = 0; 
+                % warndlg('Depth not found in initialiseSaltmarshModel. Set d=0')
+                sm.dp0 = dp0; 
             end
             %--------------------------------------------------------------
             % Calculate depth, dp1, sediment loading, qm1, biomass
@@ -737,8 +773,9 @@ classdef Saltmarsh < muiPropertyUI
                 'Position',[0.57,0.55,0.30,0.1],'LineStyle','none');            
             title(sprintf('Equilibrium as function of sea level rise'));
 
-            sed = table({'Marsh vertical exchange';'Equilibrium concentration'},...
-                                                           {tx.wsm;tx.cE});
+            sed = table({'Marsh vertical exchange';'Equilibrium concentration';...
+                         'Rate of sea level rise (m/y)'},{tx.wsm;tx.cE;tx.Dslr/1000});
+                                                           
             sed.Properties.VariableNames =  {'Property','Value'};   
 
             addDataButton(obj,hf,sed);
@@ -748,7 +785,7 @@ classdef Saltmarsh < muiPropertyUI
         function addDataButton(obj,hf,sedprops)
             %add button to allow user to access saltmarsh data used for plot
             usertable = getPropertiesTable(obj);
-            usertable([8,9],:) = [];
+            usertable([8,9],:) = [];  %remove marsh erosion data
             usertable = [usertable;sedprops];
             usertable = table2cell(usertable);
 

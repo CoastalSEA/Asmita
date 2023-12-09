@@ -198,7 +198,7 @@ classdef Estuary < muiPropertyUI
                     [d,exchIn] = graph2matrix(dispgraph);
                     dExt = exchIn(:,1);                    
                     [from,to] = ind2sub(size(d),idx);
-                    obj.ExchLinks = [from',to'];
+                    obj.ExchLinks = [from,to];
                 end
             end
             d = d + d';
@@ -249,16 +249,36 @@ classdef Estuary < muiPropertyUI
             estobj = getClassObj(mobj,'Inputs','Estuary');
             wlvobj = getClassObj(mobj,'Inputs','WaterLevels');
             rivobj = getClassObj(mobj,'Inputs','River');
-            if isempty(eleobj)
-                warndlg('No elements defined yet');
+            rnpobj = getClassObj(mobj,'Inputs','RunProperties'); 
+            rncobj = getClassObj(mobj,'Inputs','RunConditions');
+            cn = getConstantStruct(mobj.Constants);
+
+            if isempty(eleobj) || all([eleobj(:).InitialVolume]==0)
+                warndlg('Elements, or element properties, not yet defined');
                 return;
             elseif isempty(estobj)
                 warndlg('No estuary defined yet');
                 return;
-            elseif isempty(wlvobj) || abs(wlvobj.SLRrate)==0
-                warndlg('SLR rate not set or zero so No Response');
+            elseif isempty(rnpobj)
+                warndlg('No run properties defined yet');
                 return;
-            end            
+            elseif isempty(rncobj)
+                warndlg('No run conditions defined yet')
+                return;
+            elseif isempty(wlvobj)
+                warndlg('SLR rate not set');
+                return;
+            else
+               startyr = rnpobj.StartYear*cn.y2s;
+                newWaterLevels(wlvobj,0,startyr);
+                [~,dslr] = getSLR(wlvobj,startyr,startyr); %rate of sea level change (m/y)
+                dslr = dslr/cn.y2s;                        %rate of sea level change (m/s)
+                if abs(dslr)==0
+                    warndlg('SLR is zero so No Response');
+                    return;
+                end
+            end   
+            
             %initialise transient model parameters
             AsmitaModel.initialiseModelParameters(mobj)
             %get required model properties
@@ -464,8 +484,8 @@ classdef Estuary < muiPropertyUI
             obj.DynamicExchange = newtable;
         end
 %%
-        function d= getExchangeRates(obj,tsyear)
-            %dynamic exchange rates are being used use time step to check
+        function d = getExchangeRates(obj,tsyear)
+            %dynamic exchange rates are being used - use time step to check
             %whether values need updating.
             d = obj.Dispersion;
             idd = isnan(d);

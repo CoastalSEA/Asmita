@@ -207,8 +207,13 @@ classdef Reach < handle
             %property varname returned as an Element array, assigning reach
             %properties to Elements
             %get reach properties for each reach
+            prop = [];
             reachprop = Reach.getReachProp(mobj,varname,true);
             if isempty(reachprop), return; end
+            if strcmp(varname,'ReachEleID')
+                warndlg('Use getReachProp to access ReachEleID')
+                return;
+            end
             %get ids of elements linked to channel in each reach
             reachids = Reach.getReachProp(mobj,'ReachEleID',true);
             reachChannelID = Reach.getReachProp(mobj,'ReachChannelID',true);
@@ -335,7 +340,6 @@ classdef Reach < handle
             % cumulative length to head of each element
             network = Reach.getNetwork(caseDef,'Reach');
             eLe = [caseDef.Element(:).Length]';
-%             eLe = Reach.getReachEleVar(network,eLe);  %reach element lengths
             CumX = Reach.getCumUpstreamReachVar(network,eLe,true);
             rchX = Reach.getReachEleVar(network,eLe);
             if ismidpt

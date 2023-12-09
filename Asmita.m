@@ -15,8 +15,8 @@ classdef Asmita < muiModelUI
 % 
     properties  (Access = protected)
         %implement properties defined as Abstract in muiModelUI
-        vNumber = '3.40'
-        vDate   = 'Sept 2023'
+        vNumber = '3.50'
+        vDate   = 'Dec 2023'
         modelName = 'Asmita'   
         %Properties defined in muiModelUI that need to be defined in setGui
         % ModelInputs  %classes required by model: used in isValidModel check 
@@ -49,6 +49,10 @@ classdef Asmita < muiModelUI
             if nargin==1
                 obj.SupressPrompts = SupressPrompts;
             end
+            %
+            isok = check4muitoolbox(obj);
+            if ~isok, return; end
+            %
             obj = setMUI(obj);             
         end
     end
@@ -233,7 +237,7 @@ classdef Asmita < muiModelUI
             % position and column widths vary with number of parameters
             % (rows) and width of input text and values. Inidcative
             % positions:  top left [0.95,0.48];    top right [0.95,0.97]
-            %         bottom left [0.45, 0.48]; bottom rigth [0.45,0.97]                                                    
+            %         bottom left [0.45, 0.48]; bottom right [0.45,0.97]                                                    
             props = {...                                     
                 'Estuary','System',[0.95,0.50],{200,60},'Estuary parameters:';...
                 'WaterLevels','System',[0.95,0.98],{160,80},'Hydraulic parameters:';...
@@ -468,7 +472,29 @@ classdef Asmita < muiModelUI
                 case 'Theory 2'
                     asm_coe_part2;
             end
-        end    
+        end  
+        %% Check that toolboxes are installed------------------------------
+        function isok = check4muitoolbox(~)
+            %check that dstoolbox and muitoolbox have been installed
+            fname = 'dstable.m';
+            dstbx = which(fname);
+        
+            fname = 'muiModelUI.m';
+            muitbx = which(fname);
+        
+            if isempty(dstbx) && ~isempty(muitbx)
+                warndlg('dstoolbox has not been installed')
+                isok = false;
+            elseif ~isempty(dstbx) && isempty(muitbx)
+                warndlg('muitoolbox has not been installed')
+                isok = false;
+            elseif isempty(dstbx) && isempty(muitbx)
+                warndlg('dstoolbox and muitoolbox have not been installed')
+                isok = false;
+            else
+                isok = true;
+            end
+        end
     end
 %%
     methods

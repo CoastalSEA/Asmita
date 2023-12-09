@@ -213,7 +213,18 @@ classdef ASM_PlotsUI < muiDataUI
             S.XYZpanel = [0.04,0.25,0.91,0.15];      %position for XYZ button panel
             S.XYZlabels = {'Var'};                   %default button labels
             
-            %Action button specifications - use default
+            %Action button specifications
+            S.ActButNames = {'Refresh','AllEle'};  %names assigned selection struct
+            S.ActButText = {char(174),'SE'};   %labels for additional action buttons
+            % Negative values in ActButPos indicate that a
+            % button is alligned with a selection option numbered in the 
+            % order given by S.Titles
+            S.ActButPos = [0.86,-1;0.86,-4];      %positions for action buttons   
+            %action button callback function names
+            S.ActButCall = {'@(src,evt)updateCaseList(obj,src,evt,mobj)',...
+                                         '@(src,evt)setMultiEle(src,evt)'};
+            %tool tips for buttons             
+            S.ActButTip = {'Refresh data list','Switch to plot all elements'}; 
        
             obj.TabContent(itab) = S;                %update object
         end
@@ -248,8 +259,8 @@ classdef ASM_PlotsUI < muiDataUI
             S.XYZpanel = [0.04,0.18,0.91,0.15];      %position for XYZ button panel
             S.XYZlabels = {'Var'};                   %default button labels
             %Action button specifications
-            S.ActButNames = {'Refresh','Animate'}; %names assigned selection struct
-            S.ActButText = {char(174),'Ti'};     %labels for additional action buttons
+            S.ActButNames = {'Refresh','Animate'};   %names assigned selection struct
+            S.ActButText = {char(174),'Ti'};         %labels for additional action buttons
             % Negative values in ActButPos indicate that a
             % button is alligned with a selection option numbered in the 
             % order given by S.Titles

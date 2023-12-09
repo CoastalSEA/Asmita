@@ -3,6 +3,15 @@ classdef ASMinterface < handle
     % all of which can be overloaded in ASM_model
     %
     %----------------------------------------------------------------------
+    % NOTES
+    % %logical array of 'illcondition' tests for matrix stability. If any
+    % test fails the run is terminated. The array comprises:
+    %    1=DQ; 2=Sm; 3=W; 4=DQ+Sm*W
+    % ie horizontal exchanges, surface areas, vertical exchanges, and 
+    % coefficient matrix used in inverse operations. These tests are run
+    % for volume, surface area, and concentration calculations. Area tests
+    % 1 and 3 use D/h, Q/h and W/h, hence depths may also be cause of instability.
+    %
     % AUTHOR
     % Ian Townend
     %
@@ -22,6 +31,8 @@ classdef ASMinterface < handle
         isFixed       %array of logical flags, true if change is non-erodible
         DQ          %matix of dispersion and advection updated each time step
         dqIn        %vector of input dispersion and advection updated at each time step
+        dqOut       %vector of output dispersion and advection updated at each time step
+        errCode = 0 %see notes above.
     end
 
     methods (Abstract,Static)
@@ -29,10 +40,11 @@ classdef ASMinterface < handle
     end
     
     methods (Static)
-        obj = UserPrismCoeffs(mobj);    %external function
+        %obj = UserPrismCoeffs(mobj);    %external function
+        %[alpha,beta,eqtype] = userprismcoeffs(UserSelection) %external function
 
 %%
-        function asmitaVolumeChange(mobj,robj)
+        function ok = asmitaVolumeChange(mobj,robj)
             %calculate the changes in volume and concentration over a timestep
             %and check the mass balance
             eleobj = getClassObj(mobj,'Inputs','Element');
@@ -50,9 +62,11 @@ classdef ASMinterface < handle
             ws = getEleProp(eleobj,'transVertExch');
 
             %get concentration before updating volumes
-            conc = ASM_model.asmitaConcentrations(mobj);
+            [conc,ok] = ASM_model.asmitaConcentrations(mobj);
+            if ok<1, return; end
 
-            [B,dd] = ASM_model.BddMatrices(mobj);
+            [B,dd,ok] = ASM_model.BddMatrices(mobj);
+            if ok<1, return; end
             Gam  = (ve./vm).^n;
             %Gam(vm==0) = 1;
             %trap divide by zero if vm=0
@@ -63,15 +77,22 @@ classdef ASMinterface < handle
             %
             % morphological change in volume
             dvf  = (B*Gam-dd)./cb*robj.delta;
-            %adjust for biomass change in volume
+            if any(ws==0)
+                isnoexch = ws==0;
+                dvf(isnoexch) = 0;
+            end
+
+            %biomass change in volume
             rncobj = getClassObj(mobj,'Inputs','RunConditions');
             estobj  = getClassObj(mobj,'Inputs','Estuary');
             if rncobj.IncSaltmarsh
                 Bk = Saltmarsh.BioProduction(mobj);
                 dvb = diag(sign(n))*(Bk*vm)*robj.delta;
-                if rncobj.IncDynamicElements && ws(estobj.ExchLinks(:,2))==0
+                if rncobj.IncDynamicElements && any(ws(estobj.ExchLinks(:,2))==0)
+                    %dynamic dispersion (d=NaN) and elements with ws=0
                     %no biological production for elements with ws=0
-                    dvb(estobj.ExchLinks(:,2)) = 0;
+                    idb = ws(estobj.ExchLinks(:,2))==0;
+                    dvb(estobj.ExchLinks(idb,2)) = zeros(1,sum(idb));
                 end
                 [dv_ero,ds_ero] = Saltmarsh.getEdgeErosion(mobj,robj);
             else
@@ -85,9 +106,10 @@ classdef ASMinterface < handle
             % change in water volume - applies to both sediment and water
             % volumes hence use sign(n) rather than n>0 
             dvm = sign(n).*sa.*dwl;  
-            if rncobj.IncDynamicElements && ws(estobj.ExchLinks(:,2))==0
-                %no volume change for elements with ws=0
-                dvm(estobj.ExchLinks(:,2)) = 0;
+            if rncobj.IncDynamicElements && any(ws(estobj.ExchLinks(:,2))==0)
+                %dynamic dispersion (d=NaN) and elements with ws=0
+                %no water volume change for elements with ws=0
+                dvm(estobj.ExchLinks(idb,2)) = zeros(1,sum(idb));
             end
 
             %
@@ -100,23 +122,29 @@ classdef ASMinterface < handle
                                             %vm modifies bioproduction in
                                             %next time step            
             %check that elements have not infilled
-            if any(vm(:)<=0)      %when elements go to zero retain small
+            if any(vm<=0)         %when elements go to zero retain small
                 vf(vm<=0) = 999;  %value to prevent matrix becoming poorly 
                 vm(vm<=0) = 999;  %conditioned     
             end       
-            
-            %update surace areas
-            sa = ASM_model.asmitaAreaChange(mobj,robj,ds_ero);
+           
+            %update surace areas (marsh edge erosion and variable area)
+            [sa,ok] = ASM_model.asmitaAreaChange(mobj,robj,ds_ero);  
+            if ok<1, return; end
+
+            %check flats and marshes are not deeper than tidal range
+            [vm,vf] = ASM_model.checkFlatVolumes(mobj,vm,vf,sa);
 
             %depth values
             dm = vm./sa; df = vf./sa; de = ve./sa;
             
             %check that elements have not been removed (zero area)
-            if any(sa(:)<=0)
-                dm(sa<=0) = 0;
-                df(sa<=0) = 0;
-                de(sa<=0) = 0;
-            end
+            %or eroded (sa<0 set to 0)
+            if any(sa<=0) || any(sa==999)
+                idx = sa<=0 | sa==999;
+                dm(idx) = 0;
+                df(idx) = 0;
+                de(idx) = 0;
+            end            
 
             % assign results
             for i=1:nele
@@ -128,39 +156,41 @@ classdef ASMinterface < handle
                 eleobj(i).FixedDepth = df(i);
                 eleobj(i).EqDepth = de(i);
             end
+            setClassObj(mobj,'Inputs','Element',eleobj);
+
             %mass balance check
-            ASM_model.MassBalance(mobj,robj);
+            ok = ASM_model.MassBalance(mobj,robj);
             %diagnostic message to command window during runtime
             % t = robj.Time/mobj.Constants.y2s;
             % obj = getClassObj(mobj,'Inputs','ASM_model');
             % smb = obj.SedMbal; wmb = obj.WatMbal;
-            % sprintf('t = %g; Sediment Balance %g; Water Balance %g',t,smb,wmb)
-            setClassObj(mobj,'Inputs','Element',eleobj);
+            % sprintf('t = %g; Sediment Balance %g; Water Balance %g',t,smb,wmb)            
         end
 
 %%
-        function sa = asmitaAreaChange(mobj,robj,ds_ero)
+        function [newsa,ok] = asmitaAreaChange(mobj,~,ds_ero)
             %calculate the changes in surface area over a timestep
             eleobj = getClassObj(mobj,'Inputs','Element');
             sa = getEleProp(eleobj,'SurfaceArea');
-            se = getEleProp(eleobj,'EqSurfaceArea');
+            ok = 1;
 
             %at the moment only a correction for marsh erosion is made
-
-            erose = num2cell(sa+ds_ero);
-            [eleobj.SurfaceArea] = erose{:};
+            newsa = sa+ds_ero;
+            newsa_list = num2cell(newsa);
+            [eleobj.SurfaceArea] = newsa_list{:};
             setClassObj(mobj,'Inputs','Element',eleobj);
         end
 %%
-        function [B,dd] = BddMatrices(mobj)
+        function [B,dd,ok] = BddMatrices(mobj)
             %compute the solution matrix B and vector dd (ie B*gamma-dd)
             %get model parameters
+            obj  = getClassObj(mobj,'Inputs','ASM_model');
             eleobj = getClassObj(mobj,'Inputs','Element');
             sm = getEleProp(eleobj,'SurfaceArea');
             ws = getEleProp(eleobj,'transVertExch');
             n = getEleProp(eleobj,'TransportCoeff');
             cE = getEleProp(eleobj,'EqConcentration');
-            obj  = getClassObj(mobj,'Inputs','ASM_model');
+            
             DQ = obj.DQ;  %values defined using setDQmatrix
             dqIn = obj.dqIn;
             %
@@ -173,15 +203,32 @@ classdef ASMinterface < handle
             CE = diag(cE);       %eq conc by element type
             I = eye(length(sm)); %unit matrix
             %
-            B    = CE*M*Sm*W*(I-(DQ+Sm*W)\Sm*W);
-            dd   = CE*M*Sm*W*((DQ+Sm*W)\dqIn);
+            illCondition = ASMinterface.checkMatrix(DQ,Sm,W);
+            if any(isnan(DQ),'all') || any(isinf(DQ),'all')
+                errordlg(sprintf('DQ matrix contains NaN or Inf in BddMatrices\nRun aborted'))
+                B = 0;   dd = 0;  ok = 0;  
+            elseif ~any(illCondition) || (illCondition(3) && ~illCondition(4)) 
+                %if W is illconditions but SW is not do not abort. This can
+                %be caused by setting vertical exchange to zero when
+                %simulating setback schemes           
+                B    = CE*M*Sm*W*(I-(DQ+Sm*W)\Sm*W);
+                dd   = CE*M*Sm*W*((DQ+Sm*W)\dqIn);
+                ok = 1;
+            else
+                if obj.errCode==0, obj.errCode = illCondition; end                
+                errtxt = num2cell(illCondition);
+                errtxt = sprintf('DQ: %d; S: %d; W: %d; DQ+SW: %d',errtxt{:});
+                msgtxt = sprintf('Volume matrix is illconditioned.\nError code: %s\nRun aborted',errtxt);
+                errordlg(msgtxt)
+                B = 0;   dd = 0;  ok = 0;                               
+            end
             %full equation is as follows(DQ and dqIn replace terms in brackets)
             % B   = cE*M*Sm*Wz*(I-(D+Q+Qs+Qtp+Sm*Wz)\Sm*Wz);
             % dd  = cE*M*Sm*Wz*((D+Q+Qs+Qtp+Sm*Wz)\(dExt+qtpIn+kCeI.*qIn+qsIn));          
         end
         
 %% 
-        function setDQmatrix(mobj,offset)
+        function ok = setDQmatrix(mobj,offset)
             %set the DQ, dqIn and conc properties to be used for a time step
             %****overloaded in ASM_model
             obj = getClassObj(mobj,'Inputs','ASM_model');
@@ -195,6 +242,7 @@ classdef ASMinterface < handle
             [Q,qIn,~] = Advection.getAdvectionFlow(mobj,'River');
             [Qtp,qtpIn,~] = Advection.getAdvectionFlow(mobj,'Qtp');
             [Qs,qsIn,~] = Advection.getAdvectionFlow(mobj,'Drift');
+            if isnan(Qs), ok = 0; return; end
 
             %to set eqCorV in Element.setEleAdvOffsets need to only
             %include some of the advections based on conditions set
@@ -217,12 +265,14 @@ classdef ASMinterface < handle
             end   
 
             setClassObj(mobj,'Inputs','ASM_model',obj);
+            ok = 1;
         end
 
 %%
-        function setVertExch(mobj,robj)
+        function ok = setVertExch(mobj,robj)
             %set vertical exchange model parameters
             rncobj  = getClassObj(mobj,'Inputs','RunConditions');
+            smsobj = getClassObj(mobj,'Inputs','Saltmarsh');
             eleobj = getClassObj(mobj,'Inputs','Element');
             nele = length(eleobj);
             vm = getEleProp(eleobj,'MovingVolume');
@@ -239,47 +289,57 @@ classdef ASMinterface < handle
             estobj  = getClassObj(mobj,'Inputs','Estuary');
             if rncobj.IncDynamicElements
                 tsyear = robj.DateTime/mobj.Constants.y2s;
-                idx = find(estobj.DynamicExchange.Year<=tsyear,1,'last');             
-                eleobj(estobj.ExchLinks(:,2)).transVertExch = ...
-                                    estobj.DynamicExchange.Vertical(idx);  
+                idx = find(estobj.DynamicExchange.Year<=tsyear,1,'last'); 
+                nrow = size(estobj.ExchLinks,1);
+                %can be more than one NaN link but all use the same
+                %exchange table (ie same changes area made to all NaN links)
+                news = num2cell(repmat(estobj.DynamicExchange.Vertical(idx),1,nrow));
+                [eleobj(estobj.ExchLinks(:,2)).transVertExch] = news{:}; 
             end  
 
             %adjust vertical exchange if saltmarsh included (function uses
             %transVertExch based on initial VerticalExchange settings 
-            %modified if DynamicElements are active, ie the inorganic values)
+            %modified if DynamicElements are active, ie the inorganic values) 
             if rncobj.IncSaltmarsh
-                wsbio = num2cell(Saltmarsh.BioSettlingRate(mobj));
+                wsbio = Saltmarsh.BioSettlingRate(mobj);
+                wsbio = num2cell(wsbio);
                 [eleobj.transVertExch] = wsbio{:};
             end
 
             %unadjusted morphological change in volume 
-            [B,dd] = ASM_model.BddMatrices(mobj); %uses transVertExch
+            [B,dd,ok] = ASM_model.BddMatrices(mobj); %uses transVertExch
+            if ok<1, return; end
             Gam  = (ve./vm).^n;
             dvf  = (B*Gam-dd)./cb*robj.delta;
             
-            %check if any erosion is greater than available sediment
+            %check if any erosion is greater than available sediment for
+            %any element and impose constraint on marsh erosion if set
             ws = getEleProp(eleobj,'transVertExch');
             vf = getEleProp(eleobj,'FixedVolume');            
-            noero = ~getEleProp(eleobj,'Erodible'); %ie if Erodible false            
-            %when noero true and SedChange>0 ie erodiing
-            %correction=1 if SedAvailable>SedChange
+            noero = ~getEleProp(eleobj,'Erodible'); %ie if Erodible false 
+            eletype = getEleProp(eleobj,'transEleType');  
+            ism = strcmp(eletype,'Saltmarsh');
+            %when noero true and dvf>0 ie erodiing
+            %correction=1 if SedAvailable>dvf
             %correction=0 if SedAvailable<=0
-            %correction=SedAvailable/SedChange if SedAvailable<=SedChange
+            %correction=SedAvailable/SedChange if SedAvailable<=dvf
             SedAvailable = sign(n).*(Vo-vf);
-            SedChange = sign(n).*dvf;
             for j=1:nele
                 correction = 1;                
-                if noero(j) && SedChange(j)>0
-                    if SedAvailable(j)<=0 
+                if noero(j) && dvf(j)>0
+                    if SedAvailable(j)<=0 || ~smsobj.FlatErosion
                         correction = 0;  
-                    elseif SedAvailable(j)<SedChange(j)
-                        correction = SedAvailable(j)/SedChange(j);    
+                    elseif ism(j) && ~smsobj.FlatErosion && dvf(j)>0
+                        correction = 0;
+                    elseif SedAvailable(j)<dvf(j)
+                        correction = SedAvailable(j)/dvf(j);    
                     end
                 end
                 %update vertical exchange based on any correction needed
                 eleobj(j).transVertExch = ws(j)*correction;                
             end
             setClassObj(mobj,'Inputs','Element',eleobj);
+            ok = 1;
         end
 %%
         function asmitaEqFunctions(mobj)            
@@ -296,11 +356,10 @@ classdef ASMinterface < handle
             eletype = getEleProp(eleobj,'transEleType');
             %
             prism = Reach.getReachEleProp(mobj,'UpstreamPrism');
-            HWL = Reach.getReachEleProp(mobj,'HWlevel');
-            LWL = Reach.getReachEleProp(mobj,'LWlevel');
+            TR = Reach.getReachEleProp(mobj,'TidalRange');
             %
             %equilibirum surface area taken as intial area (ie fixed)
-            EqSA = getEleProp(eleobj,'SurfaceArea');
+            EqSArea = getEleProp(eleobj,'SurfaceArea');
             %Equilibirum depth over marsh elements
             rncobj  = getClassObj(mobj,'Inputs','RunConditions');
             if rncobj.IncSaltmarsh
@@ -313,27 +372,32 @@ classdef ASMinterface < handle
                 alpha = etypalpha.(eletype{i});
                 beta = etypbeta.(eletype{i});
                 isTReq = ~logical(eqType.(eletype{i})); %switch to true if tidal range equilbrium
-                eleobj(i).EqSurfaceArea = EqSA(i);
+                EqSA = EqSArea(i);
                 switch eletype{i}
                     case 'Saltmarsh'
                         if Deq(i)>0
-                            eleobj(i).EqVolume = EqSA(i)*Deq(i);
+                            EqVol = EqSA*Deq(i);
                         else
-                            eleobj(i).EqVolume = alpha*prism(i)^beta;
+                            EqVol = alpha*prism(i)^beta;
                         end
                     otherwise
                         if isTReq %appplies to any element type (eg tidalflat)
-                            eleobj(i).EqVolume = alpha*(HWL(i)-LWL(i))^beta;
+                            EqVol = alpha*TR(i)^beta;
                         else
-                            eleobj(i).EqVolume = alpha*prism(i)^beta;
+                            EqVol = alpha*prism(i)^beta;
                         end
                 end
             end
+
+            %impose any fixed interventions to volume
+            EqVol = EqVol+eleobj(i).eqFixedInts(1); %1 - volume changes
+            if EqVol<0, EqVol=0; end
+            eleobj(i).EqVolume = EqVol;
             setClassObj(mobj,'Inputs','Element',eleobj);
         end
-       
+
 %%
-        function conc = asmitaConcentrations(mobj,varargin)
+        function [conc,ok] = asmitaConcentrations(mobj,varargin)
             %get concentration taking acount of the horizontal exchanges
             obj = getClassObj(mobj,'Inputs','ASM_model');
             eleobj = getClassObj(mobj,'Inputs','Element');
@@ -361,24 +425,77 @@ classdef ASMinterface < handle
             Gam  = (ve./vm).^n;
             %
             % actual concentration taking account of flow field.
-            conc = (DQ+Sm*W)\(Sm*W*Gam+(dqIn)).*cE;
+            illCondition = ASMinterface.checkMatrix(DQ,Sm,W);
+            if any(isinf(Gam)) || any(isnan(Gam))
+                %error in Gam - divide by zero if any(vm=0)
+                errordlg(sprintf('Some volumes are zero in asmitaConcentrations\nRun aborted'))
+                conc = zeros(size(cE));                  ok = 0;  
+            elseif ~any(illCondition)  || (illCondition(3) && ~illCondition(4)) 
+                %if W is illconditions but SW is not do not abort. This can
+                %be caused by setting vertical exchange to zero when
+                %simulating setback schemes   
+                conc = (DQ+Sm*W)\(Sm*W*Gam+(dqIn)).*cE;  ok = 1;                
+            else
+                if obj.errCode==0, obj.errCode = illCondition; end
+                errtxt = num2cell(illCondition);
+                errtxt = sprintf('DQ: %d; S: %d; W: %d; DQ+SW: %d',errtxt{:});
+                msgtxt = sprintf('Concentration matrix is illconditioned.\nError code: %s\nRun aborted',errtxt);
+                errordlg(msgtxt)
+                conc = zeros(size(cE));                  ok = 0;  
+            end
             %once DQ and dqIn are expanded, this is equivalent to:
             % cnm = (D+Q+Qs+Qtp+Sm*Wz)\(Sm*Wz*Gam+(dE+qtpin+kCeI.*qEin+qSin))*cE;
         end
+%%
+        function [vm,vf] = checkFlatVolumes(mobj,vm,vf,sa)
+            %check that tidalflat and saltmarshes are not deeper than tidal
+            %range. Should not be needed if coefficients for Ve are 
+            %correctly specified.
+            eleobj = getClassObj(mobj,'Inputs','Element');
+            wlvobj = getClassObj(mobj,'Inputs','WaterLevels');
+            TR = wlvobj.TidalRange;
+            eletype = getEleProp(eleobj,'transEleType');
+            istype = ismatch(eletype,{'Tidalflat';'Saltmarsh';'DeltaFlat'});
+            mdepths = vm./sa;
+            fdepths = vf./sa;
+            for i=1:length(vm)
+                if mdepths(i)>TR && istype(i)
+                    vm(i) = sa(i)*TR;         %set moving volume to area*tr
+                end
+                %
+                if fdepths(i)>TR && istype(i)
+                    vf(i) = sa(i)*TR;         %set fixed volume to area*tr
+                end
+            end
+        end
+
+%%
+        function illcondition = checkMatrix(amat1,amat2,amat3)
+            %check whether matries are ill conditioned for inversion. Return logical 
+            %array for check of each matrix and combination amat1+amat2*amat3.    
+            threshold = 1/eps;
+            amatrix = amat1+amat2*amat3;
         
- %%      
-         function obj = clearMassBalance(mobj)
-             obj = getClassObj(mobj,'Inputs','ASM_model');
-             obj.export = 0;
-             obj.import = 0;
-             obj.intervent = 0;
-             obj.dWLvolume = 0;
-             obj.SedMbal = 0;
-             obj.WatMbal = 0;
-         end
+            illcondition = [cond(amat1)>threshold,...
+                            cond(amat2)>threshold,...
+                            cond(amat3)>threshold,...
+                            cond(amatrix)>threshold];
+        end
+
+%%      
+        function obj = clearMassBalance(mobj)
+            %clear properties used to compute mass balance
+            obj = getClassObj(mobj,'Inputs','ASM_model');
+            obj.export = 0;
+            obj.import = 0;
+            obj.intervent = 0;
+            obj.dWLvolume = 0;
+            obj.SedMbal = 0;
+            obj.WatMbal = 0;
+        end
          
 %%
-        function MassBalance(mobj,robj)
+        function ok = MassBalance(mobj,robj)
             obj = getClassObj(mobj,'Inputs','ASM_model');
             if robj.Time==0
                 obj = ASMinterface.clearMassBalance(mobj);
@@ -389,14 +506,14 @@ classdef ASMinterface < handle
 
             eleobj = getClassObj(mobj,'Inputs','Element');
             cE = getEleProp(eleobj,'EqConcentration');
-%             cES = estobj.EqConcCoarse;
-%             cEM = estobj.EqConcFine;           
+            % cES = estobj.EqConcCoarse;
+            % cEM = estobj.EqConcFine;           
             cb = getEleProp(eleobj,'BedConcentration');
             cI = River.getRiverProp(mobj,'tsRiverConc');
             conc = getEleProp(eleobj,'EleConcentration');
             n = getEleProp(eleobj,'TransportCoeff');
             M = diag(sign(n));
-            wM = diag(n>0);
+            wM = diag(n>0); %#ok<NASGU> 
             
             Vo = getEleProp(eleobj,'InitialVolume');
             vf = getEleProp(eleobj,'FixedVolume');
@@ -408,7 +525,8 @@ classdef ASMinterface < handle
             [~,dExt] = Estuary.getDispersion(mobj); %uses ReachGraph
             [~,qIn,qOut] = Advection.getAdvectionFlow(mobj,'River'); %water flux in m3/s
             [~,qtpIn,qtpOut] = Advection.getAdvectionFlow(mobj,'Qtp'); %water flux in m3/s
-            [~,qsIn,qsOut] = Advection.getAdvectionFlow(mobj,'Drift'); %sed.flow in m3/s
+            [Qs,qsIn,qsOut] = Advection.getAdvectionFlow(mobj,'Drift'); %sed.flow in m3/s
+            if isnan(Qs), ok = 0; return; end
 
             % Calculate sediment mass balance (+ve is import to water column)
             impriv = sum(qIn.*cI)*(time>0);      %river import
@@ -440,7 +558,8 @@ classdef ASMinterface < handle
             obj.WatMbal = (estvol-obj.dWLvolume)/sum(M*(Vo))*100; %percentage change
             % obj.WatMbal = (estvol-obj.dWLvolume);
 
-            setClassObj(mobj,'Inputs','ASM_model',obj);            
+            setClassObj(mobj,'Inputs','ASM_model',obj);     
+            ok = 1;
         end
 
     end

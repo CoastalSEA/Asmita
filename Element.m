@@ -55,7 +55,7 @@ classdef Element < muiPropertyUI
         FixedDepth              %Element depth relative to fixed surface              
         EqDepth                 %Element equilibrium depth        
         SurfaceArea             %variable surface area (variations within basin area)
-        EqSurfaceArea           %Equilbrium surface area calculated at run time
+        EqSurfaceArea           %Equilibrium surface area calculated at run time
         %other transient element properties
         EqConcentration         %element specific equilbrium concentration
         EleConcentration        %actual concentration in element during run
@@ -376,11 +376,11 @@ classdef Element < muiPropertyUI
         end 
         
 %%
-        function setEleConcentration(mobj)
+        function ok = setEleConcentration(mobj)
             %assign the element concentrations at some instant
             obj = getClassObj(mobj,'Inputs','Element');
             %get element types
-            conc = ASM_model.asmitaConcentrations(mobj);
+            [conc,ok] = ASM_model.asmitaConcentrations(mobj);
             assignum = num2cell(conc);
             [obj.EleConcentration] = assignum{:};
             setClassObj(mobj,'Inputs','Element',obj);
@@ -507,6 +507,7 @@ classdef Element < muiPropertyUI
             rhos = cn.SedimentDensity;
             bedConc = (obj.BedDensity-rhow)/(rhos-rhow);
         end
+
 %%
         function prop = getEleProp(obj,varname)
             %get a property and return as an element array
@@ -519,7 +520,16 @@ classdef Element < muiPropertyUI
             if any(strcmp(stringtypes,varname))
                 prop = {obj.(varname)}';
             else
-                prop = [obj.(varname)]';
+                ncol = size(obj(1).(varname),2);
+                if ncol>1
+                    nrow = size(obj,2); 
+                    prop = zeros(nrow,ncol);
+                    for i=1:nrow
+                        prop(i,:) = obj(i).(varname);
+                    end
+                else
+                    prop = [obj.(varname)]';
+                end
             end
         end
 %%
