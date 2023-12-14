@@ -29,8 +29,10 @@ function asmita_update(obj,oldV,newV)
         update_v34_to_v35(obj);
     elseif strcmp(oldV,'3.40') && strcmp(newV,'3.50')
         update_v34_to_v35(obj);
+    elseif strcmp(oldV,'4.00') && strcmp(newV,'3.50')
+        update_v40_to_v35(obj);    
     else
-        warndlg('No update for version %.1f to version %.1f', oldV,newV)
+        warndlg(sprintf('No update for version %s to version %s', oldV,newV))
     end
 end
 
