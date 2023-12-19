@@ -120,10 +120,10 @@ classdef Asmita < muiModelUI
             
             %list as per muiModelUI.projectMenuOptions
             % submenu for Scenarios
-            menu.Project(2).List = {'Edit Description','Edit Data Set',...
+            menu.Project(2).List = {'Edit Description','Edit DS properties','Edit Data Set',...
                                     'Save Data Set','Delete Case','Reload Case',...
                                     'View Case Settings'};                                               
-            menu.Project(2).Callback = repmat({@obj.projectMenuOptions},[1,6]);
+            menu.Project(2).Callback = repmat({@obj.projectMenuOptions},[1,7]);
             
             % submenu for 'Export/Import'                                          
             menu.Project(3).List = {'Export Case','Import Case'};

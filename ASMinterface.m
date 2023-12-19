@@ -40,7 +40,6 @@ classdef ASMinterface < handle
     end
     
     methods (Static)
-        %obj = UserPrismCoeffs(mobj);    %external function
         %[alpha,beta,eqtype] = userprismcoeffs(UserSelection) %external function
 
 %%
@@ -109,6 +108,7 @@ classdef ASMinterface < handle
             if rncobj.IncDynamicElements && any(ws(estobj.ExchLinks(:,2))==0)
                 %dynamic dispersion (d=NaN) and elements with ws=0
                 %no water volume change for elements with ws=0
+                idb = ws(estobj.ExchLinks(:,2))==0;
                 dvm(estobj.ExchLinks(idb,2)) = zeros(1,sum(idb));
             end
 
