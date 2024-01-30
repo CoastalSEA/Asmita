@@ -339,6 +339,7 @@ classdef Element < muiPropertyUI
             %can be used by overloading in the AsmitaModel class            
             obj = getClassObj(mobj,'Inputs','Element');
             eqScaling = getEleProp(obj,'eqScaling'); %scaling to initial values
+            eletype = getEleProp(obj,'transEleType');
             %update unadjusted equilibrium volumes to account for changes
             %in tidal prism
             ASM_model.asmitaEqFunctions(mobj);       %updates Element.EqVolume
@@ -346,7 +347,15 @@ classdef Element < muiPropertyUI
             eqAdvCor = getEleProp(obj,'eqAdvOffSet');            
             %set adjusted values of equilibrium volume
             for i=1:length(obj)
-               obj(i).EqVolume = eqScaling(i)*eqAdvCor(i)*obj(i).EqVolume;
+                obj(i).EqVolume = eqScaling(i)*eqAdvCor(i)*obj(i).EqVolume;
+                %check that equilibrium depth is not greater than tidal range
+                if ismatch(eletype{i},{'Tidalflat';'Saltmarsh';'DeltaFlat'})
+                    eqdepth = obj(i).EqVolume/obj(i).EqSurfaceArea;
+                    TR = Reach.getReachEleProp(mobj,'TidalRange');
+                    if eqdepth>0.9*TR(i)     %element depth > tidal range
+                        obj(i).EqVolume = obj(i).EqSurfaceArea*0.8*TR(i);  %set volume to area*0.8*tr
+                   end
+                end
             end
             setClassObj(mobj,'Inputs','Element',obj);
         end

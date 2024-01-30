@@ -132,7 +132,7 @@ classdef ASMinterface < handle
             if ok<1, return; end
 
             %check flats and marshes are not deeper than tidal range
-            %[vm,vf] = ASM_model.checkFlatVolumes(mobj,vm,vf,sa);
+            [vm,vf] = ASM_model.checkFlatVolumes(mobj,vm,vf,sa);
 
             %depth values
             dm = vm./sa; df = vf./sa; de = ve./sa;
@@ -453,20 +453,34 @@ classdef ASMinterface < handle
             %correctly specified.
             eleobj = getClassObj(mobj,'Inputs','Element');
             wlvobj = getClassObj(mobj,'Inputs','WaterLevels');
+            rncobj = getClassObj(mobj,'Inputs','RunConditions');
             TR = wlvobj.TidalRange;
             eletype = getEleProp(eleobj,'transEleType');
             istype = ismatch(eletype,{'Tidalflat';'Saltmarsh';'DeltaFlat'});
+            n = sign(getEleProp(eleobj,'TransportCoeff'));
+            dV = Interventions.getIntProp(mobj,'transVolChange');
+            dS = Interventions.getIntProp(mobj,'transAreaChange');            
             mdepths = vm./sa;
             fdepths = vf./sa;
+            %interventions can cause a sudden change in volume or area
+            %when included only change when interventions occur
+            isIntervention = true;
+            %Applies to both water and sediment volumes.
+%             if ~rncobj.IncInterventions
             for i=1:length(vm)
-                if mdepths(i)>TR && istype(i)
+%                 if rncobj.IncInterventions
+%                     isIntervention = dS(i)<0 || n(i)*dV(i)>0;
+%                 end
+                %
+                if mdepths(i)>TR && istype(i) && isIntervention
                     vm(i) = sa(i)*TR;         %set moving volume to area*tr
                 end
                 %
-                if fdepths(i)>TR && istype(i)
+                if fdepths(i)>TR && istype(i) && isIntervention
                     vf(i) = sa(i)*TR;         %set fixed volume to area*tr
                 end
             end
+%             end
         end
 
 %%

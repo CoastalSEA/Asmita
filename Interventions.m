@@ -149,9 +149,6 @@ classdef Interventions < matlab.mixin.Copyable
                     %tidal range or drift rate.
                     eleobj(i).eqFixedInts(1) = eleobj(i).eqFixedInts(1)+n(i)*dV(i);
                     eleobj(i).eqFixedInts(2) = eleobj(i).eqFixedInts(2)+dS(i);
-                    %at the moment the surface area is not updated hence
-                    %can make a one off change
-                    eleobj(i).EqSurfaceArea = eleobj(i).EqSurfaceArea+dS(i);
                 end
             end
             %assign updated instances of Element and Interventions
