@@ -112,12 +112,6 @@ classdef ASM_model < ASMinterface
                             EqVol = alpha*inp.UPrism(i)^beta;
                         end
                 end
-                %impose any fixed interventions to volume.
-                %interventions are applied in Interventions.setAnnualChange
-                %EqVol is then reset above. Only if the interventions are 
-                %'fixed' are they re-applied, otherwise the target 
-                %equilibrium remains as the unadjusted value.
-                EqVol = EqVol+eleobj(i).eqFixedInts(1);      %1 - volume changes
                 if EqVol<0, EqVol=0; end
                 eleobj(i).EqVolume = EqVol;
             end

@@ -47,6 +47,7 @@ classdef ASMinterface < handle
             %calculate the changes in volume and concentration over a timestep
             %and check the mass balance
             eleobj = getClassObj(mobj,'Inputs','Element');
+            wlvobj = getClassObj(mobj,'Inputs','WaterLevels');
             %get changes in water level at high and low water
             dwl = getEleProp(eleobj,'EleWLchange');
             nele = length(eleobj);
@@ -56,6 +57,7 @@ classdef ASMinterface < handle
             ve = getEleProp(eleobj,'EqVolume');
             vb = getEleProp(eleobj,'BioProdVolume');
             sa = getEleProp(eleobj,'SurfaceArea');
+            se = getEleProp(eleobj,'EqSurfaceArea');
             n  = getEleProp(eleobj,'TransportCoeff');
             cb = getEleProp(eleobj,'BedConcentration');            
             ws = getEleProp(eleobj,'transVertExch');
@@ -132,10 +134,10 @@ classdef ASMinterface < handle
             if ok<1, return; end
 
             %check flats and marshes are not deeper than tidal range
-            [vm,vf] = ASM_model.checkFlatVolumes(mobj,vm,vf,sa);
+            [vm,vf] = checkFlatVolumes(eleobj,wlvobj,vm,vf,sa);
 
             %depth values
-            dm = vm./sa; df = vf./sa; de = ve./sa;
+            dm = vm./sa; df = vf./sa; de = ve./se;
             
             %check that elements have not been removed (zero area)
             %or eroded (sa<0 set to 0)
@@ -388,9 +390,6 @@ classdef ASMinterface < handle
                         end
                 end
             end
-
-            %impose any fixed interventions to volume
-            EqVol = EqVol+eleobj(i).eqFixedInts(1); %1 - volume changes
             if EqVol<0, EqVol=0; end
             eleobj(i).EqVolume = EqVol;
             setClassObj(mobj,'Inputs','Element',eleobj);
@@ -445,42 +444,6 @@ classdef ASMinterface < handle
             end
             %once DQ and dqIn are expanded, this is equivalent to:
             % cnm = (D+Q+Qs+Qtp+Sm*Wz)\(Sm*Wz*Gam+(dE+qtpin+kCeI.*qEin+qSin))*cE;
-        end
-%%
-        function [vm,vf] = checkFlatVolumes(mobj,vm,vf,sa)
-            %check that tidalflat and saltmarshes are not deeper than tidal
-            %range. Should not be needed if coefficients for Ve are 
-            %correctly specified.
-            eleobj = getClassObj(mobj,'Inputs','Element');
-            wlvobj = getClassObj(mobj,'Inputs','WaterLevels');
-            rncobj = getClassObj(mobj,'Inputs','RunConditions');
-            TR = wlvobj.TidalRange;
-            eletype = getEleProp(eleobj,'transEleType');
-            istype = ismatch(eletype,{'Tidalflat';'Saltmarsh';'DeltaFlat'});
-            n = sign(getEleProp(eleobj,'TransportCoeff'));
-            dV = Interventions.getIntProp(mobj,'transVolChange');
-            dS = Interventions.getIntProp(mobj,'transAreaChange');            
-            mdepths = vm./sa;
-            fdepths = vf./sa;
-            %interventions can cause a sudden change in volume or area
-            %when included only change when interventions occur
-            isIntervention = true;
-            %Applies to both water and sediment volumes.
-%             if ~rncobj.IncInterventions
-            for i=1:length(vm)
-%                 if rncobj.IncInterventions
-%                     isIntervention = dS(i)<0 || n(i)*dV(i)>0;
-%                 end
-                %
-                if mdepths(i)>TR && istype(i) && isIntervention
-                    vm(i) = sa(i)*TR;         %set moving volume to area*tr
-                end
-                %
-                if fdepths(i)>TR && istype(i) && isIntervention
-                    vf(i) = sa(i)*TR;         %set fixed volume to area*tr
-                end
-            end
-%             end
         end
 
 %%

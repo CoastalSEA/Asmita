@@ -326,7 +326,8 @@ classdef AsmitaModel < muiDataSet
              %initialise any scaling to initial conditions (kVp)
              Element.setEqScalingCoeffs(mobj);
              %initialise equilibrium conditions
-             Element.setEquilibrium(mobj); 
+             ok = Element.setEquilibrium(mobj);
+             if ok<1, return; end   %error in setting equilibrium volumes
              %constraints and saltmarsh enhanced settling
              ok = ASM_model.setVertExch(mobj,obj);
              if ok<1, return; end   %error in ASMinterface.asmitaConcentrations
@@ -373,7 +374,8 @@ classdef AsmitaModel < muiDataSet
                 Advection.setTidalPumping(mobj);
              end
              %update equilibrium volumes due to changes in tidal prism
-             Element.setEquilibrium(mobj);
+             ok = Element.setEquilibrium(mobj);
+             if ok<1, return; end   %error in setting equilibrium volumes
              %update equilibrium concentrations: only needed if cE varied during run
              % Element.setEqConcentration(mobj);
              %set dispersion and advection matrices

@@ -1,6 +1,10 @@
 classdef Interventions < matlab.mixin.Copyable
     %class to define and update changes that are imposed on the system
     %
+    %When interventions added for first time, selectIntElement is called
+    %and creates an instance for each element in the model. Each instance
+    %has a dummy struct with the start year of the model and zeros.
+    %
     %When using Intervention of tidal flats and other elements that can be
     %defined as water or sediment volumes, it is advisable to use water
     %volumes (i.e. n>0). However, the code should work for both cases.
@@ -14,7 +18,7 @@ classdef Interventions < matlab.mixin.Copyable
     %  
     properties
         ElementID      %should be a copy of Element.EleID (cross-check)
-        Year      %values for each elemet are stored in a cell array
+        Year           %values for each elemet are stored in a vector array
         VolumeChange 
         SurfaceAreaChange 
         isNonErodible 
@@ -32,9 +36,9 @@ classdef Interventions < matlab.mixin.Copyable
 %%    
     methods (Static)
         function setInterventions(mobj)
-            %select element and assign interventioons using table dialogue
+            %select element and assign interventions using table dialogue
             [obj,eleid,elename,ok] = Interventions.selectIntElement(mobj);
-            if ok<1, return; end
+            if ok<1, return; end            
             obj = intTable(obj,eleid,elename);
             setClassObj(mobj,'Inputs','Interventions',obj);
         end       
@@ -75,10 +79,7 @@ classdef Interventions < matlab.mixin.Copyable
                 if ok<1, return; end
             end
             %
-            obj(eleid).Year = {0};
-            obj(eleid).VolumeChange = {0};
-            obj(eleid).SurfaceAreaChange = {0};
-            obj(eleid).isNonErodible = {0};
+            obj = blankInstance(obj,eleid,mobj);
             setClassObj(mobj,'Inputs','Interventions',obj);
         end
 %%
@@ -93,10 +94,10 @@ classdef Interventions < matlab.mixin.Copyable
             if isempty(data), return; end  %user aborted or file not read
             
             %assign interventions to object
-            obj(eleid).Year = data(1);
-            obj(eleid).VolumeChange = data(2);
-            obj(eleid).SurfaceAreaChange = data(3);
-            obj(eleid).isNonErodible = data(4);
+            obj(eleid).Year = data{1};
+            obj(eleid).VolumeChange = data{2};
+            obj(eleid).SurfaceAreaChange = data{3};
+            obj(eleid).isNonErodible = data{4};
             setClassObj(mobj,'Inputs','Interventions',obj);
         end         
 %%
@@ -132,22 +133,22 @@ classdef Interventions < matlab.mixin.Copyable
             end
             dV = vals(:,idx,1);
             dS =  vals(:,idx,2);
-            n = sign(getEleProp(eleobj,'TransportCoeff'));
+            sgn = sign(getEleProp(eleobj,'TransportCoeff'));
             %update transient volume and area properties
             %convention is that +ve is an increase in water volume
             %so subtract for elements defined as sediment volumes
             for i=1:nele
-                eleobj(i).MovingVolume = eleobj(i).MovingVolume+n(i)*dV(i);
+                eleobj(i).MovingVolume = eleobj(i).MovingVolume+sgn(i)*dV(i);
                 eleobj(i).SurfaceArea = eleobj(i).SurfaceArea+dS(i);
-                eleobj(i).FixedVolume = eleobj(i).FixedVolume+n(i)*dV(i);
+                eleobj(i).FixedVolume = eleobj(i).FixedVolume+sgn(i)*dV(i);
                 eleobj(i).EqSurfaceArea = eleobj(i).EqSurfaceArea+dS(i);
                 intobj(i).transVolChange = dV(i);
                 intobj(i).transAreaChange = dS(i);
                 if isfix(i,idx)
-                    %store the cumulate changes that are non-erodible to
+                    %store the cumulative changes that are non-erodible to
                     %adjust EqVolume each time it is reset based on prism
                     %tidal range or drift rate.
-                    eleobj(i).eqFixedInts(1) = eleobj(i).eqFixedInts(1)+n(i)*dV(i);
+                    eleobj(i).eqFixedInts(1) = eleobj(i).eqFixedInts(1)+sgn(i)*dV(i);
                     eleobj(i).eqFixedInts(2) = eleobj(i).eqFixedInts(2)+dS(i);
                 end
             end
@@ -169,31 +170,51 @@ classdef Interventions < matlab.mixin.Copyable
             msgtxt = 'No interventions have been defined';
             intobj  = getClassObj(mobj,'Inputs','Interventions');
             if isempty(intobj), getdialog(msgtxt); return; end    
+            rnpobj = getClassObj(mobj,'Inputs','RunProperties');
             
             ht = findobj(src,'Type','Axes');
             delete(ht);
             
-            answer = questdlg('Select element or plot All','Interventions',...
-                                            'Element','All','Element');
+            answer = questdlg('Select to plot Element, All or Depth','Interventions',...
+                                            'Element','All','Depth','Element');
             if strcmp(answer,'Element')
-            %check which elements have interventions and allow user selection
-            [idx,legtxt,ok] = selectInterventionSet(intobj,mobj);
-            if ok<1, return; end
+                %check which elements have interventions and allow user selection
+                [idx,legtxt,ok] = selectInterventionSet(intobj,mobj);
+                if ok<1, return; end
                 tim = intobj(idx).Year;
                 Vol = cumsum(intobj(idx).VolumeChange);
                 Surf = cumsum(intobj(idx).SurfaceAreaChange);
                 isfix = intobj(idx).isNonErodible;
-            else
+            elseif  strcmp(answer,'All')
                 [tim,vals,isnero] = sortInterventions(intobj);
                 Vol = sum(vals(:,:,1),1)';
                 Surf = sum(vals(:,:,2),1)';
                 isfix = any(isnero,1)';
                 legtxt  = 'Cumulative change for All elements';
+            else
+                eleobj  = getClassObj(mobj,'Inputs','Element');
+                if isempty(eleobj), return; end
+                V0 = getEleProp(eleobj,'InitialVolume');
+                S0 = getEleProp(eleobj,'InitialSurfaceArea');
+                [tim,vals,~] = sortInterventions(intobj);
+                
+                Vol = V0+cumsum(vals(:,:,1),2);
+                Surf = S0+cumsum(vals(:,:,2),2);
+                
+                if tim(1)>rnpobj.StartYear
+                    tim = [rnpobj.StartYear;tim];
+                    Vol = [V0,Vol];
+                    Surf = [S0,Surf];
+                end
+                Depth = Vol./Surf;
+                legtxt  = getEleProp(eleobj,'EleName');
+                depthPlot(intobj,src,tim,Depth,legtxt);
+                return
             end
 
             %if the run properties have been defined use these to adjust
             %time range of plot
-            rnpobj = getClassObj(mobj,'Inputs','RunProperties');
+            
             if ~isempty(rnpobj) && length(Vol)>5  %5 used as switch to stair plot in tabPlot
                 t0 = rnpobj.StartYear;
                 tN = t0+rnpobj.TimeStep*rnpobj.NumSteps;
@@ -226,14 +247,14 @@ classdef Interventions < matlab.mixin.Copyable
             [idx,~,ok] = selectInterventionSet(obj,mobj);
             if ok<1, return; end
             %change sign of interventions for selected element
-            obj(idx).VolumeChange = {-1*obj(idx).VolumeChange{1}};
-            obj(idx).SurfaceAreaChange = {-1*obj(idx).SurfaceAreaChange{1}};
+            obj(idx).VolumeChange = -1*obj(idx).VolumeChange;
+            obj(idx).SurfaceAreaChange = -1*obj(idx).SurfaceAreaChange;
         end
     end
 %%
     methods (Static,Hidden)
         function setNewIntervention(mobj)
-            %initialise an empty instance ofInterevention (used in asm_oo2mui)
+            %initialise an empty instance of Interevention (used in asm_oo2mui)
             obj = Interventions;
             setClassObj(mobj,'Inputs','Interventions',obj);
         end
@@ -250,6 +271,7 @@ classdef Interventions < matlab.mixin.Copyable
             end
             obj(nint) = Interventions;
             obj(nint).ElementID = elobj(nint).EleID;
+            obj = blankInstance(obj,nint,mobj);
             setClassObj(mobj,'Inputs','Interventions',obj);
         end        
 %%
@@ -270,7 +292,6 @@ classdef Interventions < matlab.mixin.Copyable
                         obj(eleid).isNonErodible};
             colnames = {'Year','Volume','SurfaceArea','NonErodible'};
             nyr = length(obj(eleid).Year);
-            
             %create row index
             rownames{nyr,1} = '';
             for i=1:nyr, rownames{i}=num2str(i); end
@@ -382,8 +403,27 @@ classdef Interventions < matlab.mixin.Copyable
             s2.XLim(2) = tim(end)+1;            
         end
 %%
+        function depthPlot(~,src,tim,Depth,legtxt)
+            %plot hydraulic depths for all elements including interventions
+            ax = axes('Parent',src);
+            dmin = min(Depth,[],'All');
+            plot(ax,tim,Depth(1,:))
+            hold on
+            for i=2:size(Depth,1)
+                plot(ax,tim,Depth(i,:))
+            end
+            if dmin<0
+                hp = plot(xlim,[0,0],'-.r');
+                hp.Annotation.LegendInformation.IconDisplayStyle = 'off';  
+            end
+            hold off
+            xlabel('Year');
+            ylabel('Depth (m)');
+            legend(legtxt,'Location','best')
+        end
+%%
         function [uyrs,vals,isnero] = sortInterventions(obj)
-            %for each element sort the specified changes into an vectors of
+            %for each element sort the specified changes into vectors of
             %unique years and volume/area changes
             nintele = length(obj);  %number of elements with interventions
             uyrs = [];
@@ -406,6 +446,25 @@ classdef Interventions < matlab.mixin.Copyable
                         isnero(i,j) = flag(year==uyrs(j));
                     end
                 end
+            end
+        end
+
+        %%
+        function obj = blankInstance(obj,eleid,mobj)
+            %assign dummy values to an interventions struct
+            obj(eleid).Year = startYear(obj,mobj);
+            obj(eleid).VolumeChange = 0;
+            obj(eleid).SurfaceAreaChange = 0;
+            obj(eleid).isNonErodible = 0;
+        end
+%%
+        function styear = startYear(~,mobj)
+            %get start year for model if set
+            rnpobj  = getClassObj(mobj,'Inputs','RunProperties');
+            if isempty(rnpobj) 
+                styear = 0; 
+            else
+                styear = rnpobj.StartYear;
             end
         end
     end
@@ -435,6 +494,7 @@ classdef Interventions < matlab.mixin.Copyable
                 obj(nele,1) = Interventions;
                 for i=1:nele
                     obj(i).ElementID = eleobj(i).EleID;
+                    obj = blankInstance(obj,i,mobj);
                 end
             end
             %
