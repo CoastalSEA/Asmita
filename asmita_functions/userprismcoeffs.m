@@ -32,7 +32,7 @@ function [alpha,beta,eqtype] = userprismcoeffs(UserSelection)
 %define default structs and then overwrite with case specific values
 alpha = struct('Channel',1,'Tidalflat',1,'Saltmarsh',1,...
                'Storage',1,'FloodDelta',1,'EbbDelta',1,'DeltaFlat',1,...
-               'Beachface',0,'Shoreface',0,'Spit',0);
+               'Beachface',1,'Shoreface',1,'Spit',1);
 beta = alpha;
 eqtype = alpha;
 
@@ -41,29 +41,32 @@ switch UserSelection
         alpha.EbbDelta = 2.92157e-3;
         beta.EbbDelta = 1.23;
         
-    case 'Generic'                    % Generic parameter settings
+    case 'Generic-linear'             % Generic linear law settings (except deltas)
+        alpha.Channel = 0.42;         %COE paper Part 1 (Townend etal, 2016)
+        alpha.Tidalflat = 0.16;       %COE paper Part 1 (Townend etal, 2016)
+        alpha.Saltmarsh = 0.16;       %only used if there is no saltmarsh biomass
+        alpha.FloodDelta = 7000;      %Powell etal (2006)   
+        alpha.EbbDelta = 5.0e-3;      %reworked W&A(1976) data
+        %
+        beta.Channel = 1.0;           %COE paper Part 1 (Townend etal, 2016)
+        beta.Tidalflat = 1.0;         %COE paper Part 1 (Townend etal, 2016)
+        beta.Saltmarsh = 1.0;         %only used if there is no saltmarsh biomass
+        beta.FloodDelta = 0.37;       %Powell etal (2006) 
+        beta.EbbDelta = 1.23;         %reworked W&A(1976) data   
+
+    case 'Generic-power'              % Generic power law settings
         alpha.Channel = 5.0e-3;       %COE paper Part 1 (Townend etal, 2016)
         alpha.Tidalflat = 0.08;       %COE paper Part 1 (Townend etal, 2016)
         alpha.Saltmarsh = 0.08;       %only used if there is no saltmarsh biomass
-        alpha.Storage = 1;
         alpha.FloodDelta = 7000;      %Powell etal (2006)   
         alpha.EbbDelta = 5.0e-3;      %reworked W&A(1976) data
-        alpha.DeltaFlat = 1;    
-        alpha.Beachface = 1;
-        alpha.Shoreface = 1;
-        alpha.Spit = 1;
         %
         beta.Channel = 1.23;          %COE paper Part 1 (Townend etal, 2016)
         beta.Tidalflat = 1.08;        %COE paper Part 1 (Townend etal, 2016)
         beta.Saltmarsh = 1.08;        %only used if there is no saltmarsh biomass
-        beta.Storage = 1;
         beta.FloodDelta = 0.37;       %Powell etal (2006) 
         beta.EbbDelta = 1.23;         %reworked W&A(1976) data
-        beta.DeltaFlat = 1;   
-        beta.Beachface = 1;
-        beta.Shoreface = 1;
-        beta.Spit = 1;
-    
+
     case 'Venice'                     % Venice 9EM model parameters
         alpha.EbbDelta = 5.0e-3;
         alpha.Channel = 0.3;

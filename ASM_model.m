@@ -101,7 +101,7 @@ classdef ASM_model < ASMinterface
                             end                            
                         end
 
-                    case {'Beachface','Shoreface','Spit'}
+                    case {'Beachface','Shoreface','Spit','DeltaFlat'}
                         %scale beach equilbrium as function of drift rate, 
                         %tidal range or prism
                         EqVol = ASM_model.beachEqVolume(mobj,eleobj,rncobj,inp,i);

@@ -1,13 +1,15 @@
-function UserUnitTesting()
+function UserUnitTesting(aspath)
     %function to select and call selected unit test of Asmita using
     %AsmitaTest.m and runasmitamodel.m. runaasmitamodel calls Asmita in
     %silent mode and runs model for selected case and compares the results
     %with the file in muiASM TestData.
 
     %setting App paths
-    appinfo = matlab.apputil.getInstalledAppInfo;
-    idx = find(strcmp({appinfo.name},'Asmita'));
-    aspath = appinfo(idx(1)).location;
+    if nargin<1
+        appinfo = matlab.apputil.getInstalledAppInfo;
+        idx = find(strcmp({appinfo.name},'Asmita'));
+        aspath = appinfo(idx(1)).location;
+    end    
     astest = [aspath,[filesep,'Asmita',filesep,'asmita_unit_tests',filesep,'AsmitaTest.m']];
     
     listtext = {'H1EMTest','HumberTest','AmelanderTest','VeniceTest','SevernTest',...

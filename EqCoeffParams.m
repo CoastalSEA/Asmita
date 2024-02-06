@@ -22,7 +22,8 @@ classdef EqCoeffParams < muiPropertyUI
         %abstract properties in muiPropertyUI for tab display
         TabDisplay   %structure defines how the property table is displayed 
         %list of options used in UserEqPrismCoeffs
-        UserEqCoeffOptions ={'Default','Generic','Venice','Amelander','Pagham'};
+        UserEqCoeffOptions ={'Default','Generic-linear','Generic-power',...
+                                            'Venice','Amelander','Pagham'};
         UserEqCoeffSelection %selection used in UserEqPrismCoeffs (list defined in AsmitaModel)
         SupressPrompts = false %flag for unit testing to supress user prompts
     end

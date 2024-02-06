@@ -1,4 +1,4 @@
-function UserSaveTestData
+function UserSaveTestData(aspath)
     %function to save a test data set for use in AsmitaTest unit testing
     %This replicates the way the model is run in AsmitaTest & runasmitamodel
     %Start with completed model setup and all scenarios cleared. Run is saved
@@ -6,11 +6,13 @@ function UserSaveTestData
     %also do this using the UI).
    
     %setting App paths
-    appinfo = matlab.apputil.getInstalledAppInfo;
-    idx = find(strcmp({appinfo.name},'Asmita'));
-    aspath = appinfo(idx(1)).location;
-    if isempty(idx)                         %asmita path not found
-        warndlg('Asmita App not installed'); return;
+    if nargin<1
+        appinfo = matlab.apputil.getInstalledAppInfo;
+        idx = find(strcmp({appinfo.name},'Asmita'));
+        aspath = appinfo(idx(1)).location;
+        if isempty(idx)                         %asmita path not found
+            warndlg('Asmita App not installed'); return;
+        end
     end
     testpath = [aspath,[filesep,'Asmita',filesep,'asmita_unit_tests']];
     userPath = [testpath,[filesep,'muiASM TestData',filesep]];

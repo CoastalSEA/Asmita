@@ -105,8 +105,10 @@ classdef AsmitaModel < muiDataSet
             if mobj.SupressPrompts  %supress prompts if true
                 %run model without displaying waitbar
                 for jt = 1:obj.RunSteps
-                    InitTimeStep(obj,mobj,jt)
-                    RunTimeStep(obj,mobj)
+                    ok = InitTimeStep(obj,mobj,jt);
+                    if ok<1, return; end
+                    ok = RunTimeStep(obj,mobj);
+                    if ok<1, return; end
                     PostTimeStep(obj,mobj,eledsp,rchdsp);         
                 end                
             else

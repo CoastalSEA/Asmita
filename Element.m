@@ -358,7 +358,8 @@ classdef Element < muiPropertyUI
                     warndlg(msgtxt); ok = 0; return;
                     % EqVol = 0;
                 end                
-                EqVol = checkFlatVolumes(obj,wlvobj,EqVol,0,EqS);
+                [EqVol,~,ok] = checkFlatVolumes(obj,wlvobj,EqVol,0,EqS);
+                if ok<1, return; end
                 obj(i).EqVolume = EqVol;                
             end
             setClassObj(mobj,'Inputs','Element',obj);
@@ -523,11 +524,11 @@ classdef Element < muiPropertyUI
         end
 
         %%
-        function [vm,vf] = checkFlatVolumes(obj,wlvobj,vm,vf,sa)
+        function [vm,vf,ok] = checkFlatVolumes(obj,wlvobj,vm,vf,sa)
             %check that tidalflat and saltmarshes are not deeper than tidal
             %range. Should not be needed if coefficients for Ve are 
-            %correctly specified.
-            fact = 0.9;  %proportion of tidal range for minimum flat            
+            %correctly specified and area/volume of element within limit
+            fact = 1.0;  %proportion of tidal range for minimum flat            
             TRf = fact*wlvobj.TidalRange;  %factored tidal range
             eletype = getEleProp(obj,'transEleType');
             istype = ismatch(eletype,{'Tidalflat';'Saltmarsh';'DeltaFlat'});         
@@ -536,15 +537,19 @@ classdef Element < muiPropertyUI
             
             for i=1:length(vm)
                 if mdepths(i)>TRf && istype(i)
-                    vm(i) = sa(i)*TRf;         %set moving volume to area*tr
+                    msgtxt = sprintf('Depth in element No.%d is > tidal range, Aborting',i);
+                    warndlg(msgtxt); ok = 0; return;
+                    % vm(i) = sa(i)*TRf;         %set moving volume to area*tr
                 end
                 %
                 if fdepths(i)>TRf && istype(i)
-                    vf(i) = sa(i)*TRf;         %set fixed volume to area*tr
+                    msgtxt = sprintf('Fixed depth in element No.%d > tidal range, Aborting',i);
+                    warndlg(msgtxt); ok = 0; return;
+                    % vf(i) = sa(i)*TRf;         %set fixed volume to area*tr
                 end
             end
-        end
-        
+            ok = 1;
+        end 
 %%
         function prop = getEleProp(obj,varname)
             %get a property and return as an element array

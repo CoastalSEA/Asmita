@@ -267,6 +267,7 @@ classdef Drift < matlab.mixin.Copyable
             %plot the available drift input timeseries data on a tab  
             ht = findobj(src,'Type','Axes');
             delete(ht);
+
             
             msgtxt = 'No Drift inputs defined';
             obj  = getClassObj(mobj,'Inputs','Drift',msgtxt);           
@@ -285,7 +286,8 @@ classdef Drift < matlab.mixin.Copyable
                 end
             end
 
-            figax = axes('Parent',src);
+            tabcb  = @(src,evdat)Drift.TSplot(mobj,src,evdat);           
+            figax = tabfigureplot(obj,src,tabcb,false);   
             tsid = find(tsid>0);
             k = 0;
             for i=1:numtimeseries

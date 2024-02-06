@@ -275,8 +275,9 @@ classdef River < matlab.mixin.Copyable
                 end
             end
             
-            axes('Parent',src);
-            sp1 = subplot(2,1,1);
+            tabcb  = @(src,evdat)River.TSplot(mobj,src,evdat);           
+            figax = tabfigureplot(obj,src,tabcb,false);   
+            sp1 = subplot(2,1,1,figax);
             tsid = find(tsid>0);
             for i=1:numtimeseries
                 eleid = obj(tsid(i)).ChannelID;

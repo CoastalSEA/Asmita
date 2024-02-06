@@ -134,7 +134,8 @@ classdef ASMinterface < handle
             if ok<1, return; end
 
             %check flats and marshes are not deeper than tidal range
-            [vm,vf] = checkFlatVolumes(eleobj,wlvobj,vm,vf,sa);
+            [vm,vf,ok] = checkFlatVolumes(eleobj,wlvobj,vm,vf,sa);
+            if ok<1; return; end
 
             %depth values
             dm = vm./sa; df = vf./sa; de = ve./se;

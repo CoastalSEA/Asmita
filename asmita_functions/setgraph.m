@@ -30,6 +30,9 @@ function setgraph(mobj,src,~)
         return
     end
 
+    %check that graphs have been initialised
+    initialiseGraphs(mobj,advobj); 
+
     switch src.Tag
         case 'Network'
             axtag = 'axNetwork';
@@ -39,6 +42,7 @@ function setgraph(mobj,src,~)
             [g,nlabel] = Advection.initialiseRiverGraph(mobj);
         case 'Drift'
             axtag = 'axDrift';
+            Estuary.initialiseDispersionGraph(mobj);
             [g,nlabel] = Advection.initialiseDriftGraph(mobj);
             if height(g.Edges)>0
                 %convert from drift rate to equivalent flow rate
@@ -135,6 +139,23 @@ function setgraph(mobj,src,~)
         end
     end
 end 
+%%
+function initialiseGraphs(mobj,advobj)
+    %check that the dispersion and advection graphs have been initialised
+    estobj = getClassObj(mobj,'Inputs','Estuary');
+    rncobj = getClassObj(mobj,'Inputs','RunConditions');
+    if isempty(estobj.DispersionGraph)
+        Estuary.initialiseDispersionGraph(mobj);
+    end
+
+    if isempty(advobj.RiverGraph) && rncobj.IncRiver
+        Advection.initialiseRiverGraph(mobj);
+    end
+
+    if isempty(advobj.DriftGraph)  && rncobj.IncDrift
+        Advection.initialiseDriftGraph(mobj);
+    end
+end
 %%
 function panButton(h_ax,src,~)            %#ok<INUSD> 
     %Create push button to enable pan and zoom
