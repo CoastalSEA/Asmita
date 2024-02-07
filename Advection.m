@@ -778,9 +778,11 @@ classdef Advection < matlab.mixin.Copyable
             drifts = obj.DriftGraph.Edges.Weight;
             initGraph = getInitialFlowGraph(obj,mobj,AdvType);
             initdrifts = initGraph.Edges.Weight;
+            %v3.4 used R.ratio in ASM_model. Now uses R.diffratio. This
+            %alters the magnitude of change but not the overall pattern
             R.ratio = drifts./initdrifts;        
             R.diff = drifts-initdrifts;
-            R.diffratio = abs(R.diff)./initdrifts;
+            R.diffratio = R.diff./initdrifts;
         end
 
     end
