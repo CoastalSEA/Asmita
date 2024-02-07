@@ -1,2 +1,0 @@
-The training exercise was originally prepared using AsmitaOO. the mat files have been converted and the slides updated but figures and outputs are from the AsmitaOO version. 
-Results for each case were compared visually and were found to be consistent

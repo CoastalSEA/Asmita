@@ -94,7 +94,7 @@ classdef ASM_Plots < muiPlots
             end
             
             %get the data to be used in the plot 
-            if obj.UIset.AllEle
+            if isfield(obj.UIset,'AllEle') && obj.UIset.AllEle
                 multiElePlot(obj,mobj);
                 return;
             else
