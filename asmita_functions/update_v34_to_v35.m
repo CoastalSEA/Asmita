@@ -23,15 +23,15 @@ function update_v34_to_v35(obj)
 %--------------------------------------------------------------------------
 %
 
-    %add run time plot option to RunProperties and sadjust tab position
+    %add run time plot option to RunProperties and adjust tab position
     if isfield(obj.Inputs,'RunProperties') && ...
-                            ~isfield(obj.Inputs.RunProperties,'isRunPlot')
+                            ~isprop(obj.Inputs.RunProperties,'isRunPlot')
         obj.Inputs.RunProperties.PropertyLabels = {' Time Step (years)',...
                           ' Number of Time Steps',...
                           ' Output Interval (No. of time steps)', ...
                           ' Start Year',...
                           ' Run time plot (0/1)'};
-
+        
         obj.Inputs.RunProperties.isRunPlot = false;
         obj.Inputs.RunProperties.TabDisplay.Position(1) = 0.94;        
     end

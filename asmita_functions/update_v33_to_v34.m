@@ -24,7 +24,7 @@ function update_v33_to_v34(obj)
 %
 
     %modifies Saltmarsh properties and PropertyLabels
-    if isfield(obj.Inputs,'Saltmarsh') && ~isfield(obj.Inputs.Saltmarsh,'EdgeErosion')
+    if isfield(obj.Inputs,'Saltmarsh') && ~isprop(obj.Inputs.Saltmarsh,'EdgeErosion')
         obj.Inputs.Saltmarsh.PropertyLabels = {'Number of saltmarsh species',...
                                   'Minimum depth (m)','Maximum depth (m)',...
                                   'Maximum biomass (kg/m2)',...
@@ -39,7 +39,7 @@ function update_v33_to_v34(obj)
     end
     
     %modifies any defined Interventions to include non-erodibility (true is so)
-    if isfield(obj.Inputs,'Interventions') && ~isfield(obj.Inputs.Interventions,'isNonErodible')
+    if isfield(obj.Inputs,'Interventions') && ~isprop(obj.Inputs.Interventions,'isNonErodible')
         lobj = getClassObj(obj,'Inputs','Interventions');
         nint = length(lobj);   %number of element interventions defined
         if nint>0 && iscell(lobj(1).Year)

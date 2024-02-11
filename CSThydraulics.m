@@ -120,16 +120,11 @@ classdef CSThydraulics < muiPropertyUI
             for i=1:nrow
                 inp.RiverDischarge = obj.Qrange(i);
                 try
-                    [res,~,~,xy] = cst_model(inp,rnp,est);
+                    [res,xdim] = cst_model(inp,rnp,est);
                     resX(i,:) = res;
-                catch
+                catch ME
                     %remove the waitbar if program did not complete
-                    hw = findall(0,'type','figure','tag','TMWWaitbar');
-                    delete(hw);
-                    inpQr = inp.RiverDischarge;
-                    msg = sprintf('Failed to find solution in cst_model for Qr=%d',inpQr);
-                    warndlg(msg);
-                    return;
+                    model_catch(ME,'cst_model','Qr',inp.RiverDischarge); 
                 end
             end
             resXQ = cell(1,5);
@@ -141,7 +136,7 @@ classdef CSThydraulics < muiPropertyUI
             % Assign model output to a dstable using the defined dsproperties meta-data
             %--------------------------------------------------------------------------
             dst = dstable(resXQ{:},'RowNames',inp.Qrange','DSproperties',dsp);
-            dst.Dimensions.X = xy{:,1};     %grid x-coordinate
+            dst.Dimensions.X = xdim{1};     %grid x-coordinate
             %--------------------------------------------------------------------------
             % Save results
             %--------------------------------------------------------------------------
@@ -306,6 +301,7 @@ classdef CSThydraulics < muiPropertyUI
             rnp.TimeInt = 1;     %time increment in analytical model (hrs)
             rnp.DistInt = 1000;  %distance increment along estuary (m)
             rnp.useObs = false;  %flag to indicate whether to use observations
+            rnp.isfull = false;  %flag used in EnergyFlux for detail output
         end
 %%
         function dsp1 = modelDSproperties(~)
