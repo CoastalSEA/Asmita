@@ -49,7 +49,7 @@ classdef Interventions < matlab.mixin.Copyable
             obj  = getClassObj(mobj,'Inputs','Interventions');
             if isempty(obj), return; end
             
-            %for each element sort the specified changes into an vectors of
+            %for each element sort the specified changes into a vectors of
             %unique years and volume/area changes
             [uyrs,vals,isnero] = sortInterventions(obj);
             nintele = length(obj);  %number of elements with interventions
@@ -213,8 +213,7 @@ classdef Interventions < matlab.mixin.Copyable
             end
 
             %if the run properties have been defined use these to adjust
-            %time range of plot
-            
+            %time range of plot            
             if ~isempty(rnpobj) && length(Vol)>5  %5 used as switch to stair plot in tabPlot
                 t0 = rnpobj.StartYear;
                 tN = t0+rnpobj.TimeStep*rnpobj.NumSteps;
@@ -319,11 +318,13 @@ classdef Interventions < matlab.mixin.Copyable
             %user to select from subset
             idx = []; legtxt = ''; ok = 0;
             eleobj = getClassObj(mobj,'Inputs','Element');
+            styear = startYear(obj,mobj);
             count = 0;
             intid = [];
             for i=1:length(obj)                
                 if any(obj(i).VolumeChange~=0) || ...
-                                        any(obj(i).SurfaceAreaChange~=0) 
+                          any(obj(i).SurfaceAreaChange~=0) || ...
+                                  any(obj(i).Year>styear)
                     count = count+1;
                     intid(count) = i;                     %#ok<AGROW>
                     eleid = obj(i).ElementID;
@@ -354,7 +355,8 @@ classdef Interventions < matlab.mixin.Copyable
             vmax = max(Vol); smax = max(Surf); 
             fVol = Vol.*logical(isfix); fVol(fVol==0) = NaN;
             fSurf = Surf.*logical(isfix); fSurf(fSurf==0) = NaN;
-            axes('Parent',src);            
+            axes('Parent',src); 
+            
             s1 = subplot(2,1,1); 
             if length(Vol)<5
                 bar(tim,Vol,'DisplayName',legtxt);

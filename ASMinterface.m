@@ -330,10 +330,10 @@ classdef ASMinterface < handle
             for j=1:nele
                 correction = 1;                
                 if noero(j) && dvf(j)>0
-                    if SedAvailable(j)<=0 || ~smsobj.FlatErosion
+                    if SedAvailable(j)<=0
                         correction = 0;  
-                    elseif ism(j) && ~smsobj.FlatErosion && dvf(j)>0
-                        correction = 0;
+%                     elseif ism(j) && dvf(j)>0
+%                         correction = 0;
                     elseif SedAvailable(j)<dvf(j)
                         correction = SedAvailable(j)/dvf(j);    
                     end

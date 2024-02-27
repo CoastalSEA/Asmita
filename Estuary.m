@@ -175,9 +175,16 @@ classdef Estuary < muiPropertyUI
                 D = 0; dExt = 0;
                 return
             end
-            
+
             rncobj = getClassObj(mobj,'Inputs','RunConditions');
-            if rncobj.IncDynamicElements
+            if isempty(rncobj.IncDynamicElements)
+                %initialised at run time but not when river or drift flow
+                %tab is used before model has been run
+                rncobj.IncDynamicElements = false;
+            end
+
+            isinitialised = ~any(isnan(obj.DispersionGraph.Edges.Weight));
+            if rncobj.IncDynamicElements && isinitialised
                 %default is false. set to true if any d=NaN below
                 dispgraph = obj.DispersionGraph;
                 [d,exchIn] = graph2matrix(dispgraph);
@@ -341,7 +348,28 @@ classdef Estuary < muiPropertyUI
             userData = [slr_max,slr_max_bio,mT];
             Estuary.responseTable(mobj,src,userData,tauS,tauM)
         end
-        
+
+%%
+        function [Tmin,Tmax] = getMorphTime(mobj)
+            %system time scale based on Kragtijk et al (2004) in years
+            % sum total volume and plan area at high water
+            % should strictly be equilibrium volume for each element
+            % use min and max values to estimate range of response time
+            eleobj = getClassObj(mobj,'Inputs','Element');
+            estobj = getClassObj(mobj,'Inputs','Estuary');
+            vhw = Reach.getReachProp(mobj,'HWvolume');
+            shw = Reach.getReachProp(mobj,'HWarea');
+            ws = getEleProp(eleobj,'VerticalExchange');
+            n  = getEleProp(eleobj,'TransportCoeff');
+            dExt = estobj.ExternalDisp(:,1);
+            cE = estobj.EqConcCoarse;
+            y2s = mobj.Constants.y2s;
+            vtot = sum(vhw); 
+            stot = sum (shw);
+            Tmin(1) = 1/cE/max(abs(n))*(vtot/max(ws)/stot + vtot/max(dExt))/y2s; %~minimum
+            Tmax(2) = 1/cE/min(abs(n))*(vtot/min(ws)/stot + vtot/min(dExt(dExt>0)))/y2s; %~maximum
+        end
+
 %%
         function responseTable(mobj,src,tableData,tauS,tauM)
             %create table for tab to summarise estuary response properties 

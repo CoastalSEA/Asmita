@@ -28,11 +28,12 @@ classdef AsmitaModel < muiDataSet
         RunSteps = 0  %number of time steps after checking stability
         delta = 0     %time step in seconds
         outInt = 0    %output interval adjusted for any change in time step
-        EleData = []; %array used to store element output at each time step
-        RchData = []; %array used to store reach output at each time step
+        EleData = []  %array used to store element output at each time step
+        RchData = []  %array used to store reach output at each time step
         StepTime      %time to be saved (seconds during run and converted to years)
-        MinimumTimeStep = 0.04;  %value used (yrs) as minimum to prompt user
+        MinimumTimeStep = 0.04   %value used (yrs) as minimum to prompt user
                                  %based on a sp-np cycle (14.6 days)
+        interpRunup = false      %flag to pad the first time step with extra steps
     end
     
     methods (Access = private)
@@ -96,7 +97,11 @@ classdef AsmitaModel < muiDataSet
             
             %iniatialise model setup 
             ok = InitialiseModel(obj,mobj,eledsp,rchdsp);
-            if ok<1, return; end
+            if ok<1, return; end            
+            if obj.interpRunup
+                obj.RunSteps = obj.RunSteps+100; %add 100 intervals to first time step
+            end
+
             %assign the run parameters to the model instance (after
             %InitialiseModel so that ReachID are assigned to Element object
             setRunParam(obj,mobj); %this only saves the core set
@@ -201,7 +206,7 @@ classdef AsmitaModel < muiDataSet
             Element.initialiseElements(mobj); %used in setEqConcentration
             %initialise equilibrium concentration
             Element.setEqConcentration(mobj);   
-            %initial water levels %can be called without initialising
+            %initial water levels can be called without initialising
             %AsmitaModel hence set a dummy model obj to initialise time
             obj.Time = 0;
             WaterLevels.setWaterLevels(mobj,obj);
@@ -349,6 +354,13 @@ classdef AsmitaModel < muiDataSet
          function ok = InitTimeStep(obj,mobj,jt)
              %initialise model parameters for next time step
              obj.iStep = jt;
+             if obj.interpRunup
+                 if jt==1
+                     obj.delta = obj.delta/100;
+                 elseif jt==101
+                     obj.delta = obj.delta*100;
+                 end
+             end
              obj.Time = jt*obj.delta;
              obj.DateTime = obj.DateTime+obj.delta;
              tsyear = obj.DateTime/mobj.Constants.y2s;
@@ -474,6 +486,7 @@ classdef AsmitaModel < muiDataSet
                              dt1 = min_dt;
                          case 'Use specified'
                              dt1 = dt;
+                             obj.interpRunup = true;
                          case 'Abort'
                              ok = 0;
                              return;

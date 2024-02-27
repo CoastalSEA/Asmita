@@ -22,8 +22,7 @@ classdef Saltmarsh < muiPropertyUI
                           'Species productivity (m2/kg/yr)',...
                           'Settling cofficient, alpha (m/s)',...
                           'Settling exponent, beta (-)',...
-                          'Edge erosion rate (m/yr)',...
-                          'Include marsh flat erosion (0/1)'};
+                          'Edge erosion rate (m/yr)'};
         %abstract properties in muiPropertyUI for tab display
         TabDisplay   %structure defines how the property table is displayed 
     end
@@ -37,7 +36,6 @@ classdef Saltmarsh < muiPropertyUI
         SettlingAlpha       %coefficient for biomass enhanced settling rate (m/s)
         SettlingBeta        %exponent for biomass enhanced settling offset (-)
         EdgeErosion=0;      %lateral erosion of marsh(m/yr)
-        FlatErosion=true;   %flag to allow erosion of marsh surface (0/1)
     end    
     
     properties (Transient)
@@ -134,7 +132,9 @@ classdef Saltmarsh < muiPropertyUI
             sa = getEleProp(eleobj,'SurfaceArea');
             vm = getEleProp(eleobj,'MovingVolume');
             depth = vm./sa;          % water depth in element
-            if any(sa(:)==0), depth(sa==0) = 0; end  %trap infinity
+            if any(sa==0), depth(sa==0) = 0; end  %trap infinity
+            %depth(depth<0.2) = 0.2;
+            depth = depth+0.0;
             %vertical exchange for marsh (initial inorganic values)  
             ws = getEleProp(eleobj,'VerticalExchange');
             %compute equilibrium depth based on local concentration
@@ -148,8 +148,9 @@ classdef Saltmarsh < muiPropertyUI
                 if idp(ism(jsm))     %true when within marsh species range   
                     if depth(ism(jsm))>0
                         %water depth over marsh is within marsh species range
-                        wsj = bioenhancedsettling(obj,depth(ism(jsm)),ws(ism(jsm)));
-                        qm = wsj.*cem(ism(jsm))./depth(ism(jsm));       %sediment delivery to marsh 
+                        marshdepth = depth(ism(jsm));
+                        wsj = bioenhancedsettling(obj,marshdepth,ws(ism(jsm)));                        
+                        qm = wsj.*cem(ism(jsm))./marshdepth;  %sediment delivery to marsh 
                         deq = morris_eqdepth(obj,cn,qm,dslr); %equilibrium depth
                         if isempty(deq)                          
                             deq = -1; %catch case when root not found
@@ -177,39 +178,16 @@ classdef Saltmarsh < muiPropertyUI
             %to limit erosion (gma <1: import and gma >1: export)
             eleobj = getClassObj(mobj,'Inputs','Element');
             vm = getEleProp(eleobj,'MovingVolume');
-            ve = getEleProp(eleobj,'EqVolume');
             ws = getEleProp(eleobj,'transVertExch');
             sa = getEleProp(eleobj,'SurfaceArea');
             eletype = getEleProp(eleobj,'EleType');
             obj  = getClassObj(mobj,'Inputs','Saltmarsh');
-            %isEro = obj.FlatErosion;
             depth = vm./sa; % water depth in element
             if any(sa==0), depth(sa==0) = 0; end
-            %gma = ve./vm;   % <1 import and >1 export
             ism = find(strcmp(eletype,'Saltmarsh'));
             nsm = length(ism);
             for k=1:nsm
                 ws(ism(k)) = bioenhancedsettling(obj,depth(ism(k)),ws(ism(k)));
-                %original code. as gamma changes around 1 this produces a
-                %large change in ws as is switches between accretion and 
-                %erosion limited by the constraint. The above introduced to
-                %provide a smaller change.
-                % if gma(ism(k))> 1 && isEro
-                %     %marsh eroding (export) and erosion allowed
-                %     ws(ism(k)) = bioenhancedsettling(obj,depth(ism(k)),ws(ism(k)));
-                % elseif gma(ism(k))<= 1
-                %     %marsh accreting (import)
-                %     ws(ism(k)) = bioenhancedsettling(obj,depth(ism(k)),ws(ism(k)));
-                % else
-                %     %prevent erosion if gma>1 and erosion not allowed
-                %     %this is applied even if no biological production when smflg=1
-                %     %so erosion of marsh elements is constrained regardless of biology.
-                %     %if smflg=0 this routine is not called and the specified values
-                %     %of ws are used
-                %     Tsn  = 14.77*24*3600; %duration of spring-neap cycle (secs)
-                %     ws(ism(k)) = ws(ism(k))/Tsn; %use a very small value so that matrix
-                %     %calculations in asmita.m that use W or Ws remain stable
-                % end
             end            
         end
 %%
@@ -785,7 +763,7 @@ classdef Saltmarsh < muiPropertyUI
         function addDataButton(obj,hf,sedprops)
             %add button to allow user to access saltmarsh data used for plot
             usertable = getPropertiesTable(obj);
-            usertable([8,9],:) = [];  %remove marsh erosion data
+            usertable(8,:) = [];  %remove marsh erosion data
             usertable = [usertable;sedprops];
             usertable = table2cell(usertable);
 

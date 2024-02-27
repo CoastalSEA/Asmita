@@ -358,7 +358,7 @@ classdef Element < muiPropertyUI
                     warndlg(msgtxt); ok = 0; return;
                     % EqVol = 0;
                 end                
-                [EqVol,~,ok] = checkFlatVolumes(obj,wlvobj,EqVol,0,EqS);
+                [EqVol,~,ok] = checkFlatVolumes(obj,wlvobj,EqVol,0,EqS(i));
                 if ok<1, return; end
                 obj(i).EqVolume = EqVol;                
             end
@@ -537,13 +537,13 @@ classdef Element < muiPropertyUI
             
             for i=1:length(vm)
                 if mdepths(i)>TRf && istype(i)
-                    msgtxt = sprintf('Depth in element No.%d is > tidal range, Aborting',i);
+                    msgtxt = sprintf('Depth in element No.%d is > tidal range\nAborting in Element.checkFlatVolumes',i);
                     warndlg(msgtxt); ok = 0; return;
                     % vm(i) = sa(i)*TRf;         %set moving volume to area*tr
                 end
                 %
                 if fdepths(i)>TRf && istype(i)
-                    msgtxt = sprintf('Fixed depth in element No.%d > tidal range, Aborting',i);
+                    msgtxt = sprintf('Fixed depth in element No.%d > tidal range\nAborting in Element.checkFlatVolumes',i);
                     warndlg(msgtxt); ok = 0; return;
                     % vf(i) = sa(i)*TRf;         %set fixed volume to area*tr
                 end
