@@ -243,14 +243,17 @@ classdef Saltmarsh < muiPropertyUI
             %from the flat volume
             dv_ero(ismf) = -sign(n(ism)).*dv_ero(ism);
             
-            %do not erode elements that are fixed or dormant if dynamic
-            rncobj = getClassObj(mobj,'Inputs','RunConditions');
-            noero = ~getEleProp(eleobj,'Erodible'); %ie if Erodible false 
+            %do not erode elements that are non-erodible or dormant if dynamic
+            rncobj = getClassObj(mobj,'Inputs','RunConditions');            
             if rncobj.IncDynamicElements && any(ws(estobj.ExchLinks(:,2))==0)
+                %do not erode elements that are dormant
                 idb = ws(estobj.ExchLinks(:,2))==0;
                 dv_ero(estobj.ExchLinks(idb,2)) = zeros(1,sum(idb));
                 ds_ero(estobj.ExchLinks(idb,2)) = zeros(1,sum(idb));
-            elseif any(noero)
+            end
+            %
+            noero = ~getEleProp(eleobj,'Erodible'); %ie if Erodible false 
+            if any(noero)
                 %element is defined as non-erosional
                 dv_ero(noero) = 0;      ds_ero(noero) = 0;
             end

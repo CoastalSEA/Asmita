@@ -4,14 +4,15 @@ classdef ASMinterface < handle
     %
     %----------------------------------------------------------------------
     % NOTES
-    % %logical array of 'illcondition' tests for matrix stability. If any
-    % test fails the run is terminated. The array comprises:
+    % 1) logical array of 'illcondition' tests for matrix stability. If any
+    %    test fails the run is terminated. The array comprises:
     %    1=DQ; 2=Sm; 3=W; 4=DQ+Sm*W
-    % ie horizontal exchanges, surface areas, vertical exchanges, and 
-    % coefficient matrix used in inverse operations. These tests are run
-    % for volume, surface area, and concentration calculations. Area tests
-    % 1 and 3 use D/h, Q/h and W/h, hence depths may also be cause of instability.
-    %
+    %    ie horizontal exchanges, surface areas, vertical exchanges, and 
+    %    coefficient matrix used in inverse operations. These tests are run
+    %    for volume, surface area, and concentration calculations. Area tests
+    %    1 and 3 use D/h, Q/h and W/h, hence depths may also be cause of illcondition.
+    % 2) volumes and surface areas that are <=0 are set to a value of 999 to
+    %    avoid matrices becoming illconditioned.
     % AUTHOR
     % Ian Townend
     %
@@ -69,19 +70,9 @@ classdef ASMinterface < handle
             [B,dd,ok] = ASM_model.BddMatrices(mobj);
             if ok<1, return; end
             Gam  = (ve./vm).^n;
-            %Gam(vm==0) = 1;
-            %trap divide by zero if vm=0
-            % vis0 = find(vm<=0);
-            % if ~isempty(vis0)
-            %     Gam(vis0)=0;
-            % end
-            %
+
             % morphological change in volume
             dvf  = (B*Gam-dd)./cb*robj.delta;
-            if any(ws==0)
-                isnoexch = ws==0;
-                dvf(isnoexch) = 0;
-            end
 
             %biomass change in volume
             rncobj = getClassObj(mobj,'Inputs','RunConditions');
@@ -99,10 +90,6 @@ classdef ASMinterface < handle
             else
                 dvb = zeros(size(dvf)); dv_ero = 0; ds_ero = 0;
             end
-            %
-            % if ~isempty(vis0)
-            %     dvf(vis0) = 0; %force dvf to zero if vm=0
-            % end
             
             % change in water volume - applies to both sediment and water
             % volumes hence use sign(n) rather than n>0 
@@ -114,7 +101,6 @@ classdef ASMinterface < handle
                 dvm(estobj.ExchLinks(idb,2)) = zeros(1,sum(idb));
             end
 
-            %
             % elenames = getEleProp(eleobj,'EleName');
             % table(dwl,conc,dvf,dvb,dvm,ve,vm,sm,Gam,dd,B,'RowNames',elenames)
             %
@@ -128,22 +114,18 @@ classdef ASMinterface < handle
                 vf(vm<=0) = 999;  %value to prevent matrix becoming poorly 
                 vm(vm<=0) = 999;  %conditioned     
             end       
-           
+
             %update surace areas (marsh edge erosion and variable area)
             [sa,ok] = ASM_model.asmitaAreaChange(mobj,robj,ds_ero);  
             if ok<1, return; end
-
-            %check flats and marshes are not deeper than tidal range
-            [vm,vf,ok] = checkFlatVolumes(eleobj,wlvobj,vm,vf,sa);
-            if ok<1; return; end
 
             %depth values
             dm = vm./sa; df = vf./sa; de = ve./se;
             
             %check that elements have not been removed (zero area)
-            %or eroded (sa<0 set to 0)
-            if any(sa<=0) || any(sa==999)
-                idx = sa<=0 | sa==999;
+            %or eroded (sa<=999 set to 0)
+            if any(sa<=999)
+                idx = sa<=999;
                 dm(idx) = 0;
                 df(idx) = 0;
                 de(idx) = 0;
@@ -177,8 +159,14 @@ classdef ASMinterface < handle
             sa = getEleProp(eleobj,'SurfaceArea');
             ok = 1;
 
-            %at the moment only a correction for marsh erosion is made
+            %correction for marsh edge erosion
             newsa = sa+ds_ero;
+            if any(newsa<0)                
+                newsa(newsa<0) = 999;
+                % idx = find(newsa<0);
+                % warndlg('Surface area goes negative in Element %d\nAborted in ASMinterface.asmitaAreaChange',idx)
+                % ok = 0; return;
+            end
             newsa_list = num2cell(newsa);
             [eleobj.SurfaceArea] = newsa_list{:};
             setClassObj(mobj,'Inputs','Element',eleobj);
@@ -233,7 +221,6 @@ classdef ASMinterface < handle
 %% 
         function ok = setDQmatrix(mobj,offset)
             %set the DQ, dqIn and conc properties to be used for a time step
-            %****overloaded in ASM_model
             obj = getClassObj(mobj,'Inputs','ASM_model');
             eleobj  = getClassObj(mobj,'Inputs','Element');
             cE = getEleProp(eleobj,'EqConcentration');
@@ -242,9 +229,9 @@ classdef ASMinterface < handle
             %DispersionGraph and FlowGraph if IncDynamicElements is true
             %otherwise use Estuary-Dispersion and Advection-Flow properties
             [D,dExt] = Estuary.getDispersion(mobj);
-            [Q,qIn,~] = Advection.getAdvectionFlow(mobj,'River');
-            [Qtp,qtpIn,~] = Advection.getAdvectionFlow(mobj,'Qtp');
-            [Qs,qsIn,~] = Advection.getAdvectionFlow(mobj,'Drift');
+            [Q,qIn,qOut] = Advection.getAdvectionFlow(mobj,'River');
+            [Qtp,qtpIn,qtpOut] = Advection.getAdvectionFlow(mobj,'Qtp');
+            [Qs,qsIn,qsOut] = Advection.getAdvectionFlow(mobj,'Drift');
             if isnan(Qs), ok = 0; return; end
 
             %to set eqCorV in Element.setEleAdvOffsets need to only
@@ -253,18 +240,22 @@ classdef ASMinterface < handle
             %whereas runtime calls use all advections included in run
             %and offset = RunConditions.Adv2Inc
             switch offset
-                case 'flow+drift'    %include flow and drift
-                    obj.DQ = D+Q+Qtp+Qs;
-                    obj.dqIn = dExt+kCeI.*qIn+qtpIn+qsIn;
-                case 'flow'          %include flow only
-                    obj.DQ = D+Q+Qtp;
-                    obj.dqIn = dExt+kCeI.*qIn+qtpIn;
-                case 'drift'         %include drift only
-                    obj.DQ = D+Qs;
-                    obj.dqIn = dExt+qsIn;
-                otherwise            %use no advections (offset = 'none')
-                    obj.DQ = D;
-                    obj.dqIn = dExt;
+                    case 'flow+drift'    %include flow and drift
+                        obj.DQ = D+Q+Qtp+Qs;
+                        obj.dqIn = dExt+kCeI.*qIn+qtpIn+qsIn;
+                        obj.dqOut = dExt+qOut+qtpOut+qsOut;
+                    case 'flow'          %include flow only
+                        obj.DQ = D+Q+Qtp;
+                        obj.dqIn = dExt+kCeI.*qIn+qtpIn;
+                        obj.dqOut = dExt+qOut+qtpOut;
+                    case 'drift'         %include drift only
+                        obj.DQ = D+Qs;
+                        obj.dqIn = dExt+qsIn;
+                        obj.dqOut = dExt+qOut;
+                    otherwise            %use no advections (offset = 'none')
+                        obj.DQ = D;
+                        obj.dqIn = dExt;
+                        obj.dqOut = dExt;
             end   
 
             setClassObj(mobj,'Inputs','ASM_model',obj);
@@ -275,7 +266,6 @@ classdef ASMinterface < handle
         function ok = setVertExch(mobj,robj)
             %set vertical exchange model parameters
             rncobj  = getClassObj(mobj,'Inputs','RunConditions');
-            smsobj = getClassObj(mobj,'Inputs','Saltmarsh');
             eleobj = getClassObj(mobj,'Inputs','Element');
             nele = length(eleobj);
             vm = getEleProp(eleobj,'MovingVolume');
@@ -316,25 +306,22 @@ classdef ASMinterface < handle
             dvf  = (B*Gam-dd)./cb*robj.delta;
             
             %check if any erosion is greater than available sediment for
-            %any element and impose constraint on marsh erosion if set
+            %any element
             ws = getEleProp(eleobj,'transVertExch');
             vf = getEleProp(eleobj,'FixedVolume');            
             noero = ~getEleProp(eleobj,'Erodible'); %ie if Erodible false 
-            eletype = getEleProp(eleobj,'transEleType');  
-            ism = strcmp(eletype,'Saltmarsh');
             %when noero true and dvf>0 ie erodiing
             %correction=1 if SedAvailable>dvf
             %correction=0 if SedAvailable<=0
             %correction=SedAvailable/SedChange if SedAvailable<=dvf
             SedAvailable = sign(n).*(Vo-vf);
+            EleChange = sign(n).*dvf; %+ve -> more water or less sediment
             for j=1:nele
-                correction = 1;                
-                if noero(j) && dvf(j)>0
-                    if SedAvailable(j)<=0
-                        correction = 0;  
-%                     elseif ism(j) && dvf(j)>0
-%                         correction = 0;
-                    elseif SedAvailable(j)<dvf(j)
+                correction = 1;                           %SedAvailable>dvf 
+                if noero(j) && EleChange(j)>0 
+                    if SedAvailable(j)<=0                 %SedAvailable<=0
+                        correction = 0;   
+                    elseif SedAvailable(j)<EleChange(j)   %SedAvailable<dvf
                         correction = SedAvailable(j)/dvf(j);    
                     end
                 end
@@ -449,15 +436,16 @@ classdef ASMinterface < handle
 
 %%
         function illcondition = checkMatrix(amat1,amat2,amat3)
-            %check whether matries are ill conditioned for inversion. Return logical 
-            %array for check of each matrix and combination amat1+amat2*amat3.    
+            %check whether matrices are ill conditioned for inversion. Return logical 
+            %array for check of each matrix and combination amat1+amat2*amat3. 
+            %use 'fro' because Frobenius norm is better for sparse matrices
             threshold = 1/eps;
             amatrix = amat1+amat2*amat3;
         
-            illcondition = [cond(amat1)>threshold,...
-                            cond(amat2)>threshold,...
-                            cond(amat3)>threshold,...
-                            cond(amatrix)>threshold];
+            illcondition = [cond(amat1,'fro')>threshold,...
+                            cond(amat2,'fro')>threshold,...
+                            cond(amat3,'fro')>threshold,...
+                            cond(amatrix,'fro')>threshold];
         end
 
 %%      

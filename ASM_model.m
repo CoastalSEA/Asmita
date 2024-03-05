@@ -161,91 +161,91 @@ classdef ASM_model < ASMinterface
         end
 
 %% 
-        function ok = setDQmatrix(mobj,offset)
-            % overloads version in ASMinterface
-            % used to test D+Q+Qtp and just Qtp when tidal pimping included
-            
-            %set the DQ, dqIn and conc properties to be used for a time step
-            %set up dispersion and advection matrices using dynamic
-            %ReachGraph and FlowGraph if IncDynamicElements is true
-            %otherwise use Estuary-Dispersion and Advection-Flow properties
-            obj = getClassObj(mobj,'Inputs','ASM_model');
-            eleobj  = getClassObj(mobj,'Inputs','Element');
-            cE = getEleProp(eleobj,'EqConcentration');
-            kCeI = River.getRiverProp(mobj,'tsRiverConc')./cE;
-            [D,dExt] = Estuary.getDispersion(mobj);
-            [Q,qIn,qOut] = Advection.getAdvectionFlow(mobj,'River');
-            [Qtp,qtpIn,qtpOut] = Advection.getAdvectionFlow(mobj,'Qtp');
-            [Qs,qsIn,qsOut] = Advection.getAdvectionFlow(mobj,'Drift');
-            if isnan(Qs), ok = 0; return; end
-
-            isQtpOnly = false;
-
-            if isQtpOnly
-                 %--------------------- NOT CURRENTLY WORKING -------------
-                 %TEST code to examine use of Qtp in place of exchange
-                 %components D+Q that relate to the channel elements
-                 % *does not work for Severn but does work for Venice*
-                 %---------------------------------------------------------
-                rncobj = getClassObj(mobj,'Inputs','RunConditions');
-                if rncobj.IncTidalPumping
-                    DQ = D; dEqIn = dExt;
-                    %needs checking - surely Qtp can be +/-? so need an
-                    %index for non-zero values??
-                    idx = abs(Qtp)>0;        %index of qtp exchanges
-                    DQ(idx) = Qtp(idx);
-                    idi = abs(qtpIn)>0;      %index of qtpIn exchanges
-                    dEqIn(idi) = qtpIn(idi); %assumes no input from rivers 
-                else                         %which would be negative qtpOut
-                    DQ = D+Q;                %and need correcting by kCeI
-                    dEqIn = dExt+kCeI.*qIn;
-                end
-                %
-                switch offset
-                    case 'flow+drift'    %include flow and drift
-                        obj.DQ = DQ+Qs;
-                        obj.dqIn = dEqIn+qsIn;
-                    case 'flow'          %include flow only
-                        obj.DQ = DQ;
-                        obj.dqIn = dEqIn;
-                    case 'drift'         %include drift only
-                        obj.DQ = D+Qs;
-                        obj.dqIn = dExt+qsIn;
-                    otherwise            %use no advections (offset = 'none')
-                        obj.DQ = D;
-                        obj.dqIn = dExt;
-                end                 
-                
-           
-            else
-                %to set eqCorV in Element.setEleAdvOffsets need to only
-                %include some of the advections based on conditions set
-                %and offset = RunConditions.Adv2Offset
-                %whereas runtime calls use all advections included in run
-                %and offset = RunConditions.Adv2Inc
-                switch offset
-                    case 'flow+drift'    %include flow and drift
-                        obj.DQ = D+Q+Qtp+Qs;
-                        obj.dqIn = dExt+kCeI.*qIn+qtpIn+qsIn;
-                        obj.dqOut = dExt+qOut+qtpOut+qsOut;
-                    case 'flow'          %include flow only
-                        obj.DQ = D+Q+Qtp;
-                        obj.dqIn = dExt+kCeI.*qIn+qtpIn;
-                        obj.dqOut = dExt+qOut+qtpOut;
-                    case 'drift'         %include drift only
-                        obj.DQ = D+Qs;
-                        obj.dqIn = dExt+qsIn;
-                        obj.dqOut = dExt+qOut;
-                    otherwise            %use no advections (offset = 'none')
-                        obj.DQ = D;
-                        obj.dqIn = dExt;
-                        obj.dqOut = dExt;
-                end   
-            end
-
-            setClassObj(mobj,'Inputs','ASM_model',obj);
-            ok = 1;
-        end        
+%         function ok = setDQmatrix(mobj,offset)
+%             % overloads version in ASMinterface
+%             % used to test D+Q+Qtp and just Qtp when tidal pimping included
+%             
+%             %set the DQ, dqIn and conc properties to be used for a time step
+%             %set up dispersion and advection matrices using dynamic
+%             %ReachGraph and FlowGraph if IncDynamicElements is true
+%             %otherwise use Estuary-Dispersion and Advection-Flow properties
+%             obj = getClassObj(mobj,'Inputs','ASM_model');
+%             eleobj  = getClassObj(mobj,'Inputs','Element');
+%             cE = getEleProp(eleobj,'EqConcentration');
+%             kCeI = River.getRiverProp(mobj,'tsRiverConc')./cE;
+%             [D,dExt] = Estuary.getDispersion(mobj);
+%             [Q,qIn,qOut] = Advection.getAdvectionFlow(mobj,'River');
+%             [Qtp,qtpIn,qtpOut] = Advection.getAdvectionFlow(mobj,'Qtp');
+%             [Qs,qsIn,qsOut] = Advection.getAdvectionFlow(mobj,'Drift');
+%             if isnan(Qs), ok = 0; return; end
+% 
+%             isQtpOnly = false;
+% 
+%             if isQtpOnly
+%                  %--------------------- NOT CURRENTLY WORKING -------------
+%                  %TEST code to examine use of Qtp in place of exchange
+%                  %components D+Q that relate to the channel elements
+%                  % *does not work for Severn but does work for Venice*
+%                  %---------------------------------------------------------
+%                 rncobj = getClassObj(mobj,'Inputs','RunConditions');
+%                 if rncobj.IncTidalPumping
+%                     DQ = D; dEqIn = dExt;
+%                     %needs checking - surely Qtp can be +/-? so need an
+%                     %index for non-zero values??
+%                     idx = abs(Qtp)>0;        %index of qtp exchanges
+%                     DQ(idx) = Qtp(idx);
+%                     idi = abs(qtpIn)>0;      %index of qtpIn exchanges
+%                     dEqIn(idi) = qtpIn(idi); %assumes no input from rivers 
+%                 else                         %which would be negative qtpOut
+%                     DQ = D+Q;                %and need correcting by kCeI
+%                     dEqIn = dExt+kCeI.*qIn;
+%                 end
+%                 %
+%                 switch offset
+%                     case 'flow+drift'    %include flow and drift
+%                         obj.DQ = DQ+Qs;
+%                         obj.dqIn = dEqIn+qsIn;
+%                     case 'flow'          %include flow only
+%                         obj.DQ = DQ;
+%                         obj.dqIn = dEqIn;
+%                     case 'drift'         %include drift only
+%                         obj.DQ = D+Qs;
+%                         obj.dqIn = dExt+qsIn;
+%                     otherwise            %use no advections (offset = 'none')
+%                         obj.DQ = D;
+%                         obj.dqIn = dExt;
+%                 end                 
+%                 
+%            
+%             else
+%                 %to set eqCorV in Element.setEleAdvOffsets need to only
+%                 %include some of the advections based on conditions set
+%                 %and offset = RunConditions.Adv2Offset
+%                 %whereas runtime calls use all advections included in run
+%                 %and offset = RunConditions.Adv2Inc
+%                 switch offset
+%                     case 'flow+drift'    %include flow and drift
+%                         obj.DQ = D+Q+Qtp+Qs;
+%                         obj.dqIn = dExt+kCeI.*qIn+qtpIn+qsIn;
+%                         obj.dqOut = dExt+qOut+qtpOut+qsOut;
+%                     case 'flow'          %include flow only
+%                         obj.DQ = D+Q+Qtp;
+%                         obj.dqIn = dExt+kCeI.*qIn+qtpIn;
+%                         obj.dqOut = dExt+qOut+qtpOut;
+%                     case 'drift'         %include drift only
+%                         obj.DQ = D+Qs;
+%                         obj.dqIn = dExt+qsIn;
+%                         obj.dqOut = dExt+qOut;
+%                     otherwise            %use no advections (offset = 'none')
+%                         obj.DQ = D;
+%                         obj.dqIn = dExt;
+%                         obj.dqOut = dExt;
+%                 end   
+%             end
+% 
+%             setClassObj(mobj,'Inputs','ASM_model',obj);
+%             ok = 1;
+%         end        
     end
    
 end

@@ -338,9 +338,7 @@ classdef Element < muiPropertyUI
             %calls AsmitaModel.asmitaEqFunctions(mobj) so that alternatives
             %can be used by overloading in the AsmitaModel class            
             obj = getClassObj(mobj,'Inputs','Element');
-            wlvobj = getClassObj(mobj,'Inputs','WaterLevels');
             eqScaling = getEleProp(obj,'eqScaling'); %scaling to initial values
-            EqS = getEleProp(obj,'EqSurfaceArea'); 
             %update unadjusted equilibrium volumes to account for changes
             %in tidal prism
             ASM_model.asmitaEqFunctions(mobj);       %updates Element.EqVolume
@@ -350,16 +348,19 @@ classdef Element < muiPropertyUI
             for i=1:length(obj)
                 EqVol = eqScaling(i)*eqAdvCor(i)*obj(i).EqVolume;
                 %make adjustments to volume if intervention are fixed. 
-                %Can't do it in ASM_model because EqVolumes are not scaled 
-                %to model values. 
-                EqVol = EqVol+obj(i).eqFixedInts(1);      %1 - volume change
-                if any(EqVol/EqS(i)<0)
-                    msgtxt = sprintf('Equilibrium depth in element No.%d is negative, Aborting',i);
+                %Can't do it in ASM_model because EqVolumes have not been 
+                %scaled to model values, as above. eqFixedInts set in 
+                %Interventions.setAnnualChange depending on conditions 
+                EqVol = EqVol+obj(i).eqFixedInts(1); %1 - volume change
+                if EqVol<0 
+                    %error in EqVol or fixed interventions are too large
+                    msgtxt = sprintf('Equilibrium volume in element No.%d is negative\nAborting in Element.setEquilibrium',i);
                     warndlg(msgtxt); ok = 0; return;
-                    % EqVol = 0;
+                elseif obj(i).SurfaceArea<=999
+                    %if surface area <=999 (ie S=0) set equilibirum to
+                    %element volume so that there is no further change
+                    EqVol = obj(i).MovingVolume;
                 end                
-                [EqVol,~,ok] = checkFlatVolumes(obj,wlvobj,EqVol,0,EqS(i));
-                if ok<1, return; end
                 obj(i).EqVolume = EqVol;                
             end
             setClassObj(mobj,'Inputs','Element',obj);
@@ -449,6 +450,7 @@ classdef Element < muiPropertyUI
             end
             setClassObj(mobj,'Inputs','Element',obj);
         end
+
 %%
         function setEqScalingCoeffs(mobj)
             %function to define scaling for the equilibrium relative to
@@ -476,9 +478,10 @@ classdef Element < muiPropertyUI
             end
 
             setClassObj(mobj,'Inputs','Element',obj);
-        end        
+        end       
+
 %%
-        function setEleAdvOffsets(mobj)
+        function ok = setEleAdvOffsets(mobj)
             %assign element advection offfset due to river flow or drift
             obj = getClassObj(mobj,'Inputs','Element');          
             nele = length(obj);
@@ -492,7 +495,8 @@ classdef Element < muiPropertyUI
                 eqCorV =  ones(nele,1);
             else
                 ASM_model.setDQmatrix(mobj,rncobj.Adv2Offset);
-                [B,dd] = ASM_model.BddMatrices(mobj);
+                [B,dd,ok] = ASM_model.BddMatrices(mobj);
+                if ok<1, return; end   %illconditioned matrix
                 eqCorV = (B\dd).^(1./n);                
             end
             %now assign offset to elements 
@@ -503,13 +507,46 @@ classdef Element < muiPropertyUI
             
             %set if 'none' or reset DQ matrix to full value with all advections
             ASM_model.setDQmatrix(mobj,rncobj.Adv2Inc);
-        end     
+        end   
+
 %%
         function setElement(mobj)
             %initialise an empty instance of Element (used in asm_oo2mui)
             obj = Element(mobj);
             setClassObj(mobj,'Inputs','Element',obj);
         end
+
+%%
+function  msgtxt = checkFlatVolumes(mobj,isinitialise)
+            %check that tidalflat and saltmarshes are not deeper than tidal
+            %range. Should not be needed if coefficients for Ve are 
+            %correctly specified and area/volume of element within limit
+            %Note: only used as initial check. Interventions can deepen
+            %the flat but they continue to seek the defined equilbrium  
+            msgtxt = {};
+            eleobj = getClassObj(mobj,'Inputs','Element');   
+            if isinitialise
+                vm = getEleProp(eleobj,'InitialVolume');
+                sa = getEleProp(eleobj,'InitialSurfaceArea');
+                eletype = getEleProp(eleobj,'EleType');
+            else
+                vm = getEleProp(eleobj,'MovingVolume');
+                sa = getEleProp(eleobj,'SurfaceArea');
+                eletype = getEleProp(eleobj,'transEleType');
+            end
+            mdepths = vm./sa;
+           
+            wlvobj = getClassObj(mobj,'Inputs','WaterLevels');
+            TR = wlvobj.TidalRange;  %tidal range            
+            istype = ismatch(eletype,{'Tidalflat';'Saltmarsh';'DeltaFlat'}); 
+            j = 1;
+            for i=1:length(vm)
+                if mdepths(i)>TR && istype(i) && sa(i)>999
+                    msgtxt{j} = sprintf('Depth in element No.%d is > tidal range',i); %#ok<AGROW> 
+                    j = j+1;
+                end
+            end
+        end 
     end
 %%        
         %add other functions to operate on properties as required  
@@ -523,33 +560,6 @@ classdef Element < muiPropertyUI
             bedConc = (obj.BedDensity-rhow)/(rhos-rhow);
         end
 
-        %%
-        function [vm,vf,ok] = checkFlatVolumes(obj,wlvobj,vm,vf,sa)
-            %check that tidalflat and saltmarshes are not deeper than tidal
-            %range. Should not be needed if coefficients for Ve are 
-            %correctly specified and area/volume of element within limit
-            fact = 1.0;  %proportion of tidal range for minimum flat            
-            TRf = fact*wlvobj.TidalRange;  %factored tidal range
-            eletype = getEleProp(obj,'transEleType');
-            istype = ismatch(eletype,{'Tidalflat';'Saltmarsh';'DeltaFlat'});         
-            mdepths = vm./sa;
-            fdepths = vf./sa;
-            
-            for i=1:length(vm)
-                if mdepths(i)>TRf && istype(i)
-                    msgtxt = sprintf('Depth in element No.%d is > tidal range\nAborting in Element.checkFlatVolumes',i);
-                    warndlg(msgtxt); ok = 0; return;
-                    % vm(i) = sa(i)*TRf;         %set moving volume to area*tr
-                end
-                %
-                if fdepths(i)>TRf && istype(i)
-                    msgtxt = sprintf('Fixed depth in element No.%d > tidal range\nAborting in Element.checkFlatVolumes',i);
-                    warndlg(msgtxt); ok = 0; return;
-                    % vf(i) = sa(i)*TRf;         %set fixed volume to area*tr
-                end
-            end
-            ok = 1;
-        end 
 %%
         function prop = getEleProp(obj,varname)
             %get a property and return as an element array

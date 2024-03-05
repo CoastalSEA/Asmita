@@ -33,7 +33,8 @@ classdef AsmitaModel < muiDataSet
         StepTime      %time to be saved (seconds during run and converted to years)
         MinimumTimeStep = 0.04   %value used (yrs) as minimum to prompt user
                                  %based on a sp-np cycle (14.6 days)
-        interpRunup = false      %flag to pad the first time step with extra steps
+        interp_jt = []           %time step to pad with extra time steps (to avoif large discontinuities)
+        interpInc = 100          %no of additional increments to add when padding a time step
     end
     
     methods (Access = private)
@@ -77,7 +78,7 @@ classdef AsmitaModel < muiDataSet
                 end
                 %
                 if ok<1 
-                    warndlg('Not enough components defined to run model');
+                    warndlg('Not enough components defined to run model, or illconditioned network');
                     return
                 end
             end            
@@ -98,9 +99,7 @@ classdef AsmitaModel < muiDataSet
             %iniatialise model setup 
             ok = InitialiseModel(obj,mobj,eledsp,rchdsp);
             if ok<1, return; end            
-            if obj.interpRunup
-                obj.RunSteps = obj.RunSteps+100; %add 100 intervals to first time step
-            end
+            jt = 1;
 
             %assign the run parameters to the model instance (after
             %InitialiseModel so that ReachID are assigned to Element object
@@ -109,18 +108,21 @@ classdef AsmitaModel < muiDataSet
             
             if mobj.SupressPrompts  %supress prompts if true
                 %run model without displaying waitbar
-                for jt = 1:obj.RunSteps
+                %use 'while' because RunSteps can be modified if there are 
+                %large interventions and time step is refined locally
+                while jt<=obj.RunSteps
                     ok = InitTimeStep(obj,mobj,jt);
                     if ok<1, return; end
                     ok = RunTimeStep(obj,mobj);
                     if ok<1, return; end
-                    PostTimeStep(obj,mobj,eledsp,rchdsp);         
+                    PostTimeStep(obj,mobj,eledsp,rchdsp); 
+                    jt = jt+1;
                 end                
             else
                 msg = sprintf('ASMITA processing, please wait');
                 hw = waitbar(0,msg);
-                %run model
-                for jt = 1:obj.RunSteps
+                %run model - see note above
+                while jt<=obj.RunSteps
                     ok = InitTimeStep(obj,mobj,jt);
                     if ok<1, close(hw); return; end
                     ok = RunTimeStep(obj,mobj);
@@ -128,29 +130,31 @@ classdef AsmitaModel < muiDataSet
                     PostTimeStep(obj,mobj,eledsp,rchdsp);
                     %to report time step during run use the following
                     msg = sprintf('ASMITA processing, step %d of %d',...
-                                                             jt,obj.RunSteps);
-                    waitbar(jt/obj.RunSteps,hw,msg);                
+                                                             jt,obj.RunSteps);                    
+                    waitbar(jt/obj.RunSteps,hw,msg);   
+                    jt = jt+1;
                 end
                 close(hw);
             end
 
             %now assign results to object properties  
-            if rnpobj.StartYear>0
-                %code for datetime format
-                modeldate = datetime(rnpobj.StartYear,1,1,0,0,0);
-                modeltime = modeldate + seconds(obj.StepTime);
-                modeltime.Format = eledsp.Row.Format;
-            else
-                %code for duration format
-                modeltime = years(rnpobj.StartYear)+seconds(obj.StepTime);
-                eledsp.Row.Format = 'y';
-                modeltime.Format = eledsp.Row.Format;
-                rchdsp.Row.Format = eledsp.Row.Format;
-            end
-            %code for calendatDuration format 
+            modeldate = datetime(rnpobj.StartYear,1,1,0,0,0);
+            modeltime = modeldate + seconds(obj.StepTime);
+            modeltime.Format = eledsp.Row.Format;
+
+            %Note: durations of years with decimal second intervals are 
+            %not unique when converted to characters and so cannot be used
+            %in a table or dstable
+            %code for duration format
+            % modeltime = years(rnpobj.StartYear)+seconds(obj.StepTime);
+            % eledsp.Row.Format = 'y';
+            % modeltime.Format = eledsp.Row.Format;
+            % rchdsp.Row.Format = eledsp.Row.Format;
+            %code for calendarDuration format 
             % modeldate = datetime(rnpobj.StartYear,1,1,0,0,0);
             % modeltime = modeldate + seconds(obj.StepTime);
-            % modeltime.Format = dsp.Row.Format;
+            % eledsp.Row.Format = 'y';
+            % modeltime.Format = eledsp.Row.Format;
             % modeltime = calendarDuration(datevec(modeltime));
             
 %--------------------------------------------------------------------------
@@ -242,14 +246,14 @@ classdef AsmitaModel < muiDataSet
             imes = 1;
             minclasses = mobj.ModelInputs.AsmitaModel;
             msg = 'Core inputs: '; msg0 = msg;
-            for i=1:length(minclasses)
+            for ii=1:length(minclasses)
                 %when called by runModel this repeats the isvalidmodel check
-                lobj = getClassObj(mobj,'Inputs',minclasses{i});
+                lobj = getClassObj(mobj,'Inputs',minclasses{ii});
                 if isempty(lobj)
-                    msg0 = sprintf('%s %s, ',msg0,minclasses{i});
+                    msg0 = sprintf('%s %s, ',msg0,minclasses{ii});
                     ok = 0;
                 else
-                    msg = sprintf('%s %s, ',msg,minclasses{i});
+                    msg = sprintf('%s %s, ',msg,minclasses{ii});
                 end
             end
             message{imes} = sprintf('%s are defined\n',msg(1:end-2));  %removes final comma
@@ -267,7 +271,8 @@ classdef AsmitaModel < muiDataSet
             end
             
             %map run conditions to additonal classes required
-            rncobj = getClassObj(mobj,'Inputs','RunConditions');
+            RunConditions.setAdvectionOffset(mobj);  %used for condition test below
+            rncobj = getClassObj(mobj,'Inputs','RunConditions');            
             adnclasses = {'River',rncobj.IncRiver;...
                           'Drift',rncobj.IncDrift;...
                           'Saltmarsh',rncobj.IncSaltmarsh;...
@@ -304,6 +309,28 @@ classdef AsmitaModel < muiDataSet
                     ok = 0;
                 end            
             end 
+            
+            %check that intertidal elements are not deeper than tidal range
+            msgtxt = Element.checkFlatVolumes(mobj,true);
+            if ~isempty(msgtxt)
+                imes = imes+1;
+                for ii=1:length(msgtxt)
+                    imes = imes+1;    
+                    message{imes} = msgtxt{ii};
+                end
+            end
+
+            %check that matrix is not ill-conditioned
+            AsmitaModel.initialiseModelParameters(mobj);
+            ASM_model.setDQmatrix(mobj,rncobj.Adv2Offset);
+            [~,~,okmatrix] = ASM_model.BddMatrices(mobj);
+            imes = imes+2;  
+            if okmatrix<1             %illconditioned matrix                  
+                message{imes} = 'One of the matrices, ''B'' or ''dd'', is illconditioned';                
+                ok = 0;    
+            else
+                message{imes} = 'Matrices ''B'' and ''dd'' are NOT illconditioned';  
+            end   
         end
     end
 %%
@@ -327,7 +354,8 @@ classdef AsmitaModel < muiDataSet
              end
              %initialise any river flow or drift equilibrium offset(eqCorV)
              %calls RunConditions.setAdvectionOffset and ASM_model.setDQmatrix
-             Element.setEleAdvOffsets(mobj);  %DQmatrix set even if no offset
+             ok = Element.setEleAdvOffsets(mobj);  %DQmatrix set even if no offset
+             if ok<1, return; end   %illconditioned matrix
              %initialise unadjusted equilibirum volumes
              ASM_model.asmitaEqFunctions(mobj);
              %initialise any scaling to initial conditions (kVp)
@@ -354,25 +382,40 @@ classdef AsmitaModel < muiDataSet
          function ok = InitTimeStep(obj,mobj,jt)
              %initialise model parameters for next time step
              obj.iStep = jt;
-             if obj.interpRunup
-                 if jt==1
-                     obj.delta = obj.delta/100;
-                 elseif jt==101
-                     obj.delta = obj.delta*100;
+
+             rncobj = getClassObj(mobj,'Inputs','RunConditions');
+             %check whether there any forced changes due to interventions
+             if rncobj.IncInterventions && isempty(obj.interp_jt)
+                 temp_time = obj.DateTime;
+                 obj.DateTime = obj.DateTime+obj.delta;  %update time
+                 [Gamma,ok] = Interventions.setAnnualChange(mobj,obj);
+                 if ok<1, return; end   %error in setting interventions
+                 obj.DateTime = temp_time;  %reset time
+                 %Gamma is Ve/(Vm+dVi) as measure of perturbation
+                 if any(Gamma<0.01) || any(Gamma>100)
+                     %interpolate time step when large intervention is added
+                     obj.interp_jt = jt;
                  end
              end
-             obj.Time = jt*obj.delta;
-             obj.DateTime = obj.DateTime+obj.delta;
-             tsyear = obj.DateTime/mobj.Constants.y2s;
-             %tim = obj.Time/mobj.Constants.y2s;             
-             %sprintf('step %g, time %g, year %g',jt,tim,yr)
-             rncobj = getClassObj(mobj,'Inputs','RunConditions');
-             %update water levels
-             WaterLevels.setWaterLevels(mobj,obj);
-             %check whether there any forced changes due to interventions
-             if rncobj.IncInterventions
-                Interventions.setAnnualChange(mobj,obj);
+
+             %interpolate time step to shorter increments if set in
+             %CheckStability or because of size of intervention above
+             if jt==obj.interp_jt
+                 obj.delta = obj.delta/obj.interpInc;
+                 obj.RunSteps = obj.RunSteps+obj.interpInc;
+             elseif ~isempty(obj.interp_jt) && jt==obj.interp_jt+obj.interpInc
+                 obj.delta = obj.delta*obj.interpInc;
+                 obj.interp_jt = [];
              end
+             %update model time based on increments of delta
+             obj.DateTime = obj.DateTime+obj.delta;
+             obj.Time = obj.Time+obj.delta;
+             tsyear = obj.DateTime/mobj.Constants.y2s;
+             %tim = obj.Time/mobj.Constants.y2s;
+             %sprintf('step %g, time %g, year %g',jt,tim,yr)
+             
+             %update water levels
+             WaterLevels.setWaterLevels(mobj,obj);           
              %update dispersion graph (time varying horizontal exchanges)
              Estuary.updateDispersionGraph(mobj,tsyear);
              %update river and drift advection to cater for timeseries flows
@@ -486,7 +529,7 @@ classdef AsmitaModel < muiDataSet
                              dt1 = min_dt;
                          case 'Use specified'
                              dt1 = dt;
-                             obj.interpRunup = true;
+                             obj.interp_jt = 1;     %pad the first time step
                          case 'Abort'
                              ok = 0;
                              return;
@@ -595,7 +638,7 @@ classdef AsmitaModel < muiDataSet
                 'Description',{'Time'},...
                 'Unit',{'y'},...
                 'Label',{'Time (y)'},...
-                'Format',{'dd-MMM-yyyy HH:mm:ss'});   %'dd-MMM-yyyy HH:mm:ss'  or 'y'
+                'Format',{'dd-MMM-yyyy HH:mm:ss.SSS'});   %'dd-MMM-yyyy HH:mm:ss'  or 'y'
                                                       %HH for 24 hour clock
             dsp.Dimensions = struct(...    
                 'Name',{'EleName'},...
@@ -634,7 +677,7 @@ classdef AsmitaModel < muiDataSet
                 'Description',{'Time'},...
                 'Unit',{'y'},...
                 'Label',{'Time (y)'},...
-                'Format',{'dd-MMM-yyyy HH:mm:ss'});   %'dd-MMM-yyyy HH:mm:ss'  or 'y'
+                'Format',{'dd-MMM-yyyy HH:mm:ss.SSS'});   %'dd-MMM-yyyy HH:mm:ss'  or 'y'
                                                       %HH for 24 hour clock            
             dsp.Dimensions = struct(...    
                 'Name',{'EleName'},...

@@ -190,8 +190,8 @@ classdef Estuary < muiPropertyUI
                 [d,exchIn] = graph2matrix(dispgraph);
                 dExt = exchIn(:,1);
             else
-                %use the initial value if the graph has not already
-                %been set in updateDispersionGraph
+                %use the initial values if the graph has not already
+                %been set using updateDispersionGraph
                 dExt = obj.ExternalDisp(:,1);
                 d = obj.Dispersion;
                 idx = find(isnan(d));
@@ -293,7 +293,7 @@ classdef Estuary < muiPropertyUI
             eletype = getEleProp(eleobj,'transEleType');
             ich = strcmp(eletype,'Channel');
             finetypes = mobj.GeoType(mobj.FNtypes);
-            ifn = ismatch(eletype,finetypes); %could replacae with matches
+            ifn = ismatch(eletype,finetypes); %could replace with matches
             vm = getEleProp(eleobj,'MovingVolume');
             sm = getEleProp(eleobj,'SurfaceArea');
             cb = getEleProp(eleobj,'BedConcentration');
@@ -310,7 +310,8 @@ classdef Estuary < muiPropertyUI
                 initialiseFlow(rivobj);
             end
             ASM_model.setDQmatrix(mobj,'flow+drift');
-            [B,dd] = ASM_model.BddMatrices(mobj);
+            [B,dd,ok] = ASM_model.BddMatrices(mobj);
+            if ok<1, return; end
             %maximum rate of sea level rise for system, mm/year
             slr_max = abs(dd)./cb./sm*y2s*1000;
             %maximum biomass*rate for elements with positive biomass
@@ -404,7 +405,8 @@ classdef Estuary < muiPropertyUI
                 'Data',userdata, ...
                 'Units','normalized',...
                 'Position',[0,0,1,1]);
-            
+
+            msg0 = sprintf('Morphological response times for whole system (depends on cE, ws, and n, for channel or fine type elements):');
             if isempty(hx)
                 msg1 = 'Maximum rates of sea level rise (mm/year) and morphological response time (Tau)';
                 msg2 = 'See Kragtwijk et al (2004) for theoretical basis of estimates';
@@ -415,10 +417,8 @@ classdef Estuary < muiPropertyUI
                         'HorizontalAlignment', 'left',...
                         'Units','normalized', 'Position', [0.04 0.85 0.8 0.1],...
                         'Tag','Resptext1');
-                    
-                msg3 = 'Morphological response times for whole system:';
                 helptext = sprintf('%s\n\nChannel/coarse concentration = %.1f years\nFlats/fine concentration = %.1f years',...
-                    msg3,tauS,tauM);
+                    msg0,tauS,tauM);
                 uicontrol('Parent',src,...
                         'Style','text','String', helptext,...                    
                         'HorizontalAlignment', 'left',...
@@ -426,9 +426,8 @@ classdef Estuary < muiPropertyUI
                         'Tag','Resptext2');
             else
                 hxtxt = findobj(hx,'Tag','Resptext2');
-                msg3 = 'Morphological response times for whole system:';
                 helptext = sprintf('%s\n\nChannel/coarse concentration = %.1f years\nFlats/fine concentration = %.1f years',...
-                    msg3,tauS,tauM);
+                    msg0,tauS,tauM);
                 hxtxt.String = helptext;
             end
         end

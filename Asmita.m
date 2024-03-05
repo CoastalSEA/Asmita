@@ -16,7 +16,7 @@ classdef Asmita < muiModelUI
     properties  (Access = protected)
         %implement properties defined as Abstract in muiModelUI
         vNumber = '3.50'
-        vDate   = 'Jan 2024'
+        vDate   = 'March 2024'
         modelName = 'Asmita'   
         %Properties defined in muiModelUI that need to be defined in setGui
         % ModelInputs  %classes required by model: used in isValidModel check 
@@ -32,15 +32,17 @@ classdef Asmita < muiModelUI
         %connectivity within the model
         LWtypes = [1,5,7,9]; %GeoTypes that vary with low water
         EXtypes = 6:10;      %GeoTypes that are external to inlet
-        RCtypes = 1;         %Geotypes that define a reach - can be [1,5] or 1
-        REtypes = 2:6;       %Geotypes that can belong to a reach - can be [2,3,4,6] or 2:6
+        RCtypes = 1;         %GeoTypes that define a reach - can be [1,5] or 1
+        REtypes = 2:6;       %GeoTypes that can belong to a reach - can be [2,3,4,6] or 2:6
+        RPtypes = [1,5,7];   %GeoTypes with equilibrium defined by prism (used in Interventions)
         FNtypes = [2,3,4];   %GeoTypes that use fine eq concentration
-                             %assume this excludes DeltaFlat????
+                             %assume this excludes DeltaFlat
         %NB: Rivers can only connect to 'Channel' - hard coded in River class.
         %Drift uses EXtypes to limit assignment of drift inputs.
         %Reach uses 'FloodDelta' as a key word.
         %Saltmarsh, ASMinterface and ASM_model use 'Saltmarsh' and 'Tidalflat'.        
-        %Estuary uses 'Delta' to find all external delta elements ie not inc. FloodDelta. 
+        %Estuary uses 'Delta' and EXtypes to find all external delta 
+        %elements ie not inc. FloodDelta. 
     end
     
     methods (Static)
