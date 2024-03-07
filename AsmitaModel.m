@@ -22,19 +22,20 @@ classdef AsmitaModel < muiDataSet
     
     properties (Transient)
         %Additional properties:     
-        Time = 0      %time elapsed from start of run(t=0) in seconds
-        DateTime = 0  %time elapsed from Year 0 in seconds
-        iStep = 0     %current step number during run
-        RunSteps = 0  %number of time steps after checking stability
-        delta = 0     %time step in seconds
-        outInt = 0    %output interval adjusted for any change in time step
-        EleData = []  %array used to store element output at each time step
-        RchData = []  %array used to store reach output at each time step
-        StepTime      %time to be saved (seconds during run and converted to years)
+        Time = 0        %time elapsed from start of run(t=0) in seconds
+        DateTime = 0    %time elapsed from Year 0 in seconds
+        iStep = 0       %current step number during run
+        RunSteps = 0    %number of time steps after checking stability
+        delta = 0       %time step in seconds
+        outInt = 0      %output interval adjusted for any change in time step
+        EleData = []    %array used to store element output at each time step
+        RchData = []    %array used to store reach output at each time step
+        StepTime        %time to be saved (seconds during run and converted to years)
         MinimumTimeStep = 0.04   %value used (yrs) as minimum to prompt user
                                  %based on a sp-np cycle (14.6 days)
-        interp_jt = []           %time step to pad with extra time steps (to avoif large discontinuities)
-        interpInc = 100          %no of additional increments to add when padding a time step
+        interp_jt = []  %time step to pad with extra time steps (to avoif large discontinuities)
+        interpInc = 100 %no of additional increments to add when padding a time step
+        icount = 0      %counter to restrict number of interpolations
     end
     
     methods (Access = private)
@@ -404,9 +405,25 @@ classdef AsmitaModel < muiDataSet
                  obj.delta = obj.delta/obj.interpInc;
                  obj.RunSteps = obj.RunSteps+obj.interpInc;
              elseif ~isempty(obj.interp_jt) && jt==obj.interp_jt+obj.interpInc
-                 obj.delta = obj.delta*obj.interpInc;
-                 obj.interp_jt = [];
+                 eleobj = getClassObj(mobj,'Inputs','Element');
+                 vm = getEleProp(eleobj,'MovingVolume');
+                 ve = getEleProp(eleobj,'EqVolume');
+                 n  = getEleProp(eleobj,'TransportCoeff');
+                 Gamma  = (ve./vm).^n;
+                 if any(Gamma<0.0001) || any(Gamma>100)
+                     obj.icount = obj.icount+1;
+                     if obj.icount>10 
+                         errordlg(sprintf('Interpolation of time step not converging in AsmitaModel.InitTimeStep\nRun aborted'))
+                         ok = 0; return; 
+                     end
+                     obj.interp_jt = jt;
+                     obj.RunSteps = obj.RunSteps+obj.interpInc;
+                 else
+                     obj.delta = obj.delta*obj.interpInc;
+                     obj.interp_jt = [];
+                 end
              end
+
              %update model time based on increments of delta
              obj.DateTime = obj.DateTime+obj.delta;
              obj.Time = obj.Time+obj.delta;
@@ -592,11 +609,11 @@ classdef AsmitaModel < muiDataSet
             pr = obj.RchData{2};
             modeltime = years(0)+seconds(obj.StepTime);
             [~,ncol] = size(sa);
-            col2use = ncol-1;
+            col2use = ncol-1;     %sum of the wet volumes or areas
             V = vol(:,col2use);
             S = sa(:,col2use);
             % P = min(pr,[],2);
-            P = sum(pr,2);
+            P = sum(pr,2);       %total prism
             yyaxis left
             plot(modeltime,V,'DisplayName','Water volume (n>0)')
             hold on

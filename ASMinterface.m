@@ -48,7 +48,6 @@ classdef ASMinterface < handle
             %calculate the changes in volume and concentration over a timestep
             %and check the mass balance
             eleobj = getClassObj(mobj,'Inputs','Element');
-            wlvobj = getClassObj(mobj,'Inputs','WaterLevels');
             %get changes in water level at high and low water
             dwl = getEleProp(eleobj,'EleWLchange');
             nele = length(eleobj);
@@ -70,8 +69,13 @@ classdef ASMinterface < handle
             [B,dd,ok] = ASM_model.BddMatrices(mobj);
             if ok<1, return; end
             Gam  = (ve./vm).^n;
+            %trap divide by zero if vm=0
+            vis0 = find(vm<=0);
+            if ~isempty(vis0)
+                Gam(vis0)=0;
+            end
 
-            % morphological change in volume
+            % morphological change in volume            
             dvf  = (B*Gam-dd)./cb*robj.delta;
 
             %biomass change in volume
@@ -111,8 +115,8 @@ classdef ASMinterface < handle
                                             %next time step            
             %check that elements have not infilled
             if any(vm<=0)         %when elements go to zero retain small
-                vf(vm<=0) = 999;  %value to prevent matrix becoming poorly 
-                vm(vm<=0) = 999;  %conditioned     
+                vf(vm<=0) = 0;  %value to prevent matrix becoming poorly 
+                vm(vm<=0) = 0;  %conditioned     
             end       
 
             %update surace areas (marsh edge erosion and variable area)
@@ -198,7 +202,7 @@ classdef ASMinterface < handle
             if any(isnan(DQ),'all') || any(isinf(DQ),'all')
                 errordlg(sprintf('DQ matrix contains NaN or Inf in BddMatrices\nRun aborted'))
                 B = 0;   dd = 0;  ok = 0;  
-            elseif ~any(illCondition) || (illCondition(3) && ~illCondition(4)) 
+            elseif ~any(illCondition) %|| (illCondition(3) && ~illCondition(4)) 
                 %if W is illconditions but SW is not do not abort. This can
                 %be caused by setting vertical exchange to zero when
                 %simulating setback schemes           
@@ -288,6 +292,8 @@ classdef ASMinterface < handle
                 %exchange table (ie same changes area made to all NaN links)
                 news = num2cell(repmat(estobj.DynamicExchange.Vertical(idx),1,nrow));
                 [eleobj(estobj.ExchLinks(:,2)).transVertExch] = news{:}; 
+                %update instance for use in BioSettlingRate
+                setClassObj(mobj,'Inputs','Element',eleobj);
             end  
 
             %adjust vertical exchange if saltmarsh included (function uses
@@ -297,6 +303,8 @@ classdef ASMinterface < handle
                 wsbio = Saltmarsh.BioSettlingRate(mobj);
                 wsbio = num2cell(wsbio);
                 [eleobj.transVertExch] = wsbio{:};
+                %update instance for use in BddMatrices
+                setClassObj(mobj,'Inputs','Element',eleobj);
             end
 
             %unadjusted morphological change in volume 
@@ -417,7 +425,7 @@ classdef ASMinterface < handle
                 %error in Gam - divide by zero if any(vm=0)
                 errordlg(sprintf('Some volumes are zero in asmitaConcentrations\nRun aborted'))
                 conc = zeros(size(cE));                  ok = 0;  
-            elseif ~any(illCondition)  || (illCondition(3) && ~illCondition(4)) 
+            elseif ~any(illCondition) % || (illCondition(3) && ~illCondition(4)) 
                 %if W is illconditions but SW is not do not abort. This can
                 %be caused by setting vertical exchange to zero when
                 %simulating setback schemes   
@@ -507,10 +515,11 @@ classdef ASMinterface < handle
             dexp   = (dexp1+dexp2+dexp3+dexp4)*delta;  %sum over a time step
             obj.export = obj.export+dexp;        %export to marine
             bed    = sum(M*(Vo-vf).*cb);         %bed changes
-            obj.intervent = obj.intervent+sum(dV.*cb);  %user defined changes
+            %interventions are applied to vf and therefore already included
+            %obj.intervent = obj.intervent+sum(dV.*cb);
             biosed = sum(vb.*cb);                %saltmarsh organic sedimentation
             %balance of cumulative changes from t=0 
-            sedbal = obj.import+biosed-bed-obj.export-obj.intervent;
+            sedbal = obj.import+biosed-bed-obj.export;
             obj.SedMbal = sedbal/sum(M*(Vo))*100;  %percentage change
             % obj.SedMbal = sedbal;
 
