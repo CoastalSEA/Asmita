@@ -205,66 +205,41 @@ classdef Saltmarsh < muiPropertyUI
             kBm = getEleSpeciesProduct(obj,eleobj,cn);
             Blim = diag(bmx*(kBm.*(Bm>0))');
         end
+
 %%
-        function [dv_ero,ds_ero] = getEdgeErosion(mobj,robj)
-            %compute change in marsh and flat volumes due to edge erosion
-            %dv_ero and ds_ero are additive volume changes in ASMinterface
-            %Hence reduction in area and volume are negative
+        function [dv_ero,ds_ero] = setEdgeErosion(mobj,robj)
+            %update volumes and areas with any marsh edge erosion if any
+            dv_ero = 0; ds_ero = 0;
             obj = getClassObj(mobj,'Inputs','Saltmarsh');            
-            if obj.EdgeErosion==0
-                dv_ero = 0; ds_ero = 0;
-                return; 
-            end
-            ero = obj.EdgeErosion/mobj.Constants.y2s;
-            dmx = max(obj.MaxSpDepth);
+            if obj.EdgeErosion==0, return; end   %no marsh erosion
+
+            [dv_ero,ds_ero] = getEdgeErosion(obj,mobj,robj);
+
             %get transient Element properties for area and volume
             eleobj = getClassObj(mobj,'Inputs','Element');
-            %get model parameters
-            ve = getEleProp(eleobj,'EqVolume');            
+            sa = getEleProp(eleobj,'SurfaceArea');            
             se = getEleProp(eleobj,'EqSurfaceArea');
-            Le = getEleProp(eleobj,'Length');
-            n  = getEleProp(eleobj,'TransportCoeff');
-            eletype = getEleProp(eleobj,'transEleType');
-            elename = getEleProp(eleobj,'EleName');
-            %use network definition to find adjacency
-            estobj = getClassObj(mobj,'Inputs','Estuary');
-            estgraph = estobj.DispersionGraph;
-            ism = strcmp(eletype,'Saltmarsh');
-            dt = robj.delta;           %time step in seconds
-            ds_ero = -ero*ism.*Le*dt;  %reduce area by erosion area
-            dv_ero = ds_ero*dmx/2;     %reduce volume using half max marsh depth
+            % vm = getEleProp(eleobj,'MovingVolume');
+            % vf = getEleProp(eleobj,'FixedVolume');
+            % ve = getEleProp(eleobj,'EqVolume'); updated using prism or area
 
-            %find adjacent flats and apply the opposite change
-            MarshNodes = matches(estgraph.Edges.EndNodes(:,2),elename(ism));
-            flatNames = estgraph.Edges.EndNodes(MarshNodes,1);
-            ismf = matches(elename,flatNames); %flats adjacent to marsh            
-            ds_ero(ismf) = -ds_ero(ism);
-            %if flats are sediment volumes eroded marsh volumes are removed
-            %from the flat volume
-            dv_ero(ismf) = -sign(n(ism)).*dv_ero(ism);
-            
-            %do not erode elements that are non-erodible or dormant if dynamic
-            rncobj = getClassObj(mobj,'Inputs','RunConditions');            
-            if rncobj.IncDynamicElements && any(ws(estobj.ExchLinks(:,2))==0)
-                %do not erode elements that are dormant
-                idb = ws(estobj.ExchLinks(:,2))==0;
-                dv_ero(estobj.ExchLinks(idb,2)) = zeros(1,sum(idb));
-                ds_ero(estobj.ExchLinks(idb,2)) = zeros(1,sum(idb));
-            end
-            %
-            noero = ~getEleProp(eleobj,'Erodible'); %ie if Erodible false 
-            if any(noero)
-                %element is defined as non-erosional
-                dv_ero(noero) = 0;      ds_ero(noero) = 0;
-            end
- 
-            %update the equilibrium values
-            erove = num2cell(ve+dv_ero);
-            erose = num2cell(se+ds_ero);
-            [eleobj.EqVolume] = erove{:};  
+            %update the areas and volumes (Ve depends on S or P)
+            erosa = setVarChange(obj,sa,ds_ero);
+            [eleobj.SurfaceArea] = erosa{:};
+
+            erose = setVarChange(obj,se,ds_ero);
             [eleobj.EqSurfaceArea] = erose{:};
+            
+            %updated in asmitaVolumeChange
+            % erovm = setVarChange(obj,vm,dv_ero);
+            % [eleobj.MovingVolume] = erovm{:};
+            % 
+            % erovf = setVarChange(obj,vf,dv_ero);
+            % [eleobj.FixedVolume] = erovf{:};
+
             setClassObj(mobj,'Inputs','Element',eleobj);
         end
+
 %% ------------------------------------------------------------------------
 % Static functions for plots and animations to display aspects of model setup
 %--------------------------------------------------------------------------
@@ -306,7 +281,7 @@ classdef Saltmarsh < muiPropertyUI
             
             eletype = getEleProp(eleobj,'EleType');
             ism = strcmp(eletype,'Saltmarsh');
-            ws = getEleProp(eleobj,'VerticalExchange');
+            ws = getEleProp(eleobj,'transVertExch');
             wsm = mean(ws(ism));           %average vertical exchange over marsh
             cE = num2str([estobj.EqConcCoarse,estobj.EqConcFine]*cn.rhos);
 
@@ -392,7 +367,7 @@ classdef Saltmarsh < muiPropertyUI
             %add button for properties used to create plot
             eletype = getEleProp(eleobj,'EleType');
             ism = strcmp(eletype,'Saltmarsh');
-            ws = getEleProp(eleobj,'VerticalExchange');
+            ws = getEleProp(eleobj,'transVertExch');
             wsm = mean(ws(ism));           %average vertical exchange over marsh
             cE = num2str([estobj.EqConcCoarse,estobj.EqConcFine]*cn.rhos);
 
@@ -593,7 +568,7 @@ classdef Saltmarsh < muiPropertyUI
             %over the marsh or tidal flat (only varies if fine and coarse 
             %fractions used)
             eletype = getEleProp(eleobj,'EleType');
-            ws = getEleProp(eleobj,'VerticalExchange');
+            ws = getEleProp(eleobj,'transVertExch');
             ism = strcmp(eletype,'Saltmarsh');
             ifl = strcmp(eletype,'Tidalflat');
             if any(ism) 
@@ -611,7 +586,57 @@ classdef Saltmarsh < muiPropertyUI
                 c0 = cnc(1); %if no flats all eq.concs must be the same
             end
         end   
-        
+ 
+%%
+        function [dv_ero,ds_ero] = getEdgeErosion(obj,mobj,robj)
+            %compute change in marsh and flat volumes due to edge erosion
+            %dv_ero and ds_ero are additive volume changes in setEdgeErosion
+            %Hence reduction in area and volume are negative
+            ero = obj.EdgeErosion/mobj.Constants.y2s;
+            dmx = max(obj.MaxSpDepth);
+            %get transient Element properties for area and volume
+            eleobj = getClassObj(mobj,'Inputs','Element');
+            %get model parameters
+            sa = getEleProp(eleobj,'SurfaceArea');   
+            vm = getEleProp(eleobj,'MovingVolume');
+            Le = getEleProp(eleobj,'Length');
+            n  = getEleProp(eleobj,'TransportCoeff');
+            eletype = getEleProp(eleobj,'transEleType');
+            elename = getEleProp(eleobj,'EleName');
+            %use network definition to find adjacency
+            estobj = getClassObj(mobj,'Inputs','Estuary');
+            estgraph = estobj.DispersionGraph;
+            ism = strcmp(eletype,'Saltmarsh');
+            dt = robj.delta;           %time step in seconds
+            ds_ero = -ero*ism.*Le*dt;  %reduce area by erosion area
+            dv_ero = ds_ero.*(vm./sa); %reduce volume using current depth
+
+            %find adjacent flats or channels and apply the opposite change
+            idm = find(matches(estgraph.Edges.EndNodes(:,2),elename(ism)));
+            noero = ~getEleProp(eleobj,'Erodible'); %ie if Erodible false 
+            for j=1:length(idm)
+                ismf = matches(elename,estgraph.Edges.EndNodes(idm(j),2));
+                isfm = matches(elename,estgraph.Edges.EndNodes(idm(j),1));
+                ds_ero(isfm) = -ds_ero(ismf);
+                %if flats are sediment volumes eroded marsh volumes are
+                %removed from the flat volume
+                dv_ero(isfm) = -sign(n(ismf)).*dv_ero(ismf);
+                if noero(ismf) || sa(ismf)==999
+                    %marsh element is defined as non-erosional
+                    dv_ero(ismf) = 0;      ds_ero(ismf) = 0;
+                    dv_ero(isfm) = 0;      ds_ero(isfm) = 0;
+                end
+            end
+        end
+
+%%
+        function var = setVarChange(~,vari,dvar)
+            %check that the erosion is not bigger than the element
+            newvar = vari+dvar;
+            idx = newvar<999;
+            newvar(idx) = 999;
+            var = num2cell(newvar);
+        end
 %% ------------------------------------------------------------------------
 % Private functions for plots and animations to display aspects of model setup
 %--------------------------------------------------------------------------

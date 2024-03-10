@@ -109,10 +109,10 @@ classdef Interventions < matlab.mixin.Copyable
         end     
 
 %%
-        function [gamma,ok] = setAnnualChange(mobj,robj)
+        function [idx,ok] = setAnnualChange(mobj,robj)
             %called at each time step to determine whether there any
             %changes within the time step.
-            gamma = []; ok = 1;
+            idx = [];   ok = 1; 
             obj  = getClassObj(mobj,'Inputs','Interventions');
             if isempty(obj), return; end
             eleobj  = getClassObj(mobj,'Inputs','Element');
@@ -125,57 +125,53 @@ classdef Interventions < matlab.mixin.Copyable
             uyrs = asmobj.UniqueYears*y2s; 
             vals = asmobj.AnnualChange;
             isfix = asmobj.isFixed;
-            idx = [];
+            idt = [];
             for j=1:length(uyrs)
                 if year<=uyrs(j) && year+dt>uyrs(j) %ensures only assigned 
-                    idx = j;                        %within one time interval
+                    idt = j;                        %within one time interval
                 end
             end
             %if no change in given year, no update needed
             rncobj  = getClassObj(mobj,'Inputs','RunConditions');
-            if isempty(idx) || ~rncobj.IncInterventions
+            if isempty(idt) || ~rncobj.IncInterventions
                 for i=1:nele
                     obj(i).transVolChange = 0;
                     obj(i).transAreaChange = 0;
                 end
                 return;
             end
-            dV = vals(:,idx,1);
-            dS =  vals(:,idx,2);
+            dV = vals(:,idt,1);
+            dS =  vals(:,idt,2);
+            idx = dV>0 | dS>0;
             n = getEleProp(eleobj,'TransportCoeff');
             sgn = sign(n);
             %update transient volume and area properties
             %convention is that +ve is an increase in water volume
             %so subtract for elements defined as sediment volumes
-            gamma = zeros(size(eleobj));
-            for i=1:nele  
+            for i=1:nele
                 ok = checkInterventions(obj,eleobj,sgn(i)*dV(i),dS(i),i);
                 if ok<1, return; end
-                mVol = eleobj(i).MovingVolume+sgn(i)*dV(i);
-                if mVol<999, mVol = 999; end
-                eleobj(i).MovingVolume = mVol;
-                gamma(i) = (eleobj(i).EqVolume/eleobj(i).MovingVolume)^n(i);
-                eleobj(i).FixedVolume = eleobj(i).FixedVolume+sgn(i)*dV(i);
+                eleobj(i).MovingVolume = setVarChange(obj,eleobj(i).MovingVolume,sgn(i)*dV(i));
+                eleobj(i).FixedVolume = eleobj(i).FixedVolume+sgn(i)*dV(i); %NB fixed volume can be -ve
 
-                sArea = eleobj(i).SurfaceArea+dS(i); 
-                if sArea<999, sArea = 999; end
-                eleobj(i).SurfaceArea = sArea;
+                if dS(i)==999
+                    eleobj(i).SurfaceArea = dS(i);
+                else
+                    eleobj(i).SurfaceArea = setVarChange(obj,eleobj(i).SurfaceArea,dS(i));
+                    eleobj(i).EqSurfaceArea = setVarChange(obj,eleobj(i).EqSurfaceArea,dS(i));
+                    obj(i).transVolChange = dV(i);
+                    obj(i).transAreaChange = dS(i);
+                end
 
-                sArea = eleobj(i).EqSurfaceArea+dS(i); 
-                if sArea<999, sArea = 999; end
-                eleobj(i).EqSurfaceArea = sArea;
-                
-                obj(i).transVolChange = dV(i);
-                obj(i).transAreaChange = dS(i);
-                
-                if isfix(i,idx)
+                if isfix(i,idt)
                     %store the cumulative changes that are non-erodible to
                     %adjust EqVolume each time it is reset based on prism
-                    %tidal range or drift rate.
+                    %tidal range or drift rate. This depends on what is
+                    %changing, equilibrium condition and type of element.
                     [isok,~] = checkFixedConditions(obj,mobj,dV(i),dS(i),i);
                     eleobj(i).eqFixedInts(1) = eleobj(i).eqFixedInts(1)+sgn(i)*dV(i)*isok;
                     %eleobj(i).eqFixedInts(2) = eleobj(i).eqFixedInts(2)+dS(i)*isok;
-                end
+                end               
             end
             %assign updated instances of Element and Interventions
             setClassObj(mobj,'Inputs','Interventions',obj);
@@ -486,7 +482,7 @@ classdef Interventions < matlab.mixin.Copyable
 
 %%
         function ok = checkInterventions(~,eleobj,dV,dS,idx)
-            %check that the ointervention is not bigger than the element
+            %check that the intervention is not bigger than the element
             errtxt = []; ok = 1;
             if eleobj(idx).MovingVolume+dV<0
                 errtxt = sprintf('Intervention in Element %d results in negative volume',idx);
@@ -502,6 +498,16 @@ classdef Interventions < matlab.mixin.Copyable
             end
         end
 
+%%
+        function Var = setVarChange(~,Vari,dVar)
+            %set the change in volume or surface area
+            if Vari==999 && dVar>0        %reset if change restores element
+                Vari = 0;                 %remove 999 offset
+            end
+            
+            Var = Vari+dVar;              %add intervention
+            if Var<999, Var = 999; end    %adjust negative or small values
+        end
 
 %%
         function [isupdate,fcase] = checkFixedConditions(~,mobj,dV,dS,i)
@@ -514,24 +520,32 @@ classdef Interventions < matlab.mixin.Copyable
             isdV = dV~=0;   
             isdS = dS~=0;
             isdVdS = isdV && isdS;
-            isReachType = any(strcmp(eletype,mobj.GeoType(mobj.REtypes)));
+            rchtypes = mobj.GeoType(mobj.REtypes); %reach element types
+            flatypes =rchtypes(~strcmp(rchtypes,'FloodDelta')); %exclude FloodDelta
+            isReachType = any(strcmp(eletype,flatypes));
             isPrismType = any(strcmp(eletype,mobj.GeoType(mobj.RPtypes)));
-            if isdVdS && isReachType && isTReq
-                %dV and dS change for elements that can belong to a reach
-                %using tidal range to define equilibrium
+            if (isdVdS || isdS) && isReachType && isTReq
+                %dV and dS, or dS, change for elements that can belong 
+                %to a reach using tidal range to define equilibrium
                 isupdate = false; fcase = 1;
             elseif isdV && isReachType && isTReq
                 %dV changes for elements that can belong to a reach
                 %using tidal range to define equilibrium
                 isupdate = true; fcase = 2;
-            elseif isdV && isReachType
+            elseif isdV && isReachType && ~isTReq 
                 %dV changes for elements that can belong to a reach
                 %using tidal prism to define equilibrium
                 isupdate = false; fcase = 3;
-            elseif (isdV || isdS) && isPrismType && ~isTReq
-                %dV or dS changes for elements with equilibrium defined by
-                %tidal prism
-                isupdate = true; fcase=4;
+            elseif (isdVdS || isdS) && isPrismType && ~isTReq   
+                %dV changes for elements with prism equilibrium that do not
+                %alter prism (channel, flood delta, ebb delta) Note that
+                %isdS case only applies to channel and flood delta but as
+                %false this case can be included here.
+                isupdate = false; fcase = 4;
+            elseif isdV && isPrismType && ~isTReq
+                %dV changes for elements with prism equilibrium that do not
+                %alter prism (channel, flood delta, ebb delta)
+                isupdate = true; fcase=5;
             else 
                 isupdate = false; fcase = [];
             end

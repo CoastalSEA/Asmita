@@ -385,15 +385,19 @@ classdef AsmitaModel < muiDataSet
              obj.iStep = jt;
 
              rncobj = getClassObj(mobj,'Inputs','RunConditions');
+             %Saltmarsh.setEdgeErosion(mobj,obj);
              %check whether there any forced changes due to interventions
-             if rncobj.IncInterventions && isempty(obj.interp_jt)
+             if rncobj.IncInterventions && isempty(obj.interp_jt) && jt>1
                  temp_time = obj.DateTime;
                  obj.DateTime = obj.DateTime+obj.delta;  %update time
-                 [Gamma,ok] = Interventions.setAnnualChange(mobj,obj);
-                 if ok<1, return; end   %error in setting interventions
+                 [idx,ok] = Interventions.setAnnualChange(mobj,obj);                 
+                 if ok<1, return; end   %error in setting interventions                 
+                 [gamma,ok] = Element.getEleGamma(mobj,true);
+                 if ok<1, return; end   %error in setting equilibrium volume
                  obj.DateTime = temp_time;  %reset time
-                 %Gamma is Ve/(Vm+dVi) as measure of perturbation
-                 if any(Gamma<0.01) || any(Gamma>100)
+                 %Gamma is Ve/(Vm+dVi) as measure of perturbation, idx is
+                 %index of elements that have been changed
+                 if any(gamma(idx)<0.0001) || any(gamma(idx)>1000)
                      %interpolate time step when large intervention is added
                      obj.interp_jt = jt;
                  end
@@ -404,13 +408,10 @@ classdef AsmitaModel < muiDataSet
              if jt==obj.interp_jt
                  obj.delta = obj.delta/obj.interpInc;
                  obj.RunSteps = obj.RunSteps+obj.interpInc;
-             elseif ~isempty(obj.interp_jt) && jt==obj.interp_jt+obj.interpInc
-                 eleobj = getClassObj(mobj,'Inputs','Element');
-                 vm = getEleProp(eleobj,'MovingVolume');
-                 ve = getEleProp(eleobj,'EqVolume');
-                 n  = getEleProp(eleobj,'TransportCoeff');
-                 Gamma  = (ve./vm).^n;
-                 if any(Gamma<0.0001) || any(Gamma>100)
+             elseif ~isempty(obj.interp_jt) && jt==obj.interp_jt+obj.interpInc                 
+                 [gamma,ok] = Element.getEleGamma(mobj,false);
+                 if ok<1, return; end   %error in setting equilibrium volume
+                 if any(gamma<0.0001) || any(gamma>10000)
                      obj.icount = obj.icount+1;
                      if obj.icount>10 
                          errordlg(sprintf('Interpolation of time step not converging in AsmitaModel.InitTimeStep\nRun aborted'))

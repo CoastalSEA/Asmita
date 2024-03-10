@@ -296,6 +296,9 @@ classdef Element < muiPropertyUI
             if isempty(obj), return; end
             
             initdepth = num2cell([obj(:).InitialVolume]./[obj(:).InitialSurfaceArea]); 
+            idx = [obj(:).InitialSurfaceArea]==999;
+            if any(idx), initdepth{idx} = 0;  end
+
             null = num2cell(zeros(1,length(obj)));  
             null2 = num2cell(zeros(2,length(obj)),1);  
             unity = num2cell(ones(1,length(obj)));
@@ -510,6 +513,19 @@ classdef Element < muiPropertyUI
         end   
 
 %%
+        function [gamma,ok] = getEleGamma(mobj,isreset)
+            %update equilibrium volumes and return value of gamma=(ve/vm)^n  
+            if isreset
+                ok = Element.setEquilibrium(mobj);
+                if ok<1, return; end   %negative volume in setEquilibrium                
+            end
+            obj = getClassObj(mobj,'Inputs','Element');  
+            n = [obj.TransportCoeff];
+            gamma = ([obj.EqVolume]./[obj.MovingVolume]).^n;
+            ok = 1;
+        end
+
+%%
         function setElement(mobj)
             %initialise an empty instance of Element (used in asm_oo2mui)
             obj = Element(mobj);
@@ -517,7 +533,7 @@ classdef Element < muiPropertyUI
         end
 
 %%
-function  msgtxt = checkFlatVolumes(mobj,isinitialise)
+        function  msgtxt = checkFlatVolumes(mobj,isinitialise)
             %check that tidalflat and saltmarshes are not deeper than tidal
             %range. Should not be needed if coefficients for Ve are 
             %correctly specified and area/volume of element within limit
@@ -547,6 +563,7 @@ function  msgtxt = checkFlatVolumes(mobj,isinitialise)
                 end
             end
         end 
+
     end
 %%        
         %add other functions to operate on properties as required  
@@ -584,6 +601,7 @@ function  msgtxt = checkFlatVolumes(mobj,isinitialise)
                 end
             end
         end
+
 %%
         function [eleid,elename,ok] = selectElement(obj)
             %select an element to use for interventions input/modification
@@ -596,6 +614,7 @@ function  msgtxt = checkFlatVolumes(mobj,isinitialise)
             if ok<1, return; end
             elename = eleList{eleid};
         end
+
 %%
         function displayProperties(obj,src)
             %table for summary of element properties.
@@ -641,6 +660,7 @@ function  msgtxt = checkFlatVolumes(mobj,isinitialise)
                 'Units','normalized',...
                 'Position',[0,0,1,1]);
         end
+
     end   
 %%    
     methods (Access=private)

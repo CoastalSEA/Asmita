@@ -41,8 +41,8 @@ classdef Asmita < muiModelUI
         %Drift uses EXtypes to limit assignment of drift inputs.
         %Reach uses 'FloodDelta' as a key word.
         %Saltmarsh, ASMinterface and ASM_model use 'Saltmarsh' and 'Tidalflat'.        
-        %Estuary uses 'Delta' and EXtypes to find all external delta 
-        %elements ie not inc. FloodDelta. 
+        %Estuary uses 'Delta' and EXtypes to find all external delta elements
+        %ie not inc. FloodDelta. 
     end
     
     methods (Static)
