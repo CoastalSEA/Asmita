@@ -322,7 +322,8 @@ classdef AsmitaModel < muiDataSet
             end
 
             %check that matrix is not ill-conditioned
-            AsmitaModel.initialiseModelParameters(mobj);
+            AsmitaModel.initialiseModelParameters(mobj);            
+            ASM_model.setASM_model(mobj);%initialise the ASM_model class
             ASM_model.setDQmatrix(mobj,rncobj.Adv2Offset);
             [~,~,okmatrix] = ASM_model.BddMatrices(mobj);
             imes = imes+2;  
@@ -390,14 +391,16 @@ classdef AsmitaModel < muiDataSet
              if rncobj.IncInterventions && isempty(obj.interp_jt) && jt>1
                  temp_time = obj.DateTime;
                  obj.DateTime = obj.DateTime+obj.delta;  %update time
-                 [idx,ok] = Interventions.setAnnualChange(mobj,obj);                 
+                 [idx,ok] = Interventions.setAnnualChange(mobj,obj);    %#ok<ASGLU> 
                  if ok<1, return; end   %error in setting interventions                 
                  [gamma,ok] = Element.getEleGamma(mobj,true);
                  if ok<1, return; end   %error in setting equilibrium volume
                  obj.DateTime = temp_time;  %reset time
                  %Gamma is Ve/(Vm+dVi) as measure of perturbation, idx is
-                 %index of elements that have been changed
-                 if any(gamma(idx)<0.0001) || any(gamma(idx)>1000)
+                 %index of elements that have been changed 
+                 %ve/vm<0.25 or ve/vm>4 for n=5 and ve/vm<0.1 or ve/vm>10 for n=3 
+                 %if any(gamma(idx)<0.0001) || any(gamma(idx)>1000)
+                 if any(gamma<0.001) || any(gamma>1000)
                      %interpolate time step when large intervention is added
                      obj.interp_jt = jt;
                  end
@@ -411,6 +414,7 @@ classdef AsmitaModel < muiDataSet
              elseif ~isempty(obj.interp_jt) && jt==obj.interp_jt+obj.interpInc                 
                  [gamma,ok] = Element.getEleGamma(mobj,false);
                  if ok<1, return; end   %error in setting equilibrium volume
+                 %ve/vm<0.16 or ve/vm>6.3 for n=5 and ve/vm<0.05 or ve/vm>21.5 for n=3 
                  if any(gamma<0.0001) || any(gamma>10000)
                      obj.icount = obj.icount+1;
                      if obj.icount>10 

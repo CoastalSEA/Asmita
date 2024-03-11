@@ -486,6 +486,7 @@ classdef Element < muiPropertyUI
 %%
         function ok = setEleAdvOffsets(mobj)
             %assign element advection offfset due to river flow or drift
+            ok = 1;
             obj = getClassObj(mobj,'Inputs','Element');          
             nele = length(obj);
             n = getEleProp(obj,'TransportCoeff');           
