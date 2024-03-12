@@ -535,8 +535,9 @@ classdef Reach < handle
                 WL = assignCSTproperties(cstobj,obj,afact,offset,Q);
             else
                 %assign reach values if no hydraulics
-                WL.hwl(2:end) = wlvobj.HWaterLevel*damp(rchChID); %reach specific HW at time t
-                WL.lwl(2:end) = wlvobj.LWaterLevel*damp(rchChID); %reach specific LW at time t
+                ampdamp = (wlvobj.HWaterLevel-wlvobj.MeanSeaLevel)*damp(rchChID);
+                WL.hwl(2:end) = wlvobj.MeanSeaLevel+ampdamp; %reach specific HW at time t
+                WL.lwl(2:end) = wlvobj.MeanSeaLevel-ampdamp; %reach specific LW at time t
                 WL.mwl(2:end) = wlvobj.MeanSeaLevel.*ones(size(rchChID));
             end
             WL.tr = (WL.hwl-WL.lwl);  %reach specific tidal range at time t

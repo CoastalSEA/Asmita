@@ -28,10 +28,15 @@ function setgraph(mobj,src,~)
     if isempty(eleobj) && isempty(advobj)
         cla(src.Children);
         return
+    elseif isempty(advobj)
+        advobj = Advection.initialiseTransients(mobj);
+    elseif isempty(eleobj)
+        getdialog('No elements defined'); return;
     end
 
     %check that graphs have been initialised
-    initialiseGraphs(mobj,advobj); 
+    ok = initialiseGraphs(mobj,advobj); 
+    if ok<1, return; end
 
     switch src.Tag
         case 'Network'
@@ -140,10 +145,15 @@ function setgraph(mobj,src,~)
     end
 end 
 %%
-function initialiseGraphs(mobj,advobj)
+function ok = initialiseGraphs(mobj,advobj)
     %check that the dispersion and advection graphs have been initialised
     estobj = getClassObj(mobj,'Inputs','Estuary');
     rncobj = getClassObj(mobj,'Inputs','RunConditions');
+    if isempty(estobj) || isempty(rncobj)
+        getdialog('Estuary or RunConditions not defined')
+        ok = 0; return; 
+    end
+
     if isempty(estobj.DispersionGraph)
         Estuary.initialiseDispersionGraph(mobj);
     end
@@ -155,6 +165,7 @@ function initialiseGraphs(mobj,advobj)
     if isempty(advobj.DriftGraph)  && rncobj.IncDrift
         Advection.initialiseDriftGraph(mobj);
     end
+    ok = 1;
 end
 %%
 function panButton(h_ax,src,~)            %#ok<INUSD> 
