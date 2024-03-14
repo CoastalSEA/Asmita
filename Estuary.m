@@ -430,6 +430,20 @@ classdef Estuary < muiPropertyUI
                     msg0,tauS,tauM);
                 hxtxt.String = helptext;
             end
+            
+            %Create push button to copy data to clipboard     
+            output = num2cell(tableData,1);
+            outable = table(output{:},'RowNames',rownames,...
+                            'VariableNames',{'slr_nobio','slr_bio','tau'});
+            hb = findobj(src,'Tag','uicopy');
+            if isempty(hb)
+                butpos = [0.75 0.05 0.2 0.05];
+                setactionbutton(src,'Copy to clipboard',butpos,...
+                               @copydata2clip,'uicopy',...
+                              'Copy table content to clipboard',outable);
+            else
+                hb.UserData = outable;
+            end
         end
     end          
 
