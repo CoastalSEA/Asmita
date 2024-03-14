@@ -10,7 +10,7 @@ classdef Interventions < matlab.mixin.Copyable
     % defined as water or sediment volumes, it is advisable to use water
     % volumes (i.e. n>0). However, the code should work for both cases.
     %
-    % Volumes and surface areas that are <=0 are set to a value of 999 to
+    % Surface areas that are <=0 are set to a value of 999 to
     % avoid matrices becoming illconditioned.
     %----------------------------------------------------------------------
     % AUTHOR

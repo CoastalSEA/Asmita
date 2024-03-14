@@ -125,13 +125,13 @@ classdef WaterLevels < muiPropertyUI
 %%
     methods
         function freq = get.AngularPeriod(obj)
-            %get dependent property covert cycle period to frequency
+            %get dependent property convert cycle period to frequency
             freq = 2*pi./obj.CyclePeriod/muiConstants.y2s;
             freq(isinf(freq)) = 0;
         end
 %%
         function freq = get.AngularPhase(obj)
-            %get dependent property covert angualr period to frequency
+            %get dependent property convert angular period to frequency
             freq = obj.AngularPeriod.*obj.CyclePhase*muiConstants.y2s;
             freq(isinf(freq)) = 0;
         end  

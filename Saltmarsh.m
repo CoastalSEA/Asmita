@@ -133,8 +133,6 @@ classdef Saltmarsh < muiPropertyUI
             vm = getEleProp(eleobj,'MovingVolume');
             depth = vm./sa;          % water depth in element
             if any(sa==0), depth(sa==0) = 0; end  %trap infinity
-            %depth(depth<0.2) = 0.2;
-            depth = depth+0.0;
             %vertical exchange for marsh (initial inorganic values)  
             ws = getEleProp(eleobj,'VerticalExchange');
             %compute equilibrium depth based on local concentration

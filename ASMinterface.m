@@ -11,7 +11,7 @@ classdef ASMinterface < handle
     %    coefficient matrix used in inverse operations. These tests are run
     %    for volume, surface area, and concentration calculations. Area tests
     %    1 and 3 use D/h, Q/h and W/h, hence depths may also be cause of illcondition.
-    % 2) volumes and surface areas that are <=0 are set to a value of 999 to
+    % 2) Surface areas that are <=0 are set to a value of 999 to
     %    avoid matrices becoming illconditioned.
     % AUTHOR
     % Ian Townend
@@ -141,24 +141,6 @@ classdef ASMinterface < handle
             % sprintf('t = %g; Sediment Balance %g; Water Balance %g',t,smb,wmb)            
         end
 
-%%
-%         function [newsa,ok] = asmitaAreaChange(mobj,robj)
-%             %calculate the changes in surface area over a timestep
-%             eleobj = getClassObj(mobj,'Inputs','Element');
-%             ok = 1;
-% 
-%             %correction for marsh edge erosion
-%             newsa = sa+ds_ero;
-%             if any(newsa<0)                
-%                 newsa(newsa<0) = 999;
-%                 % idx = find(newsa<0);
-%                 % warndlg('Surface area goes negative in Element %d\nAborted in ASMinterface.asmitaAreaChange',idx)
-%                 % ok = 0; return;
-%             end
-%             newsa_list = num2cell(newsa);
-%             [eleobj.SurfaceArea] = newsa_list{:};
-%             setClassObj(mobj,'Inputs','Element',eleobj);
-%         end
 %%
         function [B,dd,ok] = BddMatrices(mobj)
             %compute the solution matrix B and vector dd (ie B*gamma-dd)
@@ -400,7 +382,9 @@ classdef ASMinterface < handle
 
 %%
         function ok = checkFixity(mobj,robj)
-            %            
+            % check whether any element is fixed and if so check that 
+            %change does not exceed sediment availabel relative to initial 
+            %volume taking account of any fixed interventions        
             eleobj = getClassObj(mobj,'Inputs','Element');
             nele = length(eleobj);
             vm = getEleProp(eleobj,'MovingVolume');
@@ -518,7 +502,6 @@ classdef ASMinterface < handle
             dexp   = (dexp1+dexp2+dexp3+dexp4)*delta;  %sum over a time step
             obj.export = obj.export+dexp;        %export to marine
             bed    = sum(M*(Vo-vf).*cb);         %bed changes
-            %interventions are applied to vf and therefore already included
             obj.intervent = obj.intervent+sum(dV.*cb);
             biosed = sum(vb.*cb);                %saltmarsh organic sedimentation
             %balance of cumulative changes from t=0 
