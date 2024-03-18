@@ -95,7 +95,7 @@ classdef ASM_model < ASMinterface
                             %this formulation the eq.coefficients need to 
                             %be adjusted to suit site. 
                             if isTReq %appplies to any element type (eg tidalflat)
-                                EqVol = alpha*inp.EqSA(i)*tidalrange^beta;
+                                EqVol = alpha*(inp.EqSA(i)*tidalrange)^beta;
                             else
                                 EqVol = alpha*inp.UPrism(i)^beta;
                             end                            
@@ -107,11 +107,12 @@ classdef ASM_model < ASMinterface
                         EqVol = ASM_model.beachEqVolume(mobj,eleobj,rncobj,inp,i);
                     otherwise
                         if isTReq %appplies to any element type (eg tidalflat)
-                            EqVol = alpha*inp.EqSA(i)*tidalrange^beta;
+                            EqVol = alpha*(inp.EqSA(i)*tidalrange)^beta;
                         else
                             EqVol = alpha*inp.UPrism(i)^beta;
                         end
                 end
+                %
                 if EqVol<0, EqVol=0; end
                 eleobj(i).EqVolume = EqVol;
             end

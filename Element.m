@@ -336,10 +336,13 @@ classdef Element < muiPropertyUI
         end
         
 %%                 
-        function ok = setEquilibrium(mobj)
+function ok = setEquilibrium(mobj,isCheck)
             %Set equilibrium volumes for all elements
             %calls AsmitaModel.asmitaEqFunctions(mobj) so that alternatives
-            %can be used by overloading in the AsmitaModel class            
+            %can be used by overloading in the AsmitaModel class    
+            if nargin<2
+                isCheck = false;
+            end
             obj = getClassObj(mobj,'Inputs','Element');
             eqScaling = getEleProp(obj,'eqScaling'); %scaling to initial values
             %update unadjusted equilibrium volumes to account for changes
@@ -354,7 +357,12 @@ classdef Element < muiPropertyUI
                 %Can't do it in ASM_model because EqVolumes have not been 
                 %scaled to model values, as above. eqFixedInts set in 
                 %Interventions.setAnnualChange depending on conditions 
-                EqVol = EqVol+obj(i).eqFixedInts(1); %1 - volume change
+                %isCheck used call setEquilibirum without updating fixity
+                %from getEleGamma (used as check in AsmitaModel.InitTimeStep
+                if ~isCheck
+                    EqVol = EqVol+obj(i).eqFixedInts(1); %1 - volume change
+                end
+                %
                 if EqVol<0 
                     %error in EqVol or fixed interventions are too large
                     msgtxt = sprintf('Equilibrium volume in element No.%d is negative\nAborting in Element.setEquilibrium',i);
@@ -517,7 +525,7 @@ classdef Element < muiPropertyUI
         function [gamma,ok] = getEleGamma(mobj,isreset)
             %update equilibrium volumes and return value of gamma=(ve/vm)^n  
             if isreset
-                ok = Element.setEquilibrium(mobj);
+                ok = Element.setEquilibrium(mobj,isreset);
                 if ok<1, return; end   %negative volume in setEquilibrium                
             end
             obj = getClassObj(mobj,'Inputs','Element');  

@@ -392,7 +392,7 @@ classdef AsmitaModel < muiDataSet
                  temp_time = obj.DateTime;
                  obj.DateTime = obj.DateTime+obj.delta;  %update time
                  [idx,ok] = Interventions.setAnnualChange(mobj,obj);    %#ok<ASGLU> 
-                 if ok<1, return; end   %error in setting interventions                 
+                 if ok<1, return; end   %error in setting interventions 
                  [gamma,ok] = Element.getEleGamma(mobj,true);
                  if ok<1, return; end   %error in setting equilibrium volume
                  obj.DateTime = temp_time;  %reset time
