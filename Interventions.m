@@ -508,7 +508,7 @@ classdef Interventions < matlab.mixin.Copyable
 
 %%
         function [dVfix,dSfix] = setFixedInterventions(~,mobj,dV,dS,i)
-            %check equilibirum conditions being used to determine how fixed
+            %check equilibrium conditions being used to determine how fixed
             %interventions should be applied. see manual for detail of cases  
             dVfix = 0; dSfix = 0;
             eleobj  = getClassObj(mobj,'Inputs','Element');
@@ -538,7 +538,7 @@ classdef Interventions < matlab.mixin.Copyable
             %check equilibrium conditions being used to determine how fixed
             %interventions should be applied. see manual for detail of cases  
             if isdVdS && isSeq && isPartPrism 
-                %alter volume and area of tidal flat using area equilibirum
+                %alter volume and area of tidal flat using area equilibrium
                 %ie area dependent and alters prism (case 1) 
                 dVfix = dV-Scaling*dS_Ve;
             elseif isdV && isSeq && isPartPrism 
@@ -549,7 +549,7 @@ classdef Interventions < matlab.mixin.Copyable
             %     %alter area when area dependent and alters prism (case 3)
             %     dVfix = 0; 
             elseif isdVdS && ~isSeq && isPartPrism 
-                %alter volume and area of tidal flat using prism equilibirum
+                %alter volume and area of tidal flat using prism equilibrium
                 %ie prism dependent and alters prism (case 4) 
                 dVfix = dV-Scaling*dP_Ve;
             elseif isdV && ~isSeq && isPartPrism 

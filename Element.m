@@ -357,8 +357,8 @@ function ok = setEquilibrium(mobj,isCheck)
                 %Can't do it in ASM_model because EqVolumes have not been 
                 %scaled to model values, as above. eqFixedInts set in 
                 %Interventions.setAnnualChange depending on conditions 
-                %isCheck used call setEquilibirum without updating fixity
-                %from getEleGamma (used as check in AsmitaModel.InitTimeStep
+                %isCheck used to call setEquilibrium without updating fixity
+                %from getEleGamma (used as check in AsmitaModel.InitTimeStep)
                 if ~isCheck
                     EqVol = EqVol+obj(i).eqFixedInts(1); %1 - volume change
                 end
@@ -368,7 +368,7 @@ function ok = setEquilibrium(mobj,isCheck)
                     msgtxt = sprintf('Equilibrium volume in element No.%d is negative\nAborting in Element.setEquilibrium',i);
                     warndlg(msgtxt); ok = 0; return;
                 elseif obj(i).SurfaceArea<=999
-                    %if surface area <=999 (ie S=0) set equilibirum to
+                    %if surface area <=999 (ie S=0) set equilibrium to
                     %element volume so that there is no further change
                     EqVol = obj(i).MovingVolume;
                 end                

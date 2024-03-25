@@ -464,15 +464,30 @@ classdef Asmita < muiModelUI
 
         %% Help menu ------------------------------------------------------
         function Help(~,src,~)
-            switch src.Text
-                case 'Documentation'
-                    doc asmita   
-                case 'Manual'
-                    asm_open_manual;
-                case 'Theory 1'
-                    asm_coe_part1;
-                case 'Theory 2'
-                    asm_coe_part2;
+            if isdeployed
+                %executable using the Matlab Runtime
+                [~, result] = system('path');
+                currentDir = char(regexpi(result, 'Path=(.*?);', 'tokens', 'once'));                
+                switch src.Text
+                    case 'Manual'
+                        doctxt = 'Asmita manual.pdf';
+                    case 'Theory 1'
+                        doctxt = 'COE paper-p1.pdf';
+                    case 'Theory 2'
+                        doctxt = 'COE paper-p2.pdf';
+                end
+                winopen([currentDir,filesep,doctxt])
+            else
+                switch src.Text
+                    case 'Documentation'
+                        doc asmita   
+                    case 'Manual'
+                        asm_open_manual;
+                    case 'Theory 1'
+                        asm_coe_part1;
+                    case 'Theory 2'
+                        asm_coe_part2;
+                end
             end
         end  
         %% Check that toolboxes are installed------------------------------

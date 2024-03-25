@@ -322,7 +322,7 @@ classdef Saltmarsh < muiPropertyUI
 
 %%
         function SensitivityPlot(mobj)
-            %generate plot of equilibirum depth as a function of rate of
+            %generate plot of equilibrium depth as a function of rate of
             %sea level rise and sediment load
             [obj,wlvobj,eleobj,cn,estobj] = Saltmarsh.getInputData(mobj);
             if isempty(obj) || isempty(wlvobj), return; end
@@ -562,7 +562,7 @@ classdef Saltmarsh < muiPropertyUI
 %%
         function [aws,c0] = getMarshVerticalExchange(~,eleobj)
             %get the mean values of the vertical exchange of the saltmarsh 
-            %(excluding bio) and tidal flat and the equilibirum concentration
+            %(excluding bio) and tidal flat and the equilibrium concentration
             %over the marsh or tidal flat (only varies if fine and coarse 
             %fractions used)
             eletype = getEleProp(eleobj,'EleType');

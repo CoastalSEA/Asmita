@@ -160,12 +160,16 @@ classdef EqCoeffParams < muiPropertyUI
                 Table.Position(2) = tabpos(1)-Table.Extent(4);
                 Table.Position(1) = tabpos(2)-Table.Extent(3);
             end
-            helptxt = sprintf('Equilibrium Coefficients using: %s',obj.UserEqCoeffSelection);
-            uicontrol('Parent',src,...
+
+            htxt = findobj(src,'Tag','RPtext');
+            if isempty(htxt)
+                helptxt = sprintf('Equilibrium Coefficients using: %s',obj.UserEqCoeffSelection);
+                uicontrol('Parent',src,...
                     'Style','text','String', helptxt,...                    
                     'HorizontalAlignment', 'left',...
                     'Units','normalized', 'Position',[Table.Position(1),tabpos(1),0.4,0.04],...
                     'Tag','RPtext');
+            end
         end       
     end
 end

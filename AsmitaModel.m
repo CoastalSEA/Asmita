@@ -358,7 +358,7 @@ classdef AsmitaModel < muiDataSet
              %calls RunConditions.setAdvectionOffset and ASM_model.setDQmatrix
              ok = Element.setEleAdvOffsets(mobj);  %DQmatrix set even if no offset
              if ok<1, return; end   %illconditioned matrix
-             %initialise unadjusted equilibirum volumes
+             %initialise unadjusted equilibrium volumes
              ASM_model.asmitaEqFunctions(mobj);
              %initialise any scaling to initial conditions (kVp)
              Element.setEqScalingCoeffs(mobj);

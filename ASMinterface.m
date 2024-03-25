@@ -294,7 +294,7 @@ classdef ASMinterface < handle
             prism = Reach.getReachEleProp(mobj,'UpstreamPrism');
             TR = Reach.getReachEleProp(mobj,'TidalRange');
             %
-            %equilibirum surface area taken as intial area (ie fixed)
+            %equilibrium surface area taken as intial area (ie fixed)
             EqSArea = getEleProp(eleobj,'SurfaceArea');
             %Equilibirum depth over marsh elements
             rncobj  = getClassObj(mobj,'Inputs','RunConditions');
