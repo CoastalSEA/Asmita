@@ -202,15 +202,15 @@ classdef Interventions < matlab.mixin.Copyable
                 [idx,legtxt,ok] = selectInterventionSet(intobj,mobj);
                 if ok<1, return; end
                 tim = intobj(idx).Year;
-                Vol = cumsum(intobj(idx).VolumeChange);
-                Surf = cumsum(intobj(idx).SurfaceAreaChange);
+                Vol = intobj(idx).VolumeChange;
+                Surf = intobj(idx).SurfaceAreaChange;
                 isfix = intobj(idx).isNonErodible;
             elseif  strcmp(answer,'All')
                 [tim,vals,isnero] = sortInterventions(intobj);
                 Vol = sum(vals(:,:,1),1)';
                 Surf = sum(vals(:,:,2),1)';
                 isfix = any(isnero,1)';
-                legtxt  = 'Cumulative change for All elements';
+                legtxt  = 'Incremental change for All elements';
             else
                 eleobj  = getClassObj(mobj,'Inputs','Element');
                 if isempty(eleobj), return; end
@@ -232,6 +232,16 @@ classdef Interventions < matlab.mixin.Copyable
                 return
             end
 
+            %option to plot Elemet or All as incremental or cumulative
+            if strcmp(answer,'Element') || strcmp(answer,'All')
+                inccum = questdlg('Plot incremental or cumulative change@',...
+                        'Interventions','Incremental','Cumulative','Cumulative');
+                if strcmp(inccum,'Cumulative')
+                    Vol = cumsum(Vol);
+                    Surf = cumsum(Vol);
+                    legtxt = ['Cumulative',legtxt(12:end)];
+                end
+            end
             %if the run properties have been defined use these to adjust
             %time range of plot            
             if ~isempty(rnpobj) && length(Vol)>5  %5 used as switch to stair plot in tabPlot
@@ -369,19 +379,22 @@ classdef Interventions < matlab.mixin.Copyable
             end 
             idx = intid(select);
             eleid = obj(idx).ElementID;
-            legtxt = sprintf('Cumulative change for element %d: %s',eleid,char(elename{select}));
+            legtxt = sprintf('Incremental change for element %d: %s',eleid,char(elename{select}));
         end
 
 %%
-        function tabPlot(~,src,tim,Vol,Surf,isfix,legtxt)
+        function tabPlot(obj,src,tim,Vol,Surf,isfix,legtxt)
             %plot cumulative changes based on user specified changes at given t
             offset = 0.1;  %offset from max value to provide margin at top
             vmax = max(Vol); smax = max(Surf); 
             fVol = Vol.*logical(isfix); fVol(fVol==0) = NaN;
             fSurf = Surf.*logical(isfix); fSurf(fSurf==0) = NaN;
-            axes('Parent',src); 
-            
-            s1 = subplot(2,1,1); 
+
+            %initialise tab figure with figure button
+            tabcb  = @(src,evdat)tabPlot(obj,src,tim,Vol,Surf,isfix,legtxt);
+            ax = tabfigureplot(obj,src,tabcb,false); %isrotate=false
+
+            s1 = subplot(2,1,1,ax); 
             if length(Vol)<5
                 bar(tim,Vol,'DisplayName',legtxt);
                 hold on 
