@@ -11,12 +11,13 @@ The code is written in MATLAB(TM) and requires v2018b, or later. Routing within 
 The model was first proposed by Marcel Stive and co-workers at TU Delft in the late 90's (see Bibilography below). The idea behind ASMITA is that a tidal basin, or estuary can be sub-dividing into a number of elements (Figure 1).  Each element has an equilibrium condition as a function of the prevailing hydrodynamic conditions and following some form of perturbation (eg. sea level rise, addition or removal of volume or area) the model seeks a new equilibrium.  For 
 example, if under initial conditions the accommodation space is zero (no net change in the transport of sediment), with increased mean sea level the accommodation space becomes positive and sediment may be imported, the opposite is true when sea level falls.
 
-<<schematic.png>>
+![schematic](https://github.com/user-attachments/assets/7eeaf876-1a7a-4ebe-ac9a-f9fda7ed1f06)
+
 
 ## Sample output
 The following is an example of the model output showing the variation in channel volume when the model is forced by sea level rise and a variation in tidal range forced by the nodal tidal cycle (18.6 year cycle).
 
-<<sample_output.png>>
+![sample_output](https://github.com/user-attachments/assets/fdf30824-26f4-4530-85a8-fff5dcd0a7de)
 
 ## Bibliography
 Wang Z B, Townend I and Stive M, 2020, Aggregated morphodynamic modelling of tidal inlets and estuaries. Water Science and Engineering, 13 (1), 1-13
