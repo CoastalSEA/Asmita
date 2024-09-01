@@ -5,7 +5,7 @@ ASMITA stands for Aggregated Scale Morphological Interaction between Tidal basin
 The code is provided as Open Source code (issued under a BSD 3-clause License).
 
 ## Requirements
-The code is written in MATLAB(TM) and requires v2018b, or later. Routing within the model makes use of graph and directed graph functions, which were introduced in Matlab 2015b. 
+The code is written in MATLAB(TM) and requires v2018b, or later. Routing within the model makes use of graph and directed graph functions, which were introduced in Matlab 2015b. In addition, Asmita requires the _dstoolbox_, _muitoolbox_ and the _muiAppLib_.
 
 ## Background
 The model was first proposed by Marcel Stive and co-workers at TU Delft in the late 90's (see Bibilography below). The idea behind ASMITA is that a tidal basin, or estuary can be sub-dividing into a number of elements (Figure 1).  Each element has an equilibrium condition as a function of the prevailing hydrodynamic conditions and following some form of perturbation (eg. sea level rise, addition or removal of volume or area) the model seeks a new equilibrium.  For 
