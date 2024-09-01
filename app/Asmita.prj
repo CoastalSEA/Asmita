@@ -1,5 +1,5 @@
 <deployment-project plugin="plugin.apptool" plugin-version="1.0">
-  <configuration build-checksum="887187578" file="D:\Matlab Code\MUImodels\Asmita\Asmita.prj" location="D:\Matlab Code\MUImodels\Asmita" name="Asmita" target="target.mlapps" target-name="Package App">
+  <configuration build-checksum="1930563233" file="D:\Matlab Code\muiModels\Asmita\app\Asmita.prj" location="D:\Matlab Code\muiModels\Asmita\app" name="Asmita" target="target.mlapps" target-name="Package App">
     <param.appname>Asmita</param.appname>
     <param.authnamewatermark>Ian Townend</param.authnamewatermark>
     <param.email>i.townend@soton.ac.uk</param.email>
@@ -14,7 +14,7 @@
     <param.description>ASMITA stands for Aggregated Scale Morphological Interaction between Tidal basin and Adjacent coast. 
 The model is used to examine long-tern morphological change in tidal inlets and estuaries. Rather than schematise a grid of the real-world bathymetry, the model uses elements that represent geomorphological components of the system such as channels, tidal flats, deltas, saltmarshes, etc. As such the model address changes to the sediment volumes in the estuary over long time scales (decades, centuries and aeons).</param.description>
     <param.screenshot>${PROJECT_ROOT}\Asmita_logo.jpg</param.screenshot>
-    <param.version>3.30</param.version>
+    <param.version>3.31</param.version>
     <param.products.name>
       <item>MATLAB</item>
     </param.products.name>
@@ -62,11 +62,11 @@ The model is used to examine long-tern morphological change in tidal inlets and 
       <file>${PROJECT_ROOT}\example</file>
       <file>${PROJECT_ROOT}\help</file>
       <file>${PROJECT_ROOT}\info.xml</file>
-      <file>D:\Matlab Code\MUImodels\muiApps\muiAppEstuaryFcns</file>
+      <file>D:\Matlab Code\muiModels\muiAppLib</file>
     </fileset.resources>
     <fileset.package />
     <build-deliverables>
-      <file location="D:\Matlab Code\MUImodels" name="Asmita" optional="false">D:\Matlab Code\MUImodels\Asmita</file>
+      <file location="D:\Matlab Code\muiModels\Asmita" name="app" optional="false">D:\Matlab Code\muiModels\Asmita\app</file>
     </build-deliverables>
     <workflow />
     <matlab>
