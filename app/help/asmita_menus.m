@@ -17,6 +17,7 @@
 %% Project
 % * *Project Info*: edit the Project name and Date
 % * *Cases > Edit Description*: user selects a Case to edit the Case description.
+% * *Cases > Edit DS properties*: initialises the  UI for editing Data Set properties (DSproperties).
 % * *Cases > Edit Data Set*: initialises the Edit Data UI for editing data sets.
 % * *Cases > Save*: user selects a data set to be saved from a list box of Cases and the is then prompted to name the file. The data are written to an Excel spreadsheet. 
 % * *Cases > Delete*: user selects Case(s) to be deleted from a list box of Cases and results are then deleted (model setup is not changed).
