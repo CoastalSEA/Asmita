@@ -108,9 +108,9 @@ classdef ASM_Plots < muiPlots
             elseif strcmp({'Distance'},obj.UIset.callTab)
                 obj = setDistancePlotType(obj,mobj);
             else
-                if contains(obj.UIset.callTab,{'2D','2DT','3D','3DT'})
-                    obj = setAxisTicks(obj);
-                end
+                % if contains(obj.UIset.callTab,{'2D','2DT','3D','3DT'})
+                %   obj = setAxisTicks(obj);                               %no longer needed?
+                % end
                 %distance and network plots needs all elements so dimensions do not match
                 isvalid = checkdimensions(obj);
                 if ~isvalid, return; end
@@ -210,20 +210,21 @@ classdef ASM_Plots < muiPlots
             end
         end
 %%
-        function obj = setAxisTicks(obj)
-            %check if any axis selection uses a character variable
-            if iscell(obj.Data.X)             
-                obj.TickLabels.XTick = 1:length(obj.Data.X);
-                obj.TickLabels.XTickLabel = obj.Data.X;
-                obj.Data.X =1:length(obj.Data.X);
-            end
-            %
-            if isfield(obj.Data,'Y') && iscell(obj.Data.Y)    
-                obj.TickLabels.YTick = 1:length(obj.Data.Y);
-                obj.TickLabels.YTickLabel = obj.Data.Y;
-                obj.Data.Y =1:length(obj.Data.Y);
-            end
-        end
+%  updates to handle lists in muiPlots means that this is not needed 
+%          function obj = setAxisTicks(obj)
+%             %check if any axis selection uses a character variable
+%             if iscell(obj.Data.X)             
+%                 obj.TickLabels.XTick = 1:length(obj.Data.X);
+%                 obj.TickLabels.XTickLabel = obj.Data.X;
+%                 obj.Data.X =1:length(obj.Data.X);
+%             end
+%             %
+%             if isfield(obj.Data,'Y') && iscell(obj.Data.Y)    
+%                 obj.TickLabels.YTick = 1:length(obj.Data.Y);
+%                 obj.TickLabels.YTickLabel = obj.Data.Y;
+%                 obj.Data.Y =1:length(obj.Data.Y);
+%             end
+%         end
 %%
         function addPivotButton(obj)
             %add button to allow user to set pivot year
@@ -242,7 +243,7 @@ classdef ASM_Plots < muiPlots
         function setDistancePlot(obj)
             %generate new distance plot in figure  
             obj.UIset.callTab = '2DT'; %use default tab name in muiPlots
-            obj = setAxisTicks(obj);
+            %obj = setAxisTicks(obj); %no longer needed?
             %generate an animation of plot type is a line/point type
             if ~isSnapShot(obj,1)
                 %convert from animation to 3D assignment
