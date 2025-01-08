@@ -115,13 +115,21 @@ classdef CSThydraulics < muiPropertyUI
             if isempty(obj.Qrange) || all(obj.Qrange==0)
                 obj.Qrange = obj.RiverDischarge;
             end
+
+            if length(inp.AreaELength)>1   %linear variation of convergence
+                LA = @(Q) inp.AreaELength(1)+inp.AreaELength(2)*Q;
+            else
+                LA = @(Q) inp.AreaELength; %constant convergence length
+            end
+
             nrow = length(obj.Qrange);
             resX{nrow,5} = [];
             for i=1:nrow
                 inp.RiverDischarge = obj.Qrange(i);
+                inp.AreaELength = LA(inp.RiverDischarge);
                 try
                     [res,xdim] = cst_model(inp,rnp,est);
-                    resX(i,:) = res;
+                    resX(i,:) = [res.X(1,[1,2,4,5]),res.F(1,2)];
                 catch ME
                     %remove the waitbar if program did not complete
                     model_catch(ME,'cst_model','Qr',inp.RiverDischarge); 

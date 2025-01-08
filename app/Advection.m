@@ -540,7 +540,14 @@ classdef Advection < matlab.mixin.Copyable
             
             estobj = getClassObj(mobj,'Inputs','Estuary');
             eLw  = estobj.WidthELength;%estuary width e-folding length (m)
-            eLa  = estobj.AreaELength; %estuary area e-folding length (m)
+            if length(estobj.AreaELength)>1   %linear variation of convergence
+                advobj = getClassObj(mobj,'Inputs','Advection');
+                g_flowpath = advobj.RiverGraph;   %use existing river graph
+                Q = g_flowpath.Edges.Weight(1);   %assumes all the same - ie single river input
+                eLa = estobj.AreaELength(1)+estobj.AreaELength(2)*Q;
+            else
+                eLa = estobj.AreaELength;     %constant convergence length
+            end
             
             idrch = Reach.getReachProp(mobj,'ReachChannelID');
             Hhw = Reach.getReachProp(mobj,'HWvolume')./... %depth at high water (m)

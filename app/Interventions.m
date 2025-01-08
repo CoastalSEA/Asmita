@@ -209,8 +209,11 @@ classdef Interventions < matlab.mixin.Copyable
                 [tim,vals,isnero] = sortInterventions(intobj);
                 Vol = sum(vals(:,:,1),1)';
                 Surf = sum(vals(:,:,2),1)';
-                isfix = any(isnero,1)';
+                isfix = any(isnero,1)';%non erodible flag
                 legtxt  = 'Incremental change for All elements';
+                if tim(1)==0 && rnpobj.StartYear>0
+                    tim(1) = rnpobj.StartYear;
+                end
             else
                 eleobj  = getClassObj(mobj,'Inputs','Element');
                 if isempty(eleobj), return; end
@@ -224,7 +227,9 @@ classdef Interventions < matlab.mixin.Copyable
                 if tim(1)>rnpobj.StartYear
                     tim = [rnpobj.StartYear;tim];
                     Vol = [V0,Vol];
-                    Surf = [S0,Surf];
+                    Surf = [S0,Surf];    
+                elseif (tim(1)==0 && rnpobj.StartYear>0)
+                    tim(1) = rnpobj.StartYear;
                 end
                 Depth = Vol./Surf;
                 legtxt  = getEleProp(eleobj,'EleName');
@@ -484,7 +489,7 @@ classdef Interventions < matlab.mixin.Copyable
                     if any(year==uyrs(j))
                         vals(i,j,1) = sum(vols(year==uyrs(j)));
                         vals(i,j,2) = sum(area(year==uyrs(j)));
-                        isnero(i,j) = flag(year==uyrs(j));
+                        isnero(i,j) = flag(year==uyrs(j)); %non erodible flag
                     end
                 end
             end
