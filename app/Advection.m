@@ -394,13 +394,13 @@ classdef Advection < matlab.mixin.Copyable
             rivobj  = getClassObj(mobj,'Inputs','River');
             rncobj = getClassObj(mobj,'Inputs','RunConditions');
             %only check need to update if river is included
-            if rncobj.IncRiver && ~isempty(obj.RiverGraph) && ~isempty(rivobj)
+            if rncobj.IncRiverTS && ~isempty(obj.RiverGraph) && ~isempty(rivobj)
                 obj.RiverGraph = getflowpath(obj,mobj,rivobj,tsyear);                
             end
             
             dftobj  = getClassObj(mobj,'Inputs','Drift');
             %only check need to update if drift is included
-            if rncobj.IncDrift && ~isempty(obj.DriftGraph) && ~isempty(dftobj)
+            if rncobj.IncDriftTS && ~isempty(obj.DriftGraph) && ~isempty(dftobj)
                 obj.DriftGraph = getflowpath(obj,mobj,dftobj,tsyear);
             end
 

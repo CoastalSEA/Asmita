@@ -61,7 +61,7 @@ classdef Drift < matlab.mixin.Copyable
                 %check that drift is assigned to a channel that exists
                 eletype = getEleProp(eleobj,'EleType');
                 extypes = mobj.GeoType(mobj.EXtypes);
-                ok = ismatch(eletype{usenum(1)},extypes); %could replace with matches
+                ok = any(ismatch(eletype{usenum(1)},extypes)); %could replace with matches
                 if ok==0
                     warndlg('Can only connect to delta, beach, shore, or spit which must exit');
                 end

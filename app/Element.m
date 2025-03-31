@@ -483,7 +483,7 @@ function ok = setEquilibrium(mobj,isCheck)
             %equilibrium depth is always based on the specified productivity
             eletype = getEleProp(obj,'transEleType');
             ism = contains(eletype,{'Saltmarsh','Storage'});
-            if any(ism)
+            if any(ism) && rncobj.IncSaltmarsh
                 unity = num2cell(ones(1,sum(ism)));
                 [obj(ism).eqScaling] = unity{:};
             end
