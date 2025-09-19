@@ -1,7 +1,7 @@
 %script to remove path for use in app
 apppath = pwd;
 appdoc = [apppath,'/doc'];
-apphelp = [apppath,'/help/html'];
+apphelp = [apppath,'/help'];
 appeg = [apppath,'/example'];
 appfncs = [apppath,'/asmita_functions'];
 applib1 = '../../muiAppLib/muiAppEstuaryFcns'; 

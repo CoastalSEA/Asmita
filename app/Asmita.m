@@ -15,8 +15,8 @@ classdef Asmita < muiModelUI
 % 
     properties  (Access = protected)
         %implement properties defined as Abstract in muiModelUI
-        vNumber = '3.50'
-        vDate   = 'March 2024'
+        vNumber = '3.52'
+        vDate   = 'Sept 2024'
         modelName = 'Asmita'   
         %Properties defined in muiModelUI that need to be defined in setGui
         % ModelInputs  %classes required by model: used in isValidModel check 

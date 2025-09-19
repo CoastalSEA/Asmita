@@ -3,7 +3,7 @@
 %muitoolbox branching from the same parent folder (eg muiModels)
 apppath = pwd;
 appdoc = [apppath,'/doc'];
-apphelp = [apppath,'/help/html'];
+apphelp = [apppath,'/help'];
 appeg = [apppath,'/example'];
 appfncs = [apppath,'/asmita_functions'];
 applib1 = '../../muiAppLib/muiAppEstuaryFcns'; 
