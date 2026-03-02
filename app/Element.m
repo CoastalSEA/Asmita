@@ -20,7 +20,7 @@ classdef Element < muiPropertyUI
                           'Initial Surface Area (m^2)',...
                           'Length (m)','Vertical exchange (m/s)',...
                           'Transport coefficient (+/-n)', ...
-                          'Bed density (kg/m^3)','Sediment mobility (-)', ...
+                          'Bed bulk density (kg/m^3)','Sediment mobility (-)', ...
                           'Tidal Damping (-)'};
         %abstract properties in muiPropertyUI for tab display
         TabDisplay   %structure defines how the property table is displayed 
@@ -39,7 +39,7 @@ classdef Element < muiPropertyUI
         Length = 0              %length of element along line of channel (m)
         VerticalExchange = 0    %vertical exchange (m/s)
         TransportCoeff = 3      %transport coefficientn n (-)
-        BedDensity = 1650       %bed density(kg/m^3)
+        BedDensity = 1650       %bed bulk or wet density(kg/m^3)
         SedMobility = 1         %sediment mobility (used to calibrate tidal pumping)        
         TidalDamping = 1        %option to define tidal amplification/damping factor 
                                 %for each element as a/a0. To adjust tidal

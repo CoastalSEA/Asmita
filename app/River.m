@@ -12,7 +12,7 @@ classdef River < matlab.mixin.Copyable
     properties
         ChannelID = []        %EleID of channel river flows into 
         RiverFlow = 0         %flow rate from river at t=0 (m3/s) 
-        RiverRho = 0          %concentration density imported by advection (kg/m3)
+        RiverRho = 0          %concentration dry density imported by advection (kg/m3)
         RiverTSC              %river timeseries of discharge (m3/s) and 
                               %sediment load (kg/m3)
     end
