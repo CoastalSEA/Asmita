@@ -113,19 +113,24 @@ classdef Asmita < muiModelUI
             menu.Tools(1).Callback = {@obj.refresh, 'gcbo;'};  
             
             % submenu for 'Clear all'
-            menu.Tools(2).List = {'Model','Figures','Cases'};
-            menu.Tools(2).Callback = repmat({@obj.toolsMenuOptions},[1,3]);
+            menu.Tools(2).List = {'Project','Figures','Cases'};
+            menu.Tools(2).Callback = [{@obj.toolsMenuOptions},{'gcbo;'},...
+                                     {@obj.toolsMenuOptions}];
+
+            menu.Tools(3).List = {'UI Figures','Tag Figures'};
+            menu.Tools(3).Callback = repmat({@obj.toolsMenuOptions},[1,2]);  
 
             %% Project menu -----------------------------------------------
             menu.Project(1).List = {'Project Info','Cases','Export/Import'};
             menu.Project(1).Callback = {@obj.editProjectInfo,'gcbo;','gcbo;'};
             
             %list as per muiModelUI.projectMenuOptions
-            % submenu for Scenarios
-            menu.Project(2).List = {'Edit Description','Edit DS properties','Edit Data Set',...
-                                    'Save Data Set','Delete Case','Reload Case',...
-                                    'View Case Settings'};                                               
-            menu.Project(2).Callback = repmat({@obj.projectMenuOptions},[1,7]);
+            menu.Project(2).List = {'Edit Description','Edit DS properties',...
+                                    'Edit Data Set','Save Data Set',...
+                                    'Delete Case','Delete Dataset',...
+                                    'Delete Variable',...
+                                    'Reload Case','View Case Settings'};                                               
+            menu.Project(2).Callback = repmat({@obj.projectMenuOptions},[1,9]);
             
             % submenu for 'Export/Import'                                          
             menu.Project(3).List = {'Export Case','Import Case'};
