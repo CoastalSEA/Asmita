@@ -15,14 +15,14 @@ clear apppath appdoc apphelp appeg appfncs applib1
 %if toolboxes not installed
 isdstbx =  which('dstable.m');
 if isempty(isdstbx)
-    dstbx = 'D:\Matlab Code\muiModels\dstoolbox\toolbox';
+    dstbx = 'D:\Matlab_Code\muiModels\dstoolbox\toolbox';
     addpath(genpath(dstbx));
     clear dstbx 
 end
 
 ismuitbx =  which('muiModelUI.m');
 if isempty(ismuitbx)
-    muitbx = 'D:\Matlab Code\muiModels\muitoolbox\toolbox';
+    muitbx = 'D:\Matlab_Code\muiModels\muitoolbox\toolbox';
     addpath(genpath(muitbx))
     clear muitbx
 end
